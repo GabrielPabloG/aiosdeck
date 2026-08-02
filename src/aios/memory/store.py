@@ -5,7 +5,13 @@ import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
 
-from aios.memory.models import Convention, Decision, Mistake, Pattern
+from aios.memory.models import (
+    Convention,
+    Decision,
+    Mistake,
+    Pattern,
+    StorageError,
+)
 
 logger = logging.getLogger("aios.memory.store")
 
@@ -59,11 +65,20 @@ class SQLiteStore:
         self._conn: sqlite3.Connection | None = None
 
     def open(self) -> None:
-        self._db_path.parent.mkdir(parents=True, exist_ok=True)
-        self._conn = sqlite3.connect(str(self._db_path))
-        self._conn.execute("PRAGMA journal_mode=WAL")
-        self._conn.executescript(SCHEMA)
-        self._conn.commit()
+        try:
+            self._db_path.parent.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            raise StorageError(f"Cannot create directory: {self._db_path.parent}") from exc
+
+        try:
+            self._conn = sqlite3.connect(str(self._db_path))
+            self._conn.execute("PRAGMA journal_mode=WAL")
+            self._conn.execute("PRAGMA foreign_keys = ON")
+            self._conn.executescript(SCHEMA)
+            self._conn.commit()
+        except sqlite3.Error as exc:
+            self._conn = None
+            raise StorageError(f"Database open failed: {exc}") from exc
 
     def close(self) -> None:
         if self._conn:
@@ -71,7 +86,13 @@ class SQLiteStore:
             self._conn = None
 
     def is_open(self) -> bool:
-        return self._conn is not None
+        if self._conn is None:
+            return False
+        try:
+            self._conn.execute("SELECT 1")
+            return True
+        except sqlite3.Error:
+            return False
 
     def get_conventions(self) -> list[Convention]:
         rows = self._fetch_all(
@@ -127,7 +148,8 @@ class SQLiteStore:
                 "VALUES (?, ?, ?, ?, ?, ?)",
                 (rule, category, source, self._project_id, now, now),
             )
-        self._conn.commit()
+        if self._conn:
+            self._conn.commit()
 
     def add_decision(self, title: str, context: str, decision: str, consequences: str) -> None:
         now = _now()
@@ -137,7 +159,8 @@ class SQLiteStore:
             "VALUES (?, ?, ?, ?, 'active', ?, ?)",
             (title, context, decision, consequences, self._project_id, now),
         )
-        self._conn.commit()
+        if self._conn:
+            self._conn.commit()
 
     def add_pattern(self, name: str, description: str) -> None:
         now = _now()
@@ -156,7 +179,8 @@ class SQLiteStore:
                 "VALUES (?, ?, 1, ?, ?)",
                 (name, description, self._project_id, now),
             )
-        self._conn.commit()
+        if self._conn:
+            self._conn.commit()
 
     def add_mistake(self, description: str, category: str, severity: str) -> None:
         now = _now()
@@ -165,7 +189,8 @@ class SQLiteStore:
             "VALUES (?, ?, ?, ?, ?)",
             (description, category, severity, self._project_id, now),
         )
-        self._conn.commit()
+        if self._conn:
+            self._conn.commit()
 
     def _fetch_all(self, query: str, params: tuple = ()) -> list[tuple]:
         if not self._conn:

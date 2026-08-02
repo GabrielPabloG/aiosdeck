@@ -1,11 +1,16 @@
 """Context packet — the standardized output of the Context Engine."""
 
+from __future__ import annotations
+
 import shutil
 import subprocess
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from aios.memory.models import ProjectKnowledge
 
 
 @dataclass
@@ -17,7 +22,7 @@ class GitInfo:
     last_commit_message: str = ""
 
     @classmethod
-    def detect(cls, project_path: Path) -> "GitInfo":
+    def detect(cls, project_path: Path) -> GitInfo:
         git_dir = project_path / ".git"
         if not git_dir.exists():
             return cls()
@@ -52,7 +57,7 @@ class DockerInfo:
     compose_files: list[str] = field(default_factory=list)
 
     @classmethod
-    def detect(cls, project_path: Path) -> "DockerInfo":
+    def detect(cls, project_path: Path) -> DockerInfo:
         compose_patterns = [
             "docker-compose.yml",
             "docker-compose.yaml",
@@ -100,7 +105,7 @@ class RuntimeInfo:
     ai_jail: bool = False
 
     @classmethod
-    def detect(cls) -> "RuntimeInfo":
+    def detect(cls) -> RuntimeInfo:
         return cls(
             opencode=shutil.which("opencode") is not None,
             ai_jail=shutil.which("ai-jail") is not None,
@@ -115,7 +120,7 @@ class StructureInfo:
     has_docs_dir: bool = False
 
     @classmethod
-    def detect(cls, project_path: Path) -> "StructureInfo":
+    def detect(cls, project_path: Path) -> StructureInfo:
         return cls(
             has_readme=(project_path / "README.md").exists(),
             has_license=(project_path / "LICENSE").exists(),
@@ -140,7 +145,7 @@ class ContextPacket:
     runtime: RuntimeInfo = field(default_factory=RuntimeInfo)
     structure: StructureInfo = field(default_factory=StructureInfo)
     skills: list[str] = field(default_factory=list)
-    memory: dict = field(default_factory=dict)
+    memory: ProjectKnowledge | None = field(default=None)
     timestamp: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 
     def to_dict(self) -> dict[str, Any]:
@@ -179,5 +184,6 @@ class ContextPacket:
                 "has_docs_dir": self.structure.has_docs_dir,
             },
             "skills": self.skills,
+            "memory": self.memory.to_dict() if self.memory else {},
             "timestamp": self.timestamp,
         }

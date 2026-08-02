@@ -3,6 +3,10 @@
 from dataclasses import dataclass, field
 
 
+class StorageError(Exception):
+    """Domain error for storage failures. Hides SQLite from callers."""
+
+
 @dataclass
 class Convention:
     id: int | None = None
@@ -12,6 +16,13 @@ class Convention:
     project_id: str = ""
     created_at: str = ""
     last_seen: str = ""
+
+    def to_dict(self) -> dict:
+        return {
+            "category": self.category,
+            "rule": self.rule,
+            "source": self.source,
+        }
 
 
 @dataclass
@@ -25,6 +36,14 @@ class Decision:
     project_id: str = ""
     created_at: str = ""
 
+    def to_dict(self) -> dict:
+        return {
+            "title": self.title,
+            "context": self.context,
+            "decision": self.decision,
+            "status": self.status,
+        }
+
 
 @dataclass
 class Pattern:
@@ -34,6 +53,13 @@ class Pattern:
     usage_count: int = 0
     project_id: str = ""
     created_at: str = ""
+
+    def to_dict(self) -> dict:
+        return {
+            "name": self.name,
+            "description": self.description,
+            "usage_count": self.usage_count,
+        }
 
 
 @dataclass
@@ -46,6 +72,13 @@ class Mistake:
     resolved_at: str | None = None
     created_at: str = ""
 
+    def to_dict(self) -> dict:
+        return {
+            "description": self.description,
+            "category": self.category,
+            "severity": self.severity,
+        }
+
 
 @dataclass
 class ProjectKnowledge:
@@ -57,3 +90,11 @@ class ProjectKnowledge:
     @property
     def is_empty(self) -> bool:
         return not any([self.conventions, self.decisions, self.patterns, self.mistakes])
+
+    def to_dict(self) -> dict:
+        return {
+            "conventions": [c.to_dict() for c in self.conventions],
+            "decisions": [d.to_dict() for d in self.decisions],
+            "patterns": [p.to_dict() for p in self.patterns],
+            "mistakes": [m.to_dict() for m in self.mistakes],
+        }

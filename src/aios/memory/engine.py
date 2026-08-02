@@ -1,14 +1,21 @@
 """Memory Engine — domain-oriented knowledge persistence.
 
 SQLite is an implementation detail. This is the public abstraction.
+
+Storage priority:
+1. AIOS_MEMORY_PATH (env — no silent fallback)
+2. ./.aios/memory.db (project-scoped, default)
+3. ~/.local/share/aiosdeck/memory.db (global fallback)
 """
+
+from __future__ import annotations
 
 import logging
 import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from aios.memory.models import ProjectKnowledge
+from aios.memory.models import ProjectKnowledge, StorageError
 from aios.memory.store import SQLiteStore
 
 if TYPE_CHECKING:
@@ -27,12 +34,16 @@ class MemoryEngine:
         self._store: SQLiteStore | None = None
 
     def initialize(self) -> None:
-        self._store = SQLiteStore(self._db_path, self._project_id)
-        self._store.open()
+        try:
+            self._store = SQLiteStore(self._db_path, self._project_id)
+            self._store.open()
+        except StorageError as exc:
+            self._store = None
+            raise RuntimeError(str(exc)) from exc
 
     def health_check(self) -> bool:
         if self._store is None:
-            return True  # not initialized yet, not a failure
+            return True  # not initialized, not a failure
         return self._store.is_open()
 
     def shutdown(self) -> None:
@@ -74,19 +85,24 @@ class MemoryEngine:
             return
         self._store.add_mistake(description, category, severity)
 
-    def enrich_context(self, context: "ContextPacket") -> None:
-        knowledge = self.recall()
-        context.memory = {
-            "conventions": [c.rule for c in knowledge.conventions],
-            "decisions": [d.title for d in knowledge.decisions],
-            "patterns": [p.name for p in knowledge.patterns],
-            "mistakes": [m.description for m in knowledge.mistakes],
-        }
+    def enrich_context(self, context: ContextPacket) -> None:
+        context.memory = self.recall()
 
     def _resolve_db_path(self, override: str | None) -> Path:
         if override:
             return Path(override)
+
         env = os.environ.get("AIOS_MEMORY_PATH")
-        if env:
+        if env is not None:
             return Path(env)
-        return Path.home() / ".local" / "share" / "aiosdeck" / "memory.db"
+
+        project_db = self._project_path / ".aios" / "memory.db"
+        return project_db
+
+    def is_available(self) -> bool:
+        """Check if the db path is writable."""
+        try:
+            self._db_path.parent.mkdir(parents=True, exist_ok=True)
+            return os.access(self._db_path.parent, os.W_OK)
+        except OSError:
+            return False

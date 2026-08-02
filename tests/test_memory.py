@@ -1,6 +1,5 @@
 """Tests for MemoryEngine — SQLite, recall, enrich, isolation, resilience."""
 
-import sqlite3
 from contextlib import suppress
 
 from aios.agents.developer import DeveloperAgent
@@ -8,7 +7,7 @@ from aios.config import ConfigEngine
 from aios.context import ContextEngine
 from aios.context.packet import ContextPacket
 from aios.core import Kernel
-from aios.memory import MemoryEngine, ProjectKnowledge
+from aios.memory import MemoryEngine, ProjectKnowledge, StorageError
 from aios.memory.store import SQLiteStore
 
 
@@ -125,10 +124,11 @@ def test_enrich_context(tmp_path):
     packet = ContextPacket()
     engine.enrich_context(packet)
 
-    assert "Use type hints" in packet.memory["conventions"]
-    assert "Postgres" in packet.memory["decisions"]
-    assert "Factory" in packet.memory["patterns"]
-    assert "No bare excepts" in packet.memory["mistakes"]
+    assert packet.memory is not None
+    assert any(c.rule == "Use type hints" for c in packet.memory.conventions)
+    assert any(d.title == "Postgres" for d in packet.memory.decisions)
+    assert any(p.name == "Factory" for p in packet.memory.patterns)
+    assert any(m.description == "No bare excepts" for m in packet.memory.mistakes)
     engine.shutdown()
 
 
@@ -140,6 +140,25 @@ def test_env_path_override(tmp_path, monkeypatch):
     engine.initialize()
     assert custom.exists()
     engine.shutdown()
+
+
+def test_default_path_in_dot_aios(tmp_path):
+    (tmp_path / ".aios").mkdir()
+    engine = MemoryEngine(project_path=tmp_path, db_path=None)
+    assert str(engine._db_path).endswith("/.aios/memory.db")
+    engine.initialize()
+    assert (tmp_path / ".aios" / "memory.db").exists()
+    engine.shutdown()
+
+
+def test_storage_error_on_open(tmp_path):
+    db = tmp_path / "readonly" / "sub" / "memory.db"
+    db.parent.mkdir(parents=True)
+    db.write_text("not a database")
+    store = SQLiteStore(db, "test")
+    with suppress(StorageError):
+        store.open()
+    assert not store.is_open()
 
 
 def test_memory_optional(tmp_path):
@@ -157,7 +176,7 @@ def test_corrupt_db(tmp_path):
     db.write_text("this is not sqlite")
 
     engine = MemoryEngine(project_path=tmp_path, db_path=str(db))
-    with suppress(sqlite3.DatabaseError):
+    with suppress(RuntimeError):
         engine.initialize()
 
     kernel = Kernel(project_path=str(tmp_path))
@@ -175,5 +194,21 @@ def test_agent_no_direct_memory(tmp_path):
     try:
         agent = DeveloperAgent(None)
         assert not hasattr(agent, "_memory")
+        assert not hasattr(agent, "_store")
     finally:
         engine.shutdown()
+
+
+def test_project_knowledge_to_dict(tmp_path):
+    engine = MemoryEngine(project_path=tmp_path, db_path=str(tmp_path / "mem.db"))
+    engine.initialize()
+    engine.remember_convention("Use type hints")
+    engine.remember_decision("Postgres", decision="PostgreSQL")
+
+    knowledge = engine.recall()
+    d = knowledge.to_dict()
+    assert len(d["conventions"]) == 1
+    assert d["conventions"][0]["rule"] == "Use type hints"
+    assert len(d["decisions"]) == 1
+    assert d["decisions"][0]["decision"] == "PostgreSQL"
+    engine.shutdown()
