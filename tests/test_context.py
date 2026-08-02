@@ -16,6 +16,32 @@ def test_python_detector_no_match(tmp_path):
     assert result is None
 
 
+def test_python_detector_subdir_py_only(tmp_path):
+    (tmp_path / "backend").mkdir()
+    (tmp_path / "backend" / "app.py").write_text("print('hello')")
+    result = PythonDetector.detect(tmp_path)
+    assert result is not None
+    project, _ = result
+    assert project.language == "python"
+
+
+def test_python_detector_skips_venv(tmp_path):
+    (tmp_path / "venv").mkdir()
+    (tmp_path / "venv" / "app.py").write_text("print('hello')")
+    result = PythonDetector.detect(tmp_path)
+    assert result is None
+
+
+def test_python_detector_subdir_with_requirements(tmp_path):
+    (tmp_path / "backend").mkdir()
+    (tmp_path / "backend" / "requirements.txt").write_text("fastapi\n")
+    (tmp_path / "backend" / "main.py").write_text("from fastapi import FastAPI")
+    result = PythonDetector.detect(tmp_path)
+    assert result is not None
+    project, tools = result
+    assert project.language == "python"
+
+
 def test_javascript_detector(tmp_path):
     (tmp_path / "package.json").write_text(
         '{"name":"test","devDependencies":{"eslint":"^9","prettier":"^3","vitest":"^1"}}'
