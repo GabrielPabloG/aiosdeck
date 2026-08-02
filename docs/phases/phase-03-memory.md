@@ -1,6 +1,6 @@
 # Phase 03 — Memory Engine
 
-**Status**: Draft
+**Status**: Proposed
 **Date**: 2026-08-02
 **Target Version**: v0.3
 

@@ -1,6 +1,6 @@
 # Coder Agent
 
-**Status**: Draft
+**Status**: Proposed
 **Date**: 2026-08-02
 **Introduced**: v0.2 (as Developer), specialized v0.8
 

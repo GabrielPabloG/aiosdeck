@@ -1,6 +1,6 @@
 # Context Agent
 
-**Status**: Draft
+**Status**: Accepted
 **Date**: 2026-08-02
 **Introduced**: v0.1 (built-in, not user-facing)
 

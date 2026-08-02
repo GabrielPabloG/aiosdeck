@@ -1,6 +1,6 @@
 # Glossary
 
-**Status**: Draft (incremental — updated with each new document)
+**Status**: Accepted (incremental — updated with each new document)
 **Date**: 2026-08-02
 
 ## Context

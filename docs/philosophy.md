@@ -1,6 +1,6 @@
 # Philosophy
 
-**Status**: Draft
+**Status**: Accepted
 **Date**: 2026-08-02
 
 ## Context
@@ -11,7 +11,7 @@ Every architectural decision in AiosDeck must pass through these principles. If 
 
 ## Decision
 
-AiosDeck is guided by nine core principles and three sub-principles. Each principle is a constraint, not a suggestion.
+AiosDeck is guided by ten core principles and three sub-principles. Each principle is a constraint, not a suggestion.
 
 ### 1. Context before Intelligence
 
@@ -99,6 +99,14 @@ Security is not a module you add later. It is embedded in the kernel, the runtim
 
 **What this means in practice**: Security is enforced at the architecture level, not the prompt level. No amount of "please be safe" in a system prompt replaces a capability-based permission system.
 
+### 10. The ProjDesk Contract
+
+ProjDesk manages the development environment. AiosDeck manages the intelligence environment. This boundary is the project's identity — and its guard-rail against scope creep.
+
+If a proposed feature does not help manage the developer's intelligence workspace (context, planning, implementation, review, documentation, memory, workflows), it does not belong in AiosDeck. It is either ProjDesk's responsibility or a separate tool entirely.
+
+**What this means in practice**: Every new feature request is tested against the question: "Does this help manage the intelligence environment?" Secrets management for CI/CD pipelines? No — that's environment management. Docker container lifecycle? No — that's ProjDesk. Coordinating which agent reviews which code change? Yes — that's intelligence orchestration.
+
 ### Sub-Principles
 
 #### Composable Everything
@@ -142,6 +150,6 @@ This principle constrains all others. If a proposed component (agent, engine, pi
 ## Implementation Notes
 
 - [ ] Every ADR document must include a "Philosophy Alignment" section referencing which principles it supports
-- [ ] Principles 1–9 should be visible in the README, linked here for detail
+- [ ] Principles 1–10 should be visible in the README, linked here for detail
 - [ ] The meta-principle must be enforced in code review: no feature ships without an existing problem to solve
 - [ ] Principle conflicts should be documented as they arise; update this document when resolution patterns emerge

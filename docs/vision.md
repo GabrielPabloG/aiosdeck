@@ -1,6 +1,6 @@
 # Vision
 
-**Status**: Draft
+**Status**: Accepted
 **Date**: 2026-08-02
 
 ## Context

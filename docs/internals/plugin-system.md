@@ -1,6 +1,6 @@
 # Plugin System
 
-**Status**: Draft
+**Status**: Proposed
 **Date**: 2026-08-02
 
 ## Context

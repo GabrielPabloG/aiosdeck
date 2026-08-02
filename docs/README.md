@@ -28,12 +28,13 @@ The result is a development environment that remembers your projects, understand
 - [Core Idea](#core-idea)
 - [Philosophy](#philosophy)
 - [Relationship with ProjDesk](#relationship-with-projdesk)
-- [Roadmap](#roadmap)
+- [Roadmaps](#roadmaps)
 - [Architecture](#architecture)
 - [How It Works](#how-it-works)
 - [Security](#security)
 - [Agent Ecosystem](#agent-ecosystem)
 - [Skills](#skills)
+- [Decisions](#decisions)
 - [Getting Started](#getting-started)
 - [License](#license)
 
@@ -76,7 +77,7 @@ LLMs (Ollama / GPT / Gemini / Claude)
 
 ## Philosophy
 
-AiosDeck is built around **nine principles** that guide every architectural decision.
+AiosDeck is built around **ten principles** that guide every architectural decision.
 
 | Principle | Meaning |
 |-----------|---------|
@@ -89,6 +90,7 @@ AiosDeck is built around **nine principles** that guide every architectural deci
 | **Memory Is Part of the System** | Memory is a first-class citizen, not a shortcut. The system remembers across sessions. |
 | **The Runtime Is Replaceable** | OpenCode is one runtime. Not the runtime. The adapter pattern keeps it swappable. |
 | **Security Is Architecture, Not a Feature** | Zero-trust, capabilities, and sandboxing from day one. Every agent is untrusted until explicitly authorized. |
+| **The ProjDesk Contract** | ProjDesk manages the development environment. AiosDeck manages the intelligence environment. If a feature doesn't help manage the developer's intelligence workspace, it doesn't belong in AiosDeck. |
 
 > **Every abstraction must solve an existing problem. Never an anticipated one.**
 
@@ -121,22 +123,52 @@ LLMs
 
 The contract between them is a **project manifest** (`aios/project.yaml`) — a single file that describes how the project should be understood, which Skills to load, which Quality Gates to run, and which agents to enable. ProjDesk can generate it. AiosDeck consumes it. It works with or without ProjDesk.
 
-## Roadmap
+## Roadmaps
 
-Each agent is born in a specific version. Each version delivers one capability.
+AiosDeck maintains three roadmaps. Only one is active.
 
-| Version | Name | Ships With |
-|---------|------|------------|
-| **v0.1** | Foundation | CLI, Configuration, Context Engine, Runtime Adapter, OpenCode + ai-jail, Skills, Logger |
-| **v0.2** | Developer Agent | Single agent that handles everything (plans, codes, reviews) |
-| **v0.3** | Memory | SQLite-backed persistence for conventions, decisions, architecture knowledge |
-| **v0.4** | Planner | Task decomposition, prioritization. Cannot write code, cannot touch Git |
-| **v0.5** | Reviewer | Architecture critique, convention enforcement, style review |
-| **v0.6** | Quality Pipeline | Format → Lint → Tests → Security → AI Architecture Review → Documentation Review |
-| **v0.7** | Workflows | Semantic commands: `/feature`, `/fix`, `/review`, `/refactor`, `/document`, `/release` |
-| **v0.8** | Multi-Agent | Scheduler orchestrates concurrent agents: Coder, Reviewer, Docs, Git, Research |
-| **v0.9** | Plugins | Extension points for custom Runtimes, Agents, Skills, Workflows, and Plugins |
-| **v1.0** | AI Operating System | Official ProjDesk integration, status dashboard, production stability |
+### Vision Roadmap — Where We Are Going
+
+The destination. No dates. No versions. Pure direction.
+
+- **AI Operating System** — A coordinated team of specialized AI agents, each with one responsibility
+- **Marketplace** — Community-contributed Agents, Skills, Workflows, and Plugins
+- **Distributed Agents** — Agents running across machines, coordinated by the Scheduler
+- **Cloud Sync** — Shared memory, shared policies, per-team agents (local-first, cloud-optional)
+- **IDE Integration** — In-editor agent panels, inline reviews, side-by-side context
+
+### Architecture Roadmap — What We Know Will Exist
+
+All planned phases. Documented, specified, but not all implemented.
+
+| Phase | Status | Components |
+|-------|--------|------------|
+| v0.1 Foundation | **In progress** | CLI, Configuration, Context Engine, Runtime Adapter, OpenCode + ai-jail, Skills, Logger |
+| v0.2 Developer Agent | Specified | Single agent that handles everything |
+| v0.3 Memory | Specified | SQLite-backed persistence for conventions, decisions, architecture |
+| v0.4 Planner | Specified | Task decomposition, prioritization |
+| v0.5 Reviewer | Specified | Architecture critique, convention enforcement |
+| v0.6 Quality Pipeline | Specified | Format → Lint → Tests → Security → AI Review → Docs Review |
+| v0.7 Workflows | Specified | `/feature`, `/fix`, `/review`, `/refactor`, `/document`, `/release` |
+| v0.8 Multi-Agent | Specified | Scheduler with concurrent agents |
+| v0.9 Plugins | Specified | Extension points for Runtimes, Agents, Skills, Workflows |
+| v1.0 AI OS | Specified | ProjDesk integration, status dashboard |
+
+### Implementation Roadmap — What We Are Building Now
+
+The only roadmap that matters day to day. Everything else is blocked.
+
+| Component | Version | Task |
+|-----------|---------|------|
+| CLI (`aios`) | v0.1 | Entry point, command parsing, routing |
+| Configuration | v0.1 | Detection > manifest > user config > env > defaults |
+| Context Engine | v0.1 | Language detection, tool detection, Git/Docker/OpenCode status |
+| Runtime Adapter | v0.1 | OpenCode invocation via ai-jail, skill loading, prompt construction |
+| Event Bus | v0.1 | In-process pub/sub, topics, audit logging |
+| Security (skeleton) | v0.1 | Policy loading, audit logging. Full enforcement in v0.6 |
+| Logger | v0.1 | Structured logging, session audit trail |
+
+**Rule**: Every abstraction must solve an existing problem. Never an anticipated one. If a component is not in this table, it has not earned its existence yet.
 
 ### Agent Birth Timeline
 
@@ -378,6 +410,18 @@ Agents learn by loading Skills — small knowledge fragments that teach them how
 
 Skills are born when they solve an **existing** problem — never before.
 
+## Decisions
+
+Architecture Decision Records explain **why** each foundational choice was made — not just what was chosen. These preserve context for future maintainers.
+
+| ADR | Decision |
+|-----|----------|
+| [ADR-0001](decisions/ADR-0001-open-code-as-runtime.md) | OpenCode as primary runtime |
+| [ADR-0002](decisions/ADR-0002-ai-jail-as-sandbox.md) | ai-jail as security sandbox |
+| [ADR-0003](decisions/ADR-0003-event-bus-architecture.md) | Event-driven architecture with in-process bus |
+| [ADR-0004](decisions/ADR-0004-skills-over-monolithic-agents.md) | Skills over monolithic agent prompts |
+| [ADR-0005](decisions/ADR-0005-sqlite-for-memory.md) | SQLite for memory persistence |
+
 ## Getting Started
 
 AiosDeck is in pre-alpha. The following will become available as versions ship.
@@ -411,4 +455,4 @@ aios status
 
 ---
 
-**Read next:** [Vision](vision.md) → [Philosophy](philosophy.md) → [Architecture](architecture.md)
+**Read next:** [Vision](vision.md) → [Philosophy](philosophy.md) → [Architecture](architecture.md) → [Decisions](decisions/)
