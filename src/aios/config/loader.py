@@ -61,7 +61,8 @@ class ConfigLoader:
         for env_var, field_path in env_map.items():
             value = os.environ.get(env_var)
             if value is not None:
-                self._set_field(config, field_path, self._coerce(value, field_path), f"env:{env_var}")
+                coerced = self._coerce(value, field_path)
+                self._set_field(config, field_path, coerced, f"env:{env_var}")
         return config
 
     def _apply_user_config(self, config: AiosDeckConfig) -> AiosDeckConfig:
@@ -74,10 +75,21 @@ class ConfigLoader:
             return config
 
         user_map = {
-            "runtime": {"adapter": "runtime.adapter", "sandbox": "runtime.sandbox", "command": "runtime.command"},
-            "model": {"default": "model.default", "ollama_model": "model.ollama_model", "ollama_host": "model.ollama_host"},
+            "runtime": {
+                "adapter": "runtime.adapter",
+                "sandbox": "runtime.sandbox",
+                "command": "runtime.command",
+            },
+            "model": {
+                "default": "model.default",
+                "ollama_model": "model.ollama_model",
+                "ollama_host": "model.ollama_host",
+            },
             "memory": {"enabled": "memory.enabled", "path": "memory.path"},
-            "security": {"enabled": "security.enabled", "policies_dir": "security.policies_dir"},
+            "security": {
+                "enabled": "security.enabled",
+                "policies_dir": "security.policies_dir",
+            },
             "logging": {"level": "logging.level", "audit_path": "logging.audit_path"},
             "project": {"name": "project.name", "directory": "project.directory"},
         }
@@ -95,7 +107,12 @@ class ConfigLoader:
             return config
 
         source = str(manifest_path)
-        for key, field_path in {"name": "project.name", "runtime": "runtime.adapter", "sandbox": "runtime.sandbox"}.items():
+        manifest_mapping = {
+            "name": "project.name",
+            "runtime": "runtime.adapter",
+            "sandbox": "runtime.sandbox",
+        }
+        for key, field_path in manifest_mapping.items():
             value = data.get(key)
             if value is not None:
                 self._set_field(config, field_path, value, source)

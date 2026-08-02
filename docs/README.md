@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="images/aiosdeck-logo.png" width="375">
+  <img src="../images/aiosdeck-logo.png" width="375">
 </p>
 
 <h1 align="center">AiosDeck</h1>

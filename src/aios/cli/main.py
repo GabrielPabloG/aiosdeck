@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import logging
 import sys
 from pathlib import Path
 
@@ -9,6 +10,7 @@ from aios import __version__
 from aios.config import ConfigEngine
 from aios.context import ContextEngine
 from aios.core import Kernel
+from aios.core.console import render_row, render_section
 from aios.events import EventsEngine
 from aios.runtime import RuntimeEngine
 from aios.security import SecurityEngine
@@ -47,18 +49,10 @@ def main() -> None:
         choices=["start", "status", "exit"],
         help="Command to execute",
     )
-    parser.add_argument(
-        "--version", "-V", action="store_true", help="Show version and exit"
-    )
-    parser.add_argument(
-        "--help", "-h", action="store_true", help="Show help and exit"
-    )
-    parser.add_argument(
-        "--project", "-p", type=str, help="Explicit project path"
-    )
-    parser.add_argument(
-        "--json", action="store_true", help="Machine-readable output"
-    )
+    parser.add_argument("--version", "-V", action="store_true", help="Show version and exit")
+    parser.add_argument("--help", "-h", action="store_true", help="Show help and exit")
+    parser.add_argument("--project", "-p", type=str, help="Explicit project path")
+    parser.add_argument("--json", action="store_true", help="Machine-readable output")
 
     args = parser.parse_args()
 
@@ -120,10 +114,6 @@ def _cmd_exit(project_path: Path) -> None:
 
 
 def _render_context(kernel: Kernel) -> None:
-    import logging
-
-    from aios.core.console import render_row, render_section
-
     context = kernel.get_context()
     if context is None:
         return
@@ -142,10 +132,6 @@ def _render_context(kernel: Kernel) -> None:
 
 
 def _render_runtime(kernel: Kernel) -> None:
-    import logging
-
-    from aios.core.console import render_row, render_section
-
     runtime_engine = kernel.get_engine("runtime")
     if runtime_engine is None:
         return

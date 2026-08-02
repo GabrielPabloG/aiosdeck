@@ -27,7 +27,10 @@ class GitInfo:
                 result = subprocess.run(
                     ["git"] + args,
                     cwd=project_path,
-                    capture_output=True, text=True, timeout=5, check=False,
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                    check=False,
                 )
                 return result.stdout.strip()
             except (OSError, subprocess.TimeoutExpired):
@@ -51,8 +54,10 @@ class DockerInfo:
     @classmethod
     def detect(cls, project_path: Path) -> "DockerInfo":
         compose_patterns = [
-            "docker-compose.yml", "docker-compose.yaml",
-            "compose.yml", "compose.yaml",
+            "docker-compose.yml",
+            "docker-compose.yaml",
+            "compose.yml",
+            "compose.yaml",
         ]
         compose_files = []
         for pattern in compose_patterns:
@@ -65,7 +70,10 @@ class DockerInfo:
         if docker_installed:
             try:
                 result = subprocess.run(
-                    ["docker", "info"], capture_output=True, timeout=5, check=False,
+                    ["docker", "info"],
+                    capture_output=True,
+                    timeout=5,
+                    check=False,
                 )
                 docker_running = result.returncode == 0
             except (OSError, subprocess.TimeoutExpired):
