@@ -18,6 +18,7 @@ INIT_ORDER = [
     "config",
     "context",
     "runtime",
+    "developer",
     "events",
     "security",
 ]

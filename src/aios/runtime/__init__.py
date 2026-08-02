@@ -1,4 +1,8 @@
-"""Runtime Engine — manages the runtime adapter lifecycle."""
+"""Runtime Engine — manages the runtime adapter lifecycle.
+
+In v0.2, execute() uses a simulated runtime. Real OpenCode invocation
+via ai-jail will be implemented in v0.5+.
+"""
 
 import logging
 
@@ -29,3 +33,7 @@ class RuntimeEngine:
     @property
     def has_sandbox(self) -> bool:
         return self.adapter.has_sandbox
+
+    def execute(self, prompt: str, skills: list[str]) -> str:
+        """Execute a prompt via the runtime adapter."""
+        return self.adapter.execute(prompt, skills)

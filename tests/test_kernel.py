@@ -1,3 +1,4 @@
+from aios.agents.developer import DeveloperAgent
 from aios.config import ConfigEngine
 from aios.context import ContextEngine
 from aios.core import Kernel
@@ -55,3 +56,22 @@ def test_kernel_no_engines():
     kernel.start()
     status = kernel.status()
     assert len(status["errors"]) == 0
+
+
+def test_kernel_registers_agent(tmp_path):
+    (tmp_path / "pyproject.toml").write_text("[project]\nname = 'test'\n")
+
+    kernel = Kernel(project_path=str(tmp_path))
+    kernel.register(ConfigEngine(project_path=tmp_path))
+    kernel.register(ContextEngine(project_path=tmp_path))
+    runtime = RuntimeEngine()
+    kernel.register(runtime)
+    kernel.register(DeveloperAgent(runtime))
+
+    kernel.start()
+    status = kernel.status()
+
+    agent = kernel.get_engine("developer")
+    assert agent is not None
+    assert agent.name == "developer"
+    assert status["engines"]["runtime"] in ("ready", "degraded")

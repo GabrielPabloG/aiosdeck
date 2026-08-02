@@ -1,4 +1,8 @@
-"""OpenCode runtime adapter — always invoked through ai-jail."""
+"""OpenCode runtime adapter — always invoked through ai-jail.
+
+In v0.2, execute() returns a simulated response. Real ai-jail opencode
+invocation will be implemented in v0.5+.
+"""
 
 import logging
 import shutil
@@ -34,10 +38,6 @@ class OpenCodeAdapter:
     def has_sandbox(self) -> bool:
         return self._ai_jail_installed
 
-    @property
-    def opencode_installed(self) -> bool:
-        return self._opencode_installed
-
     def _resolve_command(self) -> None:
         if not self._opencode_installed:
             self._resolved_command = "opencode (not found)"
@@ -48,3 +48,16 @@ class OpenCodeAdapter:
         else:
             self._resolved_command = "opencode"
             logger.warning("ai-jail not found. Running OpenCode without sandbox.")
+
+    def execute(self, prompt: str, skills: list[str]) -> str:
+        """Execute a prompt through the runtime.
+
+        Returns a simulated response for v0.2.
+        Real ai-jail opencode invocation will be implemented in v0.5+.
+        """
+        skill_names = ", ".join(skills) if skills else "none"
+        return (
+            f"[simulated runtime: {self._resolved_command}]\n"
+            f"skills: {skill_names}\n"
+            f"prompt: {prompt[:200]}"
+        )

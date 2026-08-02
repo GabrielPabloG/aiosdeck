@@ -18,3 +18,7 @@ class RuntimeAdapter(Protocol):
     def command(self) -> str:
         """The resolved runtime command (with sandbox)."""
         ...
+
+    def execute(self, prompt: str, skills: list[str]) -> str:
+        """Execute a prompt with the runtime. Returns raw output."""
+        ...
