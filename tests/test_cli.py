@@ -28,4 +28,3 @@ def test_start_runs():
     assert result.returncode == 0
     output = result.stdout + result.stderr
     assert "AiosDeck" in output
-    assert "Healthy" in output

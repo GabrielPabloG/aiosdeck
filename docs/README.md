@@ -13,6 +13,7 @@
   <img src="https://img.shields.io/badge/license-MIT-green">
   <img src="https://img.shields.io/badge/python-3.12+-blue">
   <img src="https://img.shields.io/badge/status-pre--alpha-orange">
+  <img src="https://github.com/GabrielPabloG/aiosdeck/actions/workflows/ci.yml/badge.svg">
 </p>
 
 AiosDeck is an intelligent orchestration platform that transforms AI-assisted development from isolated conversations into **collaborative software engineering**.
