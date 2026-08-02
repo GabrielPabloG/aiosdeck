@@ -1,6 +1,7 @@
 """Kernel: bootstrap, lifecycle, and engine coordination."""
 
 import logging
+from contextlib import suppress
 from pathlib import Path
 
 from aios.core.console import (
@@ -17,6 +18,7 @@ logger = logging.getLogger("aios.kernel")
 INIT_ORDER = [
     "config",
     "context",
+    "memory",
     "runtime",
     "developer",
     "events",
@@ -39,6 +41,7 @@ class Kernel:
 
         self._print_banner()
         self._initialize_engines()
+        self._enrich_context_with_memory()
         self._render_dashboard()
 
         if self._errors:
@@ -108,3 +111,10 @@ class Kernel:
 
     def get_engine(self, name: str):
         return self._engines.get(name)
+
+    def _enrich_context_with_memory(self) -> None:
+        memory = self._engines.get("memory")
+        context = self._engines.get("context")
+        if memory and context and context.context and self._engine_status.get("memory") == "ready":
+            with suppress(Exception):
+                memory.enrich_context(context.context)

@@ -13,6 +13,7 @@ from aios.context import ContextEngine
 from aios.core import Kernel
 from aios.core.console import render_row, render_section
 from aios.events import EventsEngine
+from aios.memory import MemoryEngine
 from aios.runtime import RuntimeEngine
 from aios.security import SecurityEngine
 
@@ -84,6 +85,7 @@ def _create_kernel(project_path: Path) -> Kernel:
     kernel = Kernel(project_path=str(project_path))
     kernel.register(ConfigEngine(project_path=project_path))
     kernel.register(ContextEngine(project_path=project_path))
+    kernel.register(MemoryEngine(project_path=project_path))
     runtime = RuntimeEngine()
     kernel.register(runtime)
     kernel.register(DeveloperAgent(runtime))

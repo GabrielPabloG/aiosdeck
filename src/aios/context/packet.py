@@ -140,6 +140,7 @@ class ContextPacket:
     runtime: RuntimeInfo = field(default_factory=RuntimeInfo)
     structure: StructureInfo = field(default_factory=StructureInfo)
     skills: list[str] = field(default_factory=list)
+    memory: dict = field(default_factory=dict)
     timestamp: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 
     def to_dict(self) -> dict[str, Any]:
