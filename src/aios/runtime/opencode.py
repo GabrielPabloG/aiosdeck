@@ -1,0 +1,50 @@
+"""OpenCode runtime adapter — always invoked through ai-jail."""
+
+import logging
+import shutil
+
+logger = logging.getLogger("aios.runtime.opencode")
+
+
+class OpenCodeAdapter:
+    name = "opencode"
+    version = "1.0"
+
+    def __init__(self) -> None:
+        self._opencode_installed = False
+        self._ai_jail_installed = False
+        self._resolved_command = "opencode"
+
+    def initialize(self) -> None:
+        self._opencode_installed = shutil.which("opencode") is not None
+        self._ai_jail_installed = shutil.which("ai-jail") is not None
+        self._resolve_command()
+
+    def health_check(self) -> bool:
+        return self._opencode_installed
+
+    def shutdown(self) -> None:
+        pass
+
+    @property
+    def command(self) -> str:
+        return self._resolved_command
+
+    @property
+    def has_sandbox(self) -> bool:
+        return self._ai_jail_installed
+
+    @property
+    def opencode_installed(self) -> bool:
+        return self._opencode_installed
+
+    def _resolve_command(self) -> None:
+        if not self._opencode_installed:
+            self._resolved_command = "opencode (not found)"
+            return
+
+        if self._ai_jail_installed:
+            self._resolved_command = "ai-jail opencode"
+        else:
+            self._resolved_command = "opencode"
+            logger.warning("ai-jail not found. Running OpenCode without sandbox.")

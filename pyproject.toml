@@ -1,0 +1,41 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "aiosdeck"
+version = "0.1.0"
+description = "The AI Operating System for Developers"
+readme = "docs/README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.12"
+authors = [
+    { name = "Gabriel Pablo Garcia" },
+]
+keywords = ["ai", "agent", "orchestration", "developer-tools", "cli"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Build Tools",
+]
+
+[project.scripts]
+aios = "aios.cli.main:main"
+aiosdeck = "aios.cli.main:main"
+
+[project.urls]
+Homepage = "https://github.com/GabrielPabloG/aiosdeck"
+Documentation = "https://github.com/GabrielPabloG/aiosdeck/tree/main/docs"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/aios"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.5.0",
+    "pytest>=8.0",
+]

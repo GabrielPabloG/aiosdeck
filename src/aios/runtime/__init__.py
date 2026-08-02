@@ -1,0 +1,31 @@
+"""Runtime Engine — manages the runtime adapter lifecycle."""
+
+import logging
+
+from aios.runtime.opencode import OpenCodeAdapter
+
+logger = logging.getLogger("aios.runtime")
+
+
+class RuntimeEngine:
+    name = "runtime"
+
+    def __init__(self, adapter: OpenCodeAdapter | None = None) -> None:
+        self.adapter = adapter or OpenCodeAdapter()
+
+    def initialize(self) -> None:
+        self.adapter.initialize()
+
+    def health_check(self) -> bool:
+        return self.adapter.health_check()
+
+    def shutdown(self) -> None:
+        self.adapter.shutdown()
+
+    @property
+    def command(self) -> str:
+        return self.adapter.command
+
+    @property
+    def has_sandbox(self) -> bool:
+        return self.adapter.has_sandbox

@@ -1,0 +1,11 @@
+# .aios/project.yaml — Project manifest for AiosDeck
+# ProjDesk prepares the development environment.
+# AiosDeck prepares the intelligence environment.
+
+name: aiosdeck
+runtime: opencode
+sandbox: ai-jail
+
+skills:
+  - project-dna
+  - coding-style

@@ -1,0 +1,17 @@
+{
+  "name": "hello-node",
+  "version": "1.0.0",
+  "description": "Hello Node — a simple example project for testing AiosDeck detection",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "vitest",
+    "lint": "eslint .",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "eslint": "^9.0.0",
+    "prettier": "^3.0.0",
+    "vitest": "^1.0.0"
+  }
+}
