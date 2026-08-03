@@ -59,6 +59,18 @@ def test_doctor():
     assert result.returncode == 0
 
 
+def test_doctor_json():
+    result = subprocess.run(
+        ["aios", "doctor", "--json", "examples/hello-python"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0
+    assert '"project"' in result.stdout
+    assert '"engines"' in result.stdout
+
+
 def test_memory_list(tmp_path):
     result = subprocess.run(
         ["aios", "memory", "list"],

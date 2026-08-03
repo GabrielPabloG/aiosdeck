@@ -1,6 +1,7 @@
 """CLI entry point for the aios command."""
 
 import argparse
+import json
 import logging
 import signal
 import sys
@@ -80,9 +81,10 @@ def main() -> None:  # noqa: PLR0911
 
     try:
         if cmd_name == "doctor":
-            project_path = _resolve_project(args.args)
-            _cmd_doctor(project_path)
-            return
+                project_args = [a for a in args.args if a != "--json"]
+                project_path = _resolve_project(project_args)
+                _cmd_doctor(project_path, args.args)
+                return
 
         if cmd_name in ("start", "status"):
             project_path = _resolve_project(args.args)
@@ -158,7 +160,7 @@ def _print_help() -> None:
     print()
     print("Usage:")
     print("  aios                  Show dashboard")
-    print("  aios doctor           Run diagnostics")
+    print("  aios doctor [--json]    Run diagnostics")
     print("  aios memory <cmd>     Manage project knowledge")
     print("  aios help             Show this help")
     print()
@@ -203,9 +205,29 @@ def _cmd_dashboard(project_path: Path) -> None:
     kernel.start()
 
 
-def _cmd_doctor(project_path: Path) -> None:
+def _cmd_doctor(project_path: Path, raw_args: list[str] | None = None) -> None:
+    as_json = "--json" in (raw_args or [])
+
     kernel = _create_kernel(project_path)
     kernel.start()
+
+    status = kernel.status()
+
+    if as_json:
+        context = kernel.get_context()
+        if context:
+            status["context"] = {
+                "language": context.project.language,
+                "linter": context.tools.linter,
+                "formatter": context.tools.formatter,
+                "test_runner": context.tools.test_runner,
+                "git_branch": context.git.branch,
+                "git_status": context.git.status,
+                "opencode": context.runtime.opencode,
+                "ai_jail": context.runtime.ai_jail,
+            }
+        print(json.dumps(status, indent=2))
+        return
 
     logger = logging.getLogger("aios")
     context = kernel.get_context()
@@ -222,7 +244,6 @@ def _cmd_doctor(project_path: Path) -> None:
         )
         logger.info(render_row("ai-jail", "installed" if context.runtime.ai_jail else "not found"))
 
-    status = kernel.status()
     errors = status.get("errors", [])
     if errors:
         logger.warning("\nWarnings:")
