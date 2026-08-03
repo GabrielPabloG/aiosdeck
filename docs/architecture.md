@@ -49,16 +49,18 @@ The architecture follows a **hub-and-spoke** model: the Kernel is the hub, dispa
                                                │
                                      Documentation Review
                                │
-              ┌────────────────┼─────────────────┐
-              ▼                ▼                  ▼
-           Planner          Coder            Reviewer
-              │                │                  │
-              │  (loads Skills from OpenCode      │
-              │   skill tool on-demand)           │
-              │                │                  │
-              └────────────────┼──────────────────┘
-                               │
-                        Runtime Adapter
+               ┌────────────────┼─────────────────┐
+               ▼                ▼                  ▼
+            Planner          Coder            Reviewer
+               │                │                  │
+               │  (loads Skills from OpenCode      │
+               │   skill tool on-demand)           │
+               │                │                  │
+               └────────────────┼──────────────────┘
+                                │
+                        AgentExecutor
+                                │
+                         Runtime Adapter
                                │
                   OpenCode (via ai-jail)
                                │
@@ -78,6 +80,7 @@ The architecture follows a **hub-and-spoke** model: the Kernel is the hub, dispa
 | **Security Manager** | Enforces zero-trust policies, manages capabilities, filters prompts, logs audits. | Interceptor | v0.1 (skeleton), v0.6 (full) |
 | **Quality Pipeline** | Executes automated checks (format, lint, tests, security, AI review, docs). | Consumer + Producer | v0.6 |
 | **Runtime Adapter** | Abstracts execution environment. Implements protocol for agent ↔ runtime communication. | Consumer | v0.1 |
+| **AgentExecutor** | Generic execution guardrail. Wraps agent operations with Event Bus, logging, timeout, retry. | Consumer + Producer | v0.5 |
 | **Agents** | Specialized workers. Each receives a task and produces a result via the Runtime. | Consumer + Producer | v0.2+ |
 | **Workflow Engine** | Orchestrates complex pipelines across multiple agents and gates. | Consumer + Producer | v0.7 |
 
@@ -96,8 +99,13 @@ Kernel ──► dispatcher ──► topics:
                             ├── task.completed
                             ├── task.failed
                             ├── agent.started
-                            ├── agent.completed
-                            ├── quality.passed
+                             ├── agent.completed
+                             ├── agent.errored
+                             ├── agent.skill_loaded
+                             ├── agent.execution.started
+                             ├── agent.execution.finished
+                             ├── agent.execution.failed
+                             ├── quality.passed
                             ├── quality.failed
                             ├── security.violation
                             ├── approval.requested

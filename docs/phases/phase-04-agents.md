@@ -10,6 +10,8 @@ Agents are the workers of AiosDeck. Each agent has a single responsibility, comm
 
 The agent model follows the philosophy: **one agent, one job**. When an agent's responsibilities grow too broad, it is split — never expanded. The first agent (Developer, v0.2) handles everything. By v0.8, the system has eight specialized agents.
 
+Execution infrastructure shared by all LLM-based agents lives in the **AgentExecutor** (v0.5). The Executor wraps each agent's runtime invocation with Event Bus publishing, metrics, and (future) timeout/retry — without knowing anything about agents, prompts, or LLMs.
+
 ## Decision
 
 ### Agent Protocol
@@ -35,12 +37,13 @@ class Agent(Protocol):
 ```
 1. Agent registered with Scheduler
 2. Event: agent.started (when first task assigned)
-3. Security: capabilities granted per policy
-4. Runtime: Skills loaded from project manifest + agent required_skills
-5. Agent executes task via Runtime Adapter
-6. Event: agent.completed (success) or agent.errored (failure)
-7. Security: capabilities revoked
-8. Agent returns to idle
+3. Agent prepares execution: builds prompt via PromptBuilder
+4. Agent creates ExecutionRequest(invoke=...) and delegates to AgentExecutor
+5. AgentExecutor publishes agent.execution.started, invokes Runtime
+6. AgentExecutor publishes agent.execution.finished or agent.execution.failed
+7. Agent interprets ExecutionOutcome → AgentResult (decides success/failure)
+8. Event: agent.completed (success) or agent.errored (failure)
+9. Agent returns to idle
 ```
 
 ### Event Contract (All Agents)
@@ -80,11 +83,11 @@ AGENT_REGISTRY = {
 class AgentResult:
     success: bool
     output: str                      # Agent output text
-    files_changed: list[str]         # Files created/modified
-    artifacts: dict                  # Any structured output
-    duration_ms: int
     errors: list[str]                # Non-empty if success=False
+    duration_ms: float               # Execution wall-clock time
 ```
+
+The AgentResult is the agent's interpretation of the neutral ExecutionOutcome returned by AgentExecutor. The Executor reports what happened; the agent decides whether it was success.
 
 ### Skill Loading
 

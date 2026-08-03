@@ -147,11 +147,11 @@ All planned phases. Documented, specified, but not all implemented.
 | v0.1 Foundation | **In progress** | CLI, Configuration, Context Engine, Runtime Adapter, OpenCode + ai-jail, Skills, Logger |
 | v0.2 Developer Agent | Specified | Single agent that handles everything |
 | v0.3 Memory | Specified | SQLite-backed persistence for conventions, decisions, architecture |
-| v0.4 Planner | Specified | Task decomposition, prioritization |
-| v0.5 Reviewer | Specified | Architecture critique, convention enforcement |
-| v0.6 Quality Pipeline | Specified | Format → Lint → Tests → Security → AI Review → Docs Review |
-| v0.7 Workflows | Specified | `/feature`, `/fix`, `/review`, `/refactor`, `/document`, `/release` |
-| v0.8 Multi-Agent | Specified | Scheduler with concurrent agents |
+| v0.4 PromptBuilder | Specified | Structured prompt assembly with context, memory, skills |
+| v0.5 AgentExecutor | Specified | Execution guardrail (Event Bus, metrics, logging) shared by all agents |
+| v0.6 Planner | Specified | Task decomposition, prioritization |
+| v0.7 Reviewer | Specified | Architecture critique, convention enforcement |
+| v0.8 Workflows | Specified | `/feature`, `/fix`, `/review`, `/refactor`, `/document`, `/release` |
 | v0.9 Plugins | Specified | Extension points for Runtimes, Agents, Skills, Workflows |
 | v1.0 AI OS | Specified | ProjDesk integration, status dashboard |
 
@@ -176,12 +176,11 @@ The only roadmap that matters day to day. Everything else is blocked.
 ```
 v0.2  Developer    ████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
 v0.3  Memory       ░░░░░░░░████████░░░░░░░░░░░░░░░░░░░░░░░
-v0.4  Planner      ░░░░░░░░░░░░░░░░████████░░░░░░░░░░░░░░░
-v0.5  Reviewer     ░░░░░░░░░░░░░░░░░░░░░░░░████████░░░░░░░
-v0.6  Tester       ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░████████░
-v0.6  Documentation░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░████████
-v0.7  Git          ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░██████░
-v0.8  Research     ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░███
+v0.4  PromptBuilder░░░░░░░░░░░░░░░████████░░░░░░░░░░░░░░░░
+v0.5  AgentExecutor░░░░░░░░░░░░░░░░░░░░░░░████████░░░░░░░░
+v0.6  Planner      ░░░░░░░░░░░░░░░░░░░░░░░░░░░░████████░░░
+v0.7  Reviewer     ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░████████
+v0.8  Tester       ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░███
 ```
 
 ## Architecture
@@ -229,14 +228,17 @@ v0.8  Research     ░░░░░░░░░░░░░░░░░░░░�
              │     OpenCode skill       │
              │     tool on-demand)      │
              │            │             │
-             └────────────┼─────────────┘
-                          ▼
-                   Runtime Adapter
-                          │
-                 OpenCode (via ai-jail)
-                          │
-               Ollama / GPT / Gemini / Claude
+              └────────────┼─────────────┘
+                           ▼
+                    AgentExecutor
+                           │
+                    Runtime Adapter
+                           │
+                  OpenCode (via ai-jail)
+                           │
+                Ollama / GPT / Gemini / Claude
 ```
+
 
 Full architecture is documented in [architecture.md](architecture.md).
 
@@ -245,7 +247,7 @@ Full architecture is documented in [architecture.md](architecture.md).
 ### Project Detection
 
 ```bash
-aios start
+aios
 ```
 
 AiosDeck detects everything automatically:
@@ -292,15 +294,15 @@ This manifest is the contract between ProjDesk and AiosDeck — and between any 
 ### Session Flow
 
 ```
-aios start
+aios
    │
    ├── Detects project characteristics
    ├── Loads project manifest
    ├── Restores memory from previous sessions
    ├── Assembles context (language, tools, conventions, architecture)
    ├── Loads active Skills (project-dna, coding-style)
-   ├── Spawns Runtime (OpenCode via ai-jail)
-   └── Shows status dashboard
+   ├── Starts Runtime (OpenCode via ai-jail)
+   └── Shows dashboard
 ```
 
 ```
@@ -432,14 +434,18 @@ AiosDeck is in pre-alpha. The following will become available as versions ship.
 git clone <repository-url> ~/.config/aiosdeck
 ~/.config/aiosdeck/install.sh
 
-# Start a session
-aios start
+# Start a session (shows dashboard)
+aios
 
-# Run a workflow
-aios /feature add-user-authentication
+# Manage project knowledge
+aios memory list
+aios memory add convention "Use snake_case"
 
-# Show status
-aios status
+# Run diagnostics
+aios doctor
+
+# Show help
+aios help
 ```
 
 ### Requirements

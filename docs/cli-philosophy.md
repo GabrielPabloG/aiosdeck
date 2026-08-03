@@ -1,6 +1,6 @@
 # CLI Philosophy
 
-**Status**: Accepted
+**Status**: Accepted (Implemented in v0.5 DX)
 **Date**: 2026-08-02
 **Target Version**: v0.5 (DX)
 

@@ -1,21 +1,19 @@
-"""Agent protocol, result, and task definitions."""
+"""Agent protocol and re-exports."""
 
-from dataclasses import dataclass, field
 from typing import Protocol, runtime_checkable
 
+from aios.agents.executor import AgentExecutor
+from aios.agents.models import AgentResult, ExecutionOutcome, ExecutionRequest
+from aios.core.task import Task
 
-@dataclass
-class Task:
-    description: str = ""
-    task_type: str = "code"
-    files: list[str] = field(default_factory=list)
-
-
-@dataclass
-class AgentResult:
-    success: bool = True
-    output: str = ""
-    errors: list[str] = field(default_factory=list)
+__all__ = [
+    "Agent",
+    "AgentResult",
+    "AgentExecutor",
+    "ExecutionRequest",
+    "ExecutionOutcome",
+    "Task",
+]
 
 
 @runtime_checkable

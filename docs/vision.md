@@ -22,6 +22,7 @@ Just as an operating system abstracts hardware (CPU, memory, disk) and provides 
 | OS Concept | AiosDeck Equivalent |
 |-----------|-------------------|
 | Process | Agent |
+| Process Scheduler | AgentExecutor (v0.5) |
 | Scheduler | Task Queue + Workflow Engine |
 | Memory (RAM) | Context Engine |
 | Disk | Memory Engine (persistent knowledge) |

@@ -53,7 +53,10 @@ agent
 ├── agent.started
 ├── agent.completed
 ├── agent.errored
-└── agent.skill_loaded
+├── agent.skill_loaded
+├── agent.execution.started
+├── agent.execution.finished
+└── agent.execution.failed
 
 quality
 ├── quality.started

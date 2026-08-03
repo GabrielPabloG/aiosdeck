@@ -15,6 +15,30 @@ A specialized worker process with a single responsibility. Agents receive tasks 
 
 **First used in**: `agents/` documentation. **Introduced**: v0.2.
 
+### AgentExecutor
+
+The execution guardrail shared by all LLM-based agents. Receives an `ExecutionRequest` (a callable operation), enforces timeout and retry (future), publishes `agent.execution.*` events to the Event Bus, and returns a neutral `ExecutionOutcome`. The Executor does not know about agents, prompts, LLMs, or runtimes — it only executes operations.
+
+**First used in**: `agents/executor.py`. **Introduced**: v0.5.
+
+### ExecutionRequest
+
+A value object carrying the operation to execute. Contains a single field: `invoke` — a callable that returns a string. The AgentExecutor calls `request.invoke()` without knowing what the operation does (LLM prompt, Git command, HTTP call, etc.).
+
+**First used in**: `agents/models.py`. **Introduced**: v0.5.
+
+### ExecutionOutcome
+
+The neutral result returned by `AgentExecutor`. Contains `output` (string), `duration_ms` (float), and optional `error`. The Executor never decides success vs. failure — it reports facts. The agent interprets the outcome into an `AgentResult`.
+
+**First used in**: `agents/models.py`. **Introduced**: v0.5.
+
+### ProjDeskClient
+
+The domain client for ProjDesk integration. Wraps the `pd` CLI behind `resolve(name) -> Path`. Translates exit codes (0/1/2) into domain exceptions (`ProjectNotFound`, `ProjectAmbiguous`, `ProjDeskError`). Never exposes subprocess, returncode, or stderr to the rest of the system.
+
+**First used in**: `integrations/projdesk/client.py`. **Introduced**: v0.5.
+
 ### Runtime
 
 The execution environment that runs an agent and communicates with a language model. The Runtime Adapter abstracts the specific implementation behind a stable interface. OpenCode is the primary runtime. Future runtimes could include direct LLM API calls or other agent frameworks.
@@ -65,7 +89,7 @@ The physical directory containing a project. Managed by ProjDesk. AiosDeck opera
 
 ### Task
 
-A unit of work assigned to an agent. Tasks have an ID, priority, type, payload, and status (pending, running, completed, failed). Tasks flow through the Scheduler, which dispatches them to appropriate agents.
+A unit of work assigned to an agent. Tasks have a description, type (code, fix, feature, review, document, refactor, release), and optional file list. Tasks flow through the Scheduler, which dispatches them to appropriate agents. Lives in `aios.core.task`.
 
 **First used in**: `internals/scheduler.md`. **Introduced**: v0.1.
 

@@ -45,6 +45,8 @@ This is the same principle that makes Unix tools composable: `grep` finds text, 
 
 **What this means in practice**: Agents never share logic. When an agent's responsibilities grow, **split the agent**, do not expand it. The first agent (Developer, v0.2) is the only exception — and it exists only until its responsibilities are ready to be split.
 
+Infrastructure shared by multiple agents (timeout, metrics, Event Bus publishing) lives in the **AgentExecutor** (v0.5). This is not a violation of the principle — it is the execution guardrail, not the agent's domain logic. The Executor does not know what it executes; agents do not know how they are executed.
+
 ### 4. Events over Function Calls
 
 Communication between system components happens through an event bus, never through direct function calls or imports.

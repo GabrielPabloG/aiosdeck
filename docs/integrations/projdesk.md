@@ -2,12 +2,13 @@
 
 **Status**: Accepted
 **Date**: 2026-08-02
+**Updated**: v0.5 (ProjDeskClient)
 
 ## Context
 
 ProjDesk is the workspace manager. It creates projects, starts Docker, opens IDEs, and prepares the development environment. AiosDeck is the intelligence layer that operates on top of that workspace. Together they form a complete development environment.
 
-The integration is mediated by a **project manifest** (`aios/project.yaml`) — a file that ProjDesk can generate and AiosDeck consumes. Neither tool calls the other directly. The manifest is the contract.
+The integration is mediated by a **project manifest** (`aios/project.yaml`) for workspace configuration and by `pd resolve` for project location. The `ProjDeskClient` wraps the `pd` CLI behind a domain interface — the rest of AiosDeck never sees subprocess, exit codes, or stderr.
 
 ## Decision
 
@@ -31,8 +32,73 @@ Developer: pd my-project
               ├── Detects project (Context Engine)
               ├── Reads .aios/project.yaml (if exists)
               ├── Loads Skills from manifest
+              ├── Resolves project path via ProjDeskClient.resolve()  ← v0.5
               ├── Configures Quality Pipeline from manifest
-              └── Shows status dashboard
+              └── Shows dashboard
+```
+
+### ProjDeskClient (v0.5)
+
+The `ProjDeskClient` (`integrations/projdesk/client.py`) wraps `pd resolve` behind a domain interface:
+
+```python
+from aios.integrations.projdesk import ProjDeskClient
+
+client = ProjDeskClient()
+path = client.resolve("my-project")  # → Path
+```
+
+Contract with `pd resolve`:
+
+| Exit Code | Meaning | ProjDeskClient returns |
+|-----------|---------|----------------------|
+| 0 | Project found | `Path(resolved_directory)` |
+| 1 | Project not found | Raises `ProjectNotFound(project)` |
+| 2 | Project ambiguous | Raises `ProjectAmbiguous(project)` |
+| Other | Internal error | Raises `ProjDeskError(details)` |
+
+The client never exposes `subprocess`, `CompletedProcess`, `returncode`, or `stderr`. External protocols are translated at the integration boundary — this is the [Integration Rule](../architecture.md#integration-rule) that applies to all future integrations (GitHub, Docker, Ollama, etc.).
+
+### Domain Exceptions
+
+```python
+class ProjDeskError(Exception):           # Base: any ProjDesk failure
+class ProjectNotFound(ProjDeskError):     # rc 1
+class ProjectAmbiguous(ProjDeskError):    # rc 2
+```
+
+The CLI captures these at the top level:
+
+```python
+try:
+    path = _resolve_project(...)
+except ProjectNotFound as exc:
+    _error(str(exc))
+except ProjectAmbiguous as exc:
+    _error(str(exc))
+except ProjDeskError as exc:
+    _error(str(exc))
+```
+
+### CLI Integration
+
+In `cli/main.py`, project resolution follows this priority:
+
+1. No argument → `Path.cwd()` (current directory)
+2. Argument is a directory on disk → `Path.resolve()`
+3. Argument is a project name → `ProjDeskClient().resolve(name)`
+
+```python
+def _resolve_project(args: list[str]) -> Path:
+    candidate = args[0] if args else None
+    if candidate is None:
+        return Path.cwd()
+
+    path = Path(candidate)
+    if path.is_dir():
+        return path.resolve()
+
+    return ProjDeskClient().resolve(candidate)
 ```
 
 ### Project Manifest Contract
@@ -60,69 +126,28 @@ workflows:
   - review
 ```
 
-### ProjDesk Integration Adapter
-
-```python
-class ProjDeskAdapter:
-    async def is_available(self) -> bool:
-        return self._is_installed("pd") or self._is_installed("projdesk")
-
-    async def get_workspace_path(self) -> str | None:
-        """Detect current workspace from ProjDesk recent history."""
-        recent_file = Path.home() / ".config" / "projdesk" / "recent"
-        if recent_file.exists():
-            return recent_file.read_text().strip().split("\n")[0]
-        return None
-
-    async def generate_manifest(self, project_path: str) -> None:
-        """Request ProjDesk to generate a project manifest."""
-        # Future: ProjDesk plugin that generates manifests automatically
-        pass
-```
-
-### Session Output
-
-When ProjDesk and AiosDeck are both running:
-
-```
-──────────────────────────────
- ProjDesk
- Workspace Ready
-──────────────────────────────
- Docker        Running
- Git           main
- Skills        12 loaded
- Memory        Loaded
- Developer     Ready
- Planner       Offline
- Reviewer      Offline
- Tester        Offline
- Documentation Offline
- OpenCode      Connected
- Runtime       ai-jail
- Status        Healthy
-──────────────────────────────
- Welcome back.
-```
-
 ### Future Integration (v1.0+)
 
 - ProjDesk plugin: `pd aios` starts AiosDeck in the current workspace
 - ProjDesk generates `.aios/project.yaml` automatically when creating a project
 - ProjDesk workspace profiles include AiosDeck configuration
 - Joint status dashboard: one view for physical + intelligence workspace
+- `ProjDeskClient` gains: `list()`, `recent()`, `create()`, `version()`
 
 ## Consequences
 
-- Loose coupling via file-based contract. No API dependency between tools.
+- Loose coupling via file-based contract + exit code contract. No API dependency between tools.
+- Integration layer translates protocol → domain. Rest of AiosDeck never sees subprocess details.
 - Manifest can be created manually without ProjDesk. AiosDeck works standalone.
-- Integration is read-only for AiosDeck. ProjDesk writes the manifest. AiosDeck reads it.
+- Domain exceptions enable future UIs (TUI, API, Web) to handle project resolution differently.
 
 ## Implementation Notes
 
-- [ ] Implement adapter: detect ProjDesk installation and workspace
+- [x] Implement `ProjDeskClient.resolve()` with `pd resolve` subprocess + exit code match
+- [x] Implement `ProjectNotFound`, `ProjectAmbiguous`, `ProjDeskError` domain exceptions
+- [x] CLI consumes `ProjDeskClient` without knowing subprocess details
 - [ ] Manifest loader: parse `.aios/project.yaml` and merge with detected context
-- [ ] Status dashboard: show ProjDesk workspace information when available
-- [ ] Test: ProjDesk not installed → adapter reports unavailable, system continues
-- [ ] Test: `.aios/project.yaml` present → manifest values used
-- [ ] Test: `.aios/project.yaml` absent → detection values used
+- [ ] Test: ProjDesk not installed → `ProjDeskError` raised
+- [ ] Test: rc 0 + directory exists → `Path` returned
+- [ ] Test: rc 1 → `ProjectNotFound` raised
+- [ ] Test: rc 2 → `ProjectAmbiguous` raised

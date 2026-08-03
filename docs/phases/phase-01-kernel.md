@@ -47,17 +47,15 @@ The CLI (`aios`) maps commands to Kernel methods:
 
 | Command | Kernel Method | Event Emitted |
 |---------|--------------|---------------|
-| `aios start` | `start()` | `session.start` |
-| `aios status` | `status()` | (query, no event) |
-| `aios exit` | `shutdown()` | `session.shutdown` |
-| `aios /feature <name>` | `workflow("feature", name)` | `workflow.started` |
-| `aios /fix <name>` | `workflow("fix", name)` | `workflow.started` |
-| `aios /review` | `workflow("review")` | `workflow.started` |
-| `aios /refactor <name>` | `workflow("refactor", name)` | `workflow.started` |
-| `aios /document` | `workflow("document")` | `workflow.started` |
-| `aios /release <version>` | `workflow("release", version)` | `workflow.started` |
+| `aios` (no args) | `start()` | `session.start` |
+| `aios doctor` | `start()` + diagnostics | `session.start` |
+| `aios memory <cmd>` | `start()` + memory operations | `session.start`, `memory.*` |
+| `aios help` | (prints help) | (none) |
+| `aios exit` | `shutdown()` (hidden alias) | `session.shutdown` |
+| `aios start` | `start()` (hidden alias) | `session.start` |
+| `aios status` | `start()` (hidden alias) | (query, no event) |
 
-Note: Workflow commands (`/feature`, `/fix`, etc.) are defined in the Workflow Engine (v0.7). The Kernel passes them through. In v0.1, only `start`, `status`, and `exit` are available.
+Note: `aios` without arguments is the primary entry point. `start`, `status`, and `exit` remain as hidden aliases. Workflow commands (`/feature`, `/fix`, etc.) are deferred to the Workflow Engine (v0.8).
 
 ### Subsystem Contract
 
@@ -77,13 +75,12 @@ The Kernel iterates over registered engines at startup and shutdown. Engines reg
 ### Public API (`aios` CLI)
 
 ```bash
-aios start              # Initialize and start session
-aios start --project /path  # Start with explicit project path
-aios status             # Show agent/engine/runtime status
-aios status --json      # Machine-readable status
-aios exit               # Graceful shutdown
+aios                    # Show dashboard (primary entry point)
+aios doctor             # Run diagnostics
+aios memory <cmd>       # Manage project knowledge
+aios help               # Show help
+aios --help             # Show help (alias)
 aios --version          # Show version
-aios --help             # Show help
 ```
 
 ### Configuration Flow

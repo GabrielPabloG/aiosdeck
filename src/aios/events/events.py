@@ -51,6 +51,16 @@ AGENT_TOPICS = [
     "agent.skill_loaded",
 ]
 
+AGENT_EXECUTION_TOPICS = [
+    "agent.execution.started",
+    "agent.execution.finished",
+    "agent.execution.failed",
+]
+
+AGENT_EXECUTION_STARTED = "agent.execution.started"
+AGENT_EXECUTION_FINISHED = "agent.execution.finished"
+AGENT_EXECUTION_FAILED = "agent.execution.failed"
+
 QUALITY_TOPICS = [
     "quality.started",
     "quality.gate_passed",
@@ -85,6 +95,7 @@ ALL_TOPICS = (
     + MEMORY_TOPICS
     + TASK_TOPICS
     + AGENT_TOPICS
+    + AGENT_EXECUTION_TOPICS
     + QUALITY_TOPICS
     + SECURITY_TOPICS
     + WORKFLOW_TOPICS
