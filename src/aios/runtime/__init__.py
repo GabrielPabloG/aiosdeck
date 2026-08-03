@@ -1,8 +1,4 @@
-"""Runtime Engine — manages the runtime adapter lifecycle.
-
-In v0.2, execute() uses a simulated runtime. Real OpenCode invocation
-via ai-jail will be implemented in v0.5+.
-"""
+"""Runtime Engine — manages the runtime adapter lifecycle."""
 
 import logging
 

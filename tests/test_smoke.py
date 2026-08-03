@@ -1,5 +1,7 @@
 """Smoke test — full flow: kernel → context → agent → runtime → result."""
 
+from unittest.mock import patch
+
 from aios.agents import Task
 from aios.agents.developer import DeveloperAgent
 from aios.config import ConfigEngine
@@ -34,9 +36,12 @@ def test_full_flow(tmp_path):
     agent = kernel.get_engine("developer")
     assert agent is not None
 
-    result = agent.execute(Task(description="Say hello"), context)
-    assert result.success is True
-    assert "[simulated runtime" in result.output
-    assert "Say hello" in result.output
+    with patch("aios.runtime.opencode.subprocess.run") as mock_run:
+        mock_run.return_value.returncode = 0
+        mock_run.return_value.stdout = "Implementation complete.\n"
+
+        result = agent.execute(Task(description="Say hello"), context)
+        assert result.success is True
+        assert "Implementation complete" in result.output
 
     kernel.shutdown()

@@ -1,11 +1,8 @@
-"""OpenCode runtime adapter — always invoked through ai-jail.
-
-In v0.2, execute() returns a simulated response. Real ai-jail opencode
-invocation will be implemented in v0.5+.
-"""
+"""OpenCode runtime adapter — always invoked through ai-jail."""
 
 import logging
 import shutil
+import subprocess
 
 logger = logging.getLogger("aios.runtime.opencode")
 
@@ -50,14 +47,28 @@ class OpenCodeAdapter:
             logger.warning("ai-jail not found. Running OpenCode without sandbox.")
 
     def execute(self, prompt: str, skills: list[str]) -> str:
-        """Execute a prompt through the runtime.
+        args = self._resolved_command.split()
+        if not self._opencode_installed:
+            raise RuntimeError(f"Runtime not available: {self._resolved_command}")
 
-        Returns a simulated response for v0.2.
-        Real ai-jail opencode invocation will be implemented in v0.5+.
-        """
-        skill_names = ", ".join(skills) if skills else "none"
-        return (
-            f"[simulated runtime: {self._resolved_command}]\n"
-            f"skills: {skill_names}\n"
-            f"prompt: {prompt[:200]}"
-        )
+        try:
+            result = subprocess.run(
+                args,
+                input=prompt,
+                capture_output=True,
+                text=True,
+                timeout=300,
+                check=False,
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise RuntimeError("Runtime execution timed out after 300s") from exc
+        except FileNotFoundError as exc:
+            raise RuntimeError(
+                f"Runtime command not found: {self._resolved_command}"
+            ) from exc
+
+        if result.returncode != 0:
+            stderr = result.stderr.strip() or "unknown error"
+            raise RuntimeError(f"Runtime exited with code {result.returncode}: {stderr}")
+
+        return result.stdout.strip()
