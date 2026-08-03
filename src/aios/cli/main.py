@@ -9,12 +9,14 @@ from pathlib import Path
 
 from aios import __version__
 from aios.agents.developer import DeveloperAgent
+from aios.agents.planner import PlannerAgent
 from aios.cli.commands import COMMANDS
 from aios.cli.completion import complete
 from aios.config import ConfigEngine
 from aios.context import ContextEngine
 from aios.core import Kernel
 from aios.core.console import render_row, render_section
+from aios.core.task import Task
 from aios.events import EventsEngine
 from aios.integrations.projdesk import (
     ProjDeskClient,
@@ -84,6 +86,11 @@ def main() -> None:  # noqa: PLR0911
             project_args = [a for a in args.args if a != "--json"]
             project_path = _resolve_project(project_args)
             _cmd_doctor(project_path, args.args)
+            return
+
+        if cmd_name == "plan":
+            project_path = _resolve_project([])
+            _cmd_plan(project_path, args.args)
             return
 
         if cmd_name in ("start", "status"):
@@ -162,6 +169,7 @@ def _print_help() -> None:
     print("  aios                  Show dashboard")
     print("  aios doctor [--json]    Run diagnostics")
     print("  aios memory <cmd>     Manage project knowledge")
+    print("  aios plan <intent>    Decompose goal into subtasks")
     print("  aios help             Show this help")
     print()
     print("Commands:")
@@ -256,6 +264,32 @@ def _cmd_exit(project_path: Path) -> None:
     kernel.shutdown()
 
 
+def _cmd_plan(project_path: Path, raw_args: list[str]) -> None:
+    intent = " ".join(raw_args) if raw_args else None
+    if not intent:
+        print("Usage: aios plan <intent>", file=sys.stderr)
+        print("Example: aios plan 'add OAuth2 login'", file=sys.stderr)
+        sys.exit(1)
+
+    kernel = _create_kernel(project_path)
+    kernel.start()
+
+    planner = kernel.get_engine("planner")
+    if planner is None:
+        _error("Planner agent not available.")
+
+    context = kernel.get_context()
+    task = Task(description=intent, task_type="plan")
+    result = planner.execute(task, context)
+
+    if not result.success:
+        msg = result.errors[0] if result.errors else "Planning failed."
+        print(f"Error: {msg}", file=sys.stderr)
+        sys.exit(1)
+
+    print(result.output)
+
+
 def _create_kernel(project_path: Path) -> Kernel:
     global _active_kernel  # noqa: PLW0603
     kernel = Kernel(project_path=str(project_path))
@@ -265,6 +299,7 @@ def _create_kernel(project_path: Path) -> Kernel:
     runtime = RuntimeEngine()
     kernel.register(runtime)
     kernel.register(DeveloperAgent(runtime))
+    kernel.register(PlannerAgent(runtime))
     kernel.register(EventsEngine())
     kernel.register(SecurityEngine(project_path=project_path))
     _active_kernel = kernel

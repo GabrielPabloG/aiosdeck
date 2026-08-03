@@ -21,6 +21,7 @@ INIT_ORDER = [
     "memory",
     "runtime",
     "developer",
+    "planner",
     "events",
     "security",
 ]

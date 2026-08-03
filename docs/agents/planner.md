@@ -1,8 +1,8 @@
 # Planner Agent
 
-**Status**: Proposed
+**Status**: Accepted
 **Date**: 2026-08-02
-**Introduced**: v0.4
+**Introduced**: v0.6
 
 ## Context
 
