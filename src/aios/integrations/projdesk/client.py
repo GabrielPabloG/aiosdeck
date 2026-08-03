@@ -28,22 +28,16 @@ class ProjDeskClient:
                 check=False,
             )
         except subprocess.TimeoutExpired as exc:
-            raise ProjDeskError(
-                f"ProjDesk did not respond within {self.timeout}s"
-            ) from exc
+            raise ProjDeskError(f"ProjDesk did not respond within {self.timeout}s") from exc
         except FileNotFoundError as exc:
-            raise ProjDeskError(
-                "ProjDesk (pd) is not installed or not in PATH"
-            ) from exc
+            raise ProjDeskError("ProjDesk (pd) is not installed or not in PATH") from exc
 
         match result.returncode:
             case 0:
                 resolved = Path(result.stdout.strip())
                 if resolved.is_dir():
                     return resolved
-                raise ProjDeskError(
-                    f"Resolved path is not a directory: {resolved}"
-                )
+                raise ProjDeskError(f"Resolved path is not a directory: {resolved}")
             case 1:
                 raise ProjectNotFound(name)
             case 2:
