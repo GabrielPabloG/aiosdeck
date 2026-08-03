@@ -25,20 +25,23 @@ def test_full_flow(tmp_path):
     kernel.register(SecurityEngine(**kwargs))
     kernel.register(DeveloperAgent(runtime))
 
-    kernel.start()
-    status = kernel.status()
-    assert len(status["errors"]) <= 1  # runtime may be degraded
-
-    context = kernel.get_context()
-    assert context is not None
-    assert context.project.language == "python"
-
-    agent = kernel.get_engine("developer")
-    assert agent is not None
-
-    with patch("aios.runtime.opencode.subprocess.run") as mock_run:
+    with (
+        patch("aios.runtime.opencode.shutil.which", return_value="/usr/bin/opencode"),
+        patch("aios.runtime.opencode.subprocess.run") as mock_run,
+    ):
         mock_run.return_value.returncode = 0
         mock_run.return_value.stdout = "Implementation complete.\n"
+
+        kernel.start()
+        status = kernel.status()
+        assert len(status["errors"]) == 0
+
+        context = kernel.get_context()
+        assert context is not None
+        assert context.project.language == "python"
+
+        agent = kernel.get_engine("developer")
+        assert agent is not None
 
         result = agent.execute(Task(description="Say hello"), context)
         assert result.success is True
