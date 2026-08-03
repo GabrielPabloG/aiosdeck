@@ -208,6 +208,67 @@ class SQLiteStore:
         except sqlite3.Error:
             return None
 
+    def delete_convention(self, rule: str) -> bool:
+        self._execute(
+            "DELETE FROM conventions WHERE rule=? AND project_id=?",
+            (rule, self._project_id),
+        )
+        if self._conn:
+            self._conn.commit()
+            return self._conn.total_changes > 0
+        return False
+
+    def delete_decision(self, title: str) -> bool:
+        self._execute(
+            "DELETE FROM decisions WHERE title=? AND project_id=?",
+            (title, self._project_id),
+        )
+        if self._conn:
+            self._conn.commit()
+            return self._conn.total_changes > 0
+        return False
+
+    def delete_pattern(self, name: str) -> bool:
+        self._execute(
+            "DELETE FROM patterns WHERE name=? AND project_id=?",
+            (name, self._project_id),
+        )
+        if self._conn:
+            self._conn.commit()
+            return self._conn.total_changes > 0
+        return False
+
+    def delete_mistake(self, description: str) -> bool:
+        self._execute(
+            "DELETE FROM mistakes WHERE description=? AND project_id=?",
+            (description, self._project_id),
+        )
+        if self._conn:
+            self._conn.commit()
+            return self._conn.total_changes > 0
+        return False
+
+    def search(self, query: str) -> list[tuple[str, str]]:
+        pattern = f"%{query}%"
+        results: list[tuple[str, str]] = []
+        for row in self._fetch_all(
+            "SELECT 'convention' AS kind, rule AS text FROM conventions "
+            "WHERE project_id=? AND rule LIKE ? "
+            "UNION ALL "
+            "SELECT 'decision', title FROM decisions "
+            "WHERE project_id=? AND title LIKE ? "
+            "UNION ALL "
+            "SELECT 'pattern', name FROM patterns "
+            "WHERE project_id=? AND name LIKE ? "
+            "UNION ALL "
+            "SELECT 'mistake', description FROM mistakes "
+            "WHERE project_id=? AND description LIKE ? "
+            "LIMIT 20",
+            (self._project_id, pattern) * 4,
+        ):
+            results.append((row[0], row[1]))
+        return results
+
     def _execute(self, query: str, params: tuple = ()) -> None:
         if self._conn:
             self._conn.execute(query, params)

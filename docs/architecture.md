@@ -296,6 +296,25 @@ Each phase in the roadmap maps to specific code modules. Documentation drives im
 - The package structure mirrors the documentation structure. A contributor who reads the docs can navigate the code.
 - The event-driven model may feel heavy for v0.1–v0.2 when there are few components. The cost pays off at v0.5+ when multiple agents and pipeline stages coordinate.
 
+## Integration Rule
+
+Integrations never expose subprocess or protocol details. They return domain objects or raise domain exceptions. External protocols (CLI exit codes, HTTP, RPC) are translated at the integration boundary.
+
+```
+Pattern:
+
+integrations/
+├── projdesk/
+│   ├── __init__.py
+│   ├── client.py        # ProjDeskClient
+│   └── exceptions.py    # ProjDeskError → ProjectNotFound, ProjectAmbiguous
+├── github/              # (future)
+├── docker/              # (future)
+└── ollama/              # (future)
+```
+
+The rest of the system never sees `CompletedProcess`, `returncode`, `stderr`, or `subprocess.TimeoutExpired`. The integration boundary is the single point where protocol details are translated into the domain language.
+
 ## Implementation Notes
 
 - [x] Architecture diagram reflects all components through v1.0
