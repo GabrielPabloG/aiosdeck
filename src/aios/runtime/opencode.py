@@ -48,13 +48,14 @@ class OpenCodeAdapter:
 
     def execute(self, prompt: str, skills: list[str]) -> str:
         args = self._resolved_command.split()
+        args.extend(["run", prompt, "--auto"])
+
         if not self._opencode_installed:
             raise RuntimeError(f"Runtime not available: {self._resolved_command}")
 
         try:
             result = subprocess.run(
                 args,
-                input=prompt,
                 capture_output=True,
                 text=True,
                 timeout=120,
