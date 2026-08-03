@@ -22,9 +22,10 @@ In:  Task (type: "code", payload: {description: "Implement OAuth2 provider", fil
 Process:
   1. Load project context, conventions, and architecture
   2. Read existing files for context
-  3. Generate implementation code
-  4. Write files to disk
-  5. Report files changed
+  3. Build prompt via PromptBuilder
+  4. Delegate to AgentExecutor (ExecutionRequest → ExecutionOutcome)
+  5. Interpret outcome → AgentResult
+  6. Report files changed
 
 Out: AgentResult with list of files created/modified
 ```

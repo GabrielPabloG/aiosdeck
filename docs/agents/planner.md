@@ -27,6 +27,10 @@ Process:
   5. Identify risks and unknowns
   6. Output structured task list
 
+  Delegates execution to AgentExecutor (v0.5+).
+  The Executor provides Event Bus publishing, metrics,
+  and (future) timeout/retry.
+
 Out: AgentResult with list of Tasks ready for Scheduler
 ```
 

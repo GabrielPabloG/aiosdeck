@@ -30,6 +30,8 @@ Process:
      - Correctness: logic errors, edge cases, error handling
   4. Produce structured review with findings and severity
 
+  Delegates execution to AgentExecutor (v0.5+).
+
 Out: AgentResult with review report
 ```
 

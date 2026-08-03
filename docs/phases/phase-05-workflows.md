@@ -15,7 +15,7 @@ A workflow is not a script. It is a **declarative definition** of which agents r
 ### Architecture
 
 ```
-User: aios /feature add-oauth2-login
+User: aios /feature add-oauth2-login   ← deferred to v0.8
           │
           ▼
     Workflow Engine
@@ -23,6 +23,7 @@ User: aios /feature add-oauth2-login
           ├── Load workflow definition
           ├── Create task sequence
           ├── Submit to Scheduler
+          ├── AgentExecutor guards each stage (v0.5+)
           ├── Monitor progress
           ├── Handle failures (retry, skip, abort)
           └── Report completion

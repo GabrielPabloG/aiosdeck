@@ -30,6 +30,8 @@ Process:
   4. Write updated documentation files
   5. Report docs updated
 
+  Delegates execution to AgentExecutor (v0.5+).
+
 Out: AgentResult with list of documentation files updated
 ```
 

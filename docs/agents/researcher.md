@@ -27,6 +27,8 @@ Process:
   5. Summarize into structured research note
   6. Store findings in Memory Engine for future use
 
+  Delegates execution to AgentExecutor (v0.5+).
+
 Out: AgentResult with structured research findings
 ```
 

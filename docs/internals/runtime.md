@@ -17,6 +17,9 @@ The principle is: **the runtime is replaceable**. OpenCode is the primary runtim
 Agent
    │
    ▼
+AgentExecutor (v0.5+)
+   │
+   ▼
 Runtime Adapter (interface)
    │
    ▼
