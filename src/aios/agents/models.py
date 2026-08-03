@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 @dataclass
 class ExecutionRequest:
     invoke: Callable[[], str]
+    timeout: float | None = None
 
 
 @dataclass(kw_only=True)
