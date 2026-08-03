@@ -59,11 +59,11 @@ class PlannerAgent(BaseAgent):
             "Output a JSON object with these fields:\n"
             '- "goal": the original goal\n'
             '- "subtasks": array of objects with:\n'
-            '    id (string), type (code|test|documentation),\n'
-            '    description (string),\n'
-            '    priority (high|medium|low),\n'
-            '    dependencies (array of task ids),\n'
-            '    estimated_complexity (low|medium|high)\n'
+            "    id (string), type (code|test|documentation),\n"
+            "    description (string),\n"
+            "    priority (high|medium|low),\n"
+            "    dependencies (array of task ids),\n"
+            "    estimated_complexity (low|medium|high)\n"
             '- "risks": array of strings\n'
             '- "unknowns": array of strings\n\n'
             "Return ONLY the JSON object. No markdown, no explanation.\n\n"
