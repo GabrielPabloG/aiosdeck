@@ -2,6 +2,7 @@
 
 import argparse
 import logging
+import signal
 import sys
 from pathlib import Path
 
@@ -26,8 +27,19 @@ from aios.security import SecurityEngine
 
 VERSION_TEXT = f"AiosDeck v{__version__}"
 
+_active_kernel: Kernel | None = None
+
+
+def _handle_signal(signum: int, frame: object) -> None:  # noqa: ARG001
+    print("\nShutting down...", file=sys.stderr)
+    if _active_kernel is not None:
+        _active_kernel.shutdown()
+    sys.exit(0)
+
 
 def main() -> None:  # noqa: PLR0911
+    signal.signal(signal.SIGINT, _handle_signal)
+    signal.signal(signal.SIGTERM, _handle_signal)
     parser = argparse.ArgumentParser(
         prog="aios",
         description="The AI Operating System for Developers.",
@@ -224,6 +236,7 @@ def _cmd_exit(project_path: Path) -> None:
 
 
 def _create_kernel(project_path: Path) -> Kernel:
+    global _active_kernel  # noqa: PLW0603
     kernel = Kernel(project_path=str(project_path))
     kernel.register(ConfigEngine(project_path=project_path))
     kernel.register(ContextEngine(project_path=project_path))
@@ -233,6 +246,7 @@ def _create_kernel(project_path: Path) -> Kernel:
     kernel.register(DeveloperAgent(runtime))
     kernel.register(EventsEngine())
     kernel.register(SecurityEngine(project_path=project_path))
+    _active_kernel = kernel
     return kernel
 
 
