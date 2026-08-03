@@ -278,6 +278,7 @@ def _cmd_plan(project_path: Path, raw_args: list[str]) -> None:
     if planner is None:
         _error("Planner agent not available.")
 
+    print("Planning...", file=sys.stderr)
     context = kernel.get_context()
     task = Task(description=intent, task_type="plan")
     result = planner.execute(task, context)
