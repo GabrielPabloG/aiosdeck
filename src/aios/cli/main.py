@@ -81,10 +81,10 @@ def main() -> None:  # noqa: PLR0911
 
     try:
         if cmd_name == "doctor":
-                project_args = [a for a in args.args if a != "--json"]
-                project_path = _resolve_project(project_args)
-                _cmd_doctor(project_path, args.args)
-                return
+            project_args = [a for a in args.args if a != "--json"]
+            project_path = _resolve_project(project_args)
+            _cmd_doctor(project_path, args.args)
+            return
 
         if cmd_name in ("start", "status"):
             project_path = _resolve_project(args.args)

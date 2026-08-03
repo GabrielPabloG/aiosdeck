@@ -63,9 +63,7 @@ class OpenCodeAdapter:
         except subprocess.TimeoutExpired as exc:
             raise RuntimeError("Runtime execution timed out after 300s") from exc
         except FileNotFoundError as exc:
-            raise RuntimeError(
-                f"Runtime command not found: {self._resolved_command}"
-            ) from exc
+            raise RuntimeError(f"Runtime command not found: {self._resolved_command}") from exc
 
         if result.returncode != 0:
             stderr = result.stderr.strip() or "unknown error"
