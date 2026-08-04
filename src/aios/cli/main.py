@@ -1,8 +1,6 @@
 """CLI entry point for the aios command."""
 
 import argparse
-import json
-import logging
 import signal
 import sys
 from pathlib import Path
@@ -10,13 +8,10 @@ from pathlib import Path
 from aios import __version__
 from aios.agents.developer import DeveloperAgent
 from aios.agents.planner import PlannerAgent
-from aios.cli.commands import COMMANDS
-from aios.cli.completion import complete
+from aios.cli.commands import COMMANDS, _error, _print_command_help, _print_help
 from aios.config import ConfigEngine
 from aios.context import ContextEngine
 from aios.core import Kernel
-from aios.core.console import render_row, render_section
-from aios.core.task import Task
 from aios.events import EventsEngine
 from aios.integrations.projdesk import (
     ProjDeskClient,
@@ -40,7 +35,7 @@ def _handle_signal(signum: int, frame: object) -> None:  # noqa: ARG001
     sys.exit(0)
 
 
-def main() -> None:  # noqa: PLR0911
+def main() -> None:
     signal.signal(signal.SIGINT, _handle_signal)
     signal.signal(signal.SIGTERM, _handle_signal)
     parser = argparse.ArgumentParser(
@@ -66,52 +61,34 @@ def main() -> None:  # noqa: PLR0911
     if args.command is None:
         try:
             project_path = _resolve_project([])
-            _cmd_dashboard(project_path)
+            _dispatch(COMMANDS["dashboard"], [], project_path)
         except (ProjectNotFound, ProjectAmbiguous, ProjDeskError) as exc:
             _error(str(exc))
         return
 
     cmd_name = args.command
 
-    if cmd_name == "__complete":
-        _print_completions(args.args)
-        return
-
-    if cmd_name == "help":
-        _print_help()
-        return
+    resolved = _find_command(cmd_name)
+    if resolved is None:
+        _error(f"Unknown command: {cmd_name}\nRun 'aios help' for available commands.")
 
     try:
-        if cmd_name == "doctor":
-            project_args = [a for a in args.args if a != "--json"]
-            project_path = _resolve_project(project_args)
-            _cmd_doctor(project_path, args.args)
-            return
-
-        if cmd_name == "plan":
-            project_path = _resolve_project([])
-            _cmd_plan(project_path, args.args)
-            return
-
-        if cmd_name in ("start", "status"):
-            project_path = _resolve_project(args.args)
-            _cmd_dashboard(project_path)
-            return
-
-        if cmd_name == "exit":
-            project_path = _resolve_project(args.args)
-            _cmd_exit(project_path)
-            return
-
-        if cmd_name in COMMANDS:
-            project_path = _resolve_project([])
-            _dispatch(COMMANDS[cmd_name], args.args, project_path)
-            return
+        positional_args = [a for a in args.args if not a.startswith("-")]
+        project_path = _resolve_project(positional_args)
+        _dispatch(resolved, args.args, project_path)
     except (ProjectNotFound, ProjectAmbiguous, ProjDeskError) as exc:
         _error(str(exc))
-        return
 
-    _error(f"Unknown command: {cmd_name}\nRun 'aios help' for available commands.")
+
+def _find_command(cmd_name: str):
+    if cmd_name in COMMANDS:
+        return COMMANDS[cmd_name]
+
+    for cmd in COMMANDS.values():
+        if cmd_name in cmd.aliases:
+            return cmd
+
+    return None
 
 
 def _resolve_project(args: list[str]) -> Path:
@@ -123,7 +100,10 @@ def _resolve_project(args: list[str]) -> Path:
     if path.is_dir():
         return path.resolve()
 
-    return ProjDeskClient().resolve(candidate)
+    try:
+        return ProjDeskClient().resolve(candidate)
+    except ProjDeskError:
+        return Path.cwd()
 
 
 def _dispatch(cmd, raw_args: list[str], project_path: Path) -> None:
@@ -161,136 +141,6 @@ def _dispatch(cmd, raw_args: list[str], project_path: Path) -> None:
     _error(f"Unknown subcommand: {sub_name}")
 
 
-def _print_help() -> None:
-    print(f"{VERSION_TEXT}")
-    print("The AI Operating System for Developers.")
-    print()
-    print("Usage:")
-    print("  aios                  Show dashboard")
-    print("  aios doctor [--json]    Run diagnostics")
-    print("  aios memory <cmd>     Manage project knowledge")
-    print("  aios plan <intent>    Decompose goal into subtasks")
-    print("  aios help             Show this help")
-    print()
-    print("Commands:")
-    _print_command_list(COMMANDS, indent=2)
-    print()
-    print("Aliases:")
-    print("  start, status         Show dashboard")
-    print("  exit                  Shut down gracefully")
-    print()
-    print("Project: https://github.com/GabrielPabloG/aiosdeck")
-
-
-def _print_command_list(commands: dict, indent: int = 0) -> None:
-    prefix = " " * indent
-    for name, cmd in commands.items():
-        print(f"{prefix}{name:<20} {cmd.description}")
-        if cmd.aliases:
-            print(f"{prefix}  aliases: {', '.join(cmd.aliases)}")
-        if cmd.subcommands:
-            _print_command_list(cmd.subcommands, indent=indent + 2)
-
-
-def _print_command_help(cmd) -> None:
-    print(f"{cmd.name} — {cmd.description}")
-    if cmd.aliases:
-        print(f"Aliases: {', '.join(cmd.aliases)}")
-    if cmd.subcommands:
-        print()
-        print("Subcommands:")
-        _print_command_list(cmd.subcommands, indent=2)
-
-
-def _print_completions(tokens: list[str]) -> None:
-    suggestions = complete(tokens)
-    for s in suggestions:
-        print(s)
-
-
-def _cmd_dashboard(project_path: Path) -> None:
-    kernel = _create_kernel(project_path)
-    kernel.start()
-
-
-def _cmd_doctor(project_path: Path, raw_args: list[str] | None = None) -> None:
-    as_json = "--json" in (raw_args or [])
-
-    kernel = _create_kernel(project_path)
-    kernel.start()
-
-    status = kernel.status()
-
-    if as_json:
-        context = kernel.get_context()
-        if context:
-            status["context"] = {
-                "language": context.project.language,
-                "linter": context.tools.linter,
-                "formatter": context.tools.formatter,
-                "test_runner": context.tools.test_runner,
-                "git_branch": context.git.branch,
-                "git_status": context.git.status,
-                "opencode": context.runtime.opencode,
-                "ai_jail": context.runtime.ai_jail,
-            }
-        print(json.dumps(status, indent=2))
-        return
-
-    logger = logging.getLogger("aios")
-    context = kernel.get_context()
-    if context:
-        logger.info(render_section("Doctor"))
-        logger.info(render_row("Language", context.project.language))
-        logger.info(render_row("Tools", context.tools.linter or "none"))
-        logger.info(render_row("Git", f"{context.git.branch} ({context.git.status})"))
-        logger.info(
-            render_row(
-                "OpenCode",
-                "installed" if context.runtime.opencode else "not found",
-            )
-        )
-        logger.info(render_row("ai-jail", "installed" if context.runtime.ai_jail else "not found"))
-
-    errors = status.get("errors", [])
-    if errors:
-        logger.warning("\nWarnings:")
-        for err in errors:
-            logger.warning(f"  {err}")
-
-
-def _cmd_exit(project_path: Path) -> None:
-    kernel = _create_kernel(project_path)
-    kernel.shutdown()
-
-
-def _cmd_plan(project_path: Path, raw_args: list[str]) -> None:
-    intent = " ".join(raw_args) if raw_args else None
-    if not intent:
-        print("Usage: aios plan <intent>", file=sys.stderr)
-        print("Example: aios plan 'add OAuth2 login'", file=sys.stderr)
-        sys.exit(1)
-
-    kernel = _create_kernel(project_path)
-    kernel.start()
-
-    planner = kernel.get_engine("planner")
-    if planner is None:
-        _error("Planner agent not available.")
-
-    print("Planning...", file=sys.stderr)
-    context = kernel.get_context()
-    task = Task(description=intent, task_type="plan")
-    result = planner.execute(task, context)
-
-    if not result.success:
-        msg = result.errors[0] if result.errors else "Planning failed."
-        print(f"Error: {msg}", file=sys.stderr)
-        sys.exit(1)
-
-    print(result.output)
-
-
 def _create_kernel(project_path: Path) -> Kernel:
     global _active_kernel  # noqa: PLW0603
     kernel = Kernel(project_path=str(project_path))
@@ -305,8 +155,3 @@ def _create_kernel(project_path: Path) -> Kernel:
     kernel.register(SecurityEngine(project_path=project_path))
     _active_kernel = kernel
     return kernel
-
-
-def _error(msg: str) -> None:
-    print(f"Error: {msg}", file=sys.stderr)
-    sys.exit(1)

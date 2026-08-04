@@ -24,7 +24,7 @@ def complete(tokens: list[str]) -> list[str]:
 
     node: dict[str, Command] = COMMANDS
     if not previous:
-        base = list(node.keys()) + ["doctor", "help"]
+        base = [name for name, cmd in node.items() if not cmd.hidden]
         return _matching(current, base)
 
     i = 0
