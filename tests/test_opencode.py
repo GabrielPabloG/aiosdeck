@@ -23,9 +23,12 @@ def test_build_permissions_denies_question_when_not_in_capabilities():
 
 def test_execute_with_question_disables_capture_output():
     adapter = OpenCodeAdapter()
-    adapter.initialize()
 
-    with patch("aios.runtime.opencode.subprocess.run") as mock_run:
+    with (
+        patch("aios.runtime.opencode.shutil.which", return_value="/usr/bin/opencode"),
+        patch("aios.runtime.opencode.subprocess.run") as mock_run,
+    ):
+        adapter.initialize()
         mock_run.return_value.returncode = 0
         mock_run.return_value.stdout = "done"
 
@@ -38,9 +41,12 @@ def test_execute_with_question_disables_capture_output():
 
 def test_execute_without_question_keeps_capture_output():
     adapter = OpenCodeAdapter()
-    adapter.initialize()
 
-    with patch("aios.runtime.opencode.subprocess.run") as mock_run:
+    with (
+        patch("aios.runtime.opencode.shutil.which", return_value="/usr/bin/opencode"),
+        patch("aios.runtime.opencode.subprocess.run") as mock_run,
+    ):
+        adapter.initialize()
         mock_run.return_value.returncode = 0
         mock_run.return_value.stdout = "done"
 
@@ -53,9 +59,12 @@ def test_execute_without_question_keeps_capture_output():
 
 def test_execute_with_question_passes_stdin():
     adapter = OpenCodeAdapter()
-    adapter.initialize()
 
-    with patch("aios.runtime.opencode.subprocess.run") as mock_run:
+    with (
+        patch("aios.runtime.opencode.shutil.which", return_value="/usr/bin/opencode"),
+        patch("aios.runtime.opencode.subprocess.run") as mock_run,
+    ):
+        adapter.initialize()
         mock_run.return_value.returncode = 0
         mock_run.return_value.stdout = "done"
 
