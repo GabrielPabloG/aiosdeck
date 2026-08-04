@@ -82,10 +82,10 @@ class OpenCodeAdapter:
             raise RuntimeError(f"Runtime command not found: {self._resolved_command}") from exc
 
         if result.returncode != 0:
-            stderr = result.stderr.strip() or "unknown error"
+            stderr = result.stderr.strip() if result.stderr else "unknown error"
             raise RuntimeError(f"Runtime exited with code {result.returncode}: {stderr}")
 
-        return result.stdout.strip()
+        return result.stdout.strip() if result.stdout else ""
 
     def _build_permissions(self, capabilities: list[str]) -> str:
         key = tuple(sorted(capabilities))
