@@ -94,7 +94,10 @@ def _cmd_doctor(raw_args: list[str], project_path: Path, kernel_factory: Callabl
 
 
 def _cmd_plan(raw_args: list[str], project_path: Path, kernel_factory: Callable) -> None:
-    intent = " ".join(raw_args) if raw_args else None
+    run_mode = "--run" in (raw_args or [])
+
+    clean_args = [a for a in (raw_args or []) if a != "--run"]
+    intent = " ".join(clean_args) if clean_args else None
     if not intent:
         print("Usage: aios plan <intent>", file=sys.stderr)
         print("Example: aios plan 'add OAuth2 login'", file=sys.stderr)
@@ -117,12 +120,78 @@ def _cmd_plan(raw_args: list[str], project_path: Path, kernel_factory: Callable)
         print(f"Error: {msg}", file=sys.stderr)
         sys.exit(1)
 
-    print(result.output)
+    if not run_mode:
+        print(result.output)
+        return
+
+    plan = json.loads(result.output)
+    subtasks = plan.get("subtasks", [])
+
+    if not subtasks:
+        print("No subtasks to execute.")
+        return
+
+    developer = kernel.get_engine("developer")
+    if developer is None:
+        _error("Developer agent not available.")
+
+    total = len(subtasks)
+    completed = 0
+
+    for st in subtasks:
+        dev_task = Task(description=st["description"], task_type="code")
+        dev_result = developer.execute(dev_task, context)
+
+        if dev_result.success:
+            print(f"  [✓] {st['description']}")
+            completed += 1
+        else:
+            print(f"  [✗] {st['description']}")
+            break
+
+    print(f"\n{completed}/{total} tasks completed")
 
 
 def _cmd_exit(raw_args: list[str], project_path: Path, kernel_factory: Callable) -> None:
     kernel = kernel_factory(project_path)
     kernel.shutdown()
+
+
+def _cmd_init(raw_args: list[str], project_path: Path, kernel_factory: Callable) -> None:
+    aios_dir = project_path / ".aios"
+    aios_dir.mkdir(parents=True, exist_ok=True)
+
+    yaml_path = aios_dir / "project.yaml"
+    if not yaml_path.exists():
+        yaml_path.write_text(
+            "# .aios/project.yaml — Project manifest for AiosDeck\n"
+            "# ProjDesk prepares the development environment.\n"
+            "# AiosDeck prepares the intelligence environment.\n"
+            "\n"
+            f"name: {project_path.name}\n"
+            "runtime: opencode\n"
+            "sandbox: ai-jail\n"
+            "\n"
+            "skills:\n"
+            "  - project-dna\n"
+            "  - coding-style\n"
+        )
+
+    GITIGNORE_RULES = [".aios/memory.db"]
+
+    gitignore_path = project_path / ".gitignore"
+    existing_text = gitignore_path.read_text() if gitignore_path.exists() else ""
+    existing_lines = existing_text.splitlines()
+
+    new_lines = [rule for rule in GITIGNORE_RULES if rule not in existing_lines]
+    if new_lines:
+        with gitignore_path.open("a") as f:
+            if existing_text and not existing_text.endswith("\n"):
+                f.write("\n")
+            for rule in new_lines:
+                f.write(f"{rule}\n")
+
+    print(f"Project initialized at {aios_dir}")
 
 
 def _cmd_help(raw_args: list[str], project_path: Path, kernel_factory: Callable) -> None:
@@ -148,6 +217,7 @@ def _print_help() -> None:
     print()
     print("Usage:")
     print("  aios                  Show dashboard")
+    print("  aios init               Initialize AiosDeck project")
     print("  aios doctor [--json]    Run diagnostics")
     print("  aios memory <cmd>     Manage project knowledge")
     print("  aios plan <intent>    Decompose goal into subtasks")
@@ -380,6 +450,11 @@ COMMANDS: dict[str, Command] = {
         name="doctor",
         description="Run diagnostics",
         execute=_cmd_doctor,
+    ),
+    "init": Command(
+        name="init",
+        description="Initialize AiosDeck in the current project",
+        execute=_cmd_init,
     ),
     "plan": Command(
         name="plan",
