@@ -1,7 +1,7 @@
 # Architecture
 
 **Status**: Accepted
-**Date**: 2026-08-02
+**Date**: 2026-08-04
 
 ## Context
 
@@ -71,7 +71,7 @@ The architecture follows a **hub-and-spoke** model: the Kernel is the hub, dispa
 
 | Component | Responsibility | Event Bus Role | Phase |
 |-----------|---------------|----------------|-------|
-| **CLI** | Entry point. Parses commands, forwards to Kernel. | Producer | v0.1 |
+| **CLI** | Entry point. Thin dispatcher via Command Registry. | Producer | v0.1 |
 | **Kernel** | Bootstrap, lifecycle, dispatches events to engines. | Hub | v0.1 |
 | **Event Dispatcher** | Routes events between components. Pub/sub with topics. | Core infrastructure | v0.1 |
 | **Scheduler** | Manages task queue, priority, concurrency, agent dispatch. | Consumer + Producer | v0.8 |
@@ -79,7 +79,7 @@ The architecture follows a **hub-and-spoke** model: the Kernel is the hub, dispa
 | **Context Engine** | Detects project characteristics, assembles enriched context for agents. | Consumer + Producer | v0.1 |
 | **Security Manager** | Enforces zero-trust policies, manages capabilities, filters prompts, logs audits. | Interceptor | v0.1 (skeleton), v0.6 (full) |
 | **Quality Pipeline** | Executes automated checks (format, lint, tests, security, AI review, docs). | Consumer + Producer | v0.6 |
-| **Runtime Adapter** | Abstracts execution environment. Implements protocol for agent ↔ runtime communication. | Consumer | v0.1 |
+| **Runtime Adapter** | Abstracts execution environment. Enforces headless tool permissions via OPENCODE_PERMISSION. | Consumer | v0.1 |
 | **AgentExecutor** | Generic execution guardrail. Wraps agent operations with Event Bus, logging, timeout, retry. | Consumer + Producer | v0.5 |
 | **Agents** | Specialized workers. Each receives a task and produces a result via the Runtime. | Consumer + Producer | v0.2+ |
 | **Workflow Engine** | Orchestrates complex pipelines across multiple agents and gates. | Consumer + Producer | v0.7 |
@@ -124,7 +124,14 @@ aiosdeck/
 ├── core/                        # Kernel + CLI
 │   ├── __init__.py
 │   ├── kernel.py                # Bootstrap, lifecycle, dispatcher
-│   └── cli.py                   # Command parsing, routing
+│   ├── console.py               # Dashboard rendering
+│   └── task.py                  # Task dataclass
+│
+├── cli/                         # CLI surface (v0.6.1)
+│   ├── __init__.py
+│   ├── main.py                  # Thin dispatcher — reads COMMANDS, resolves aliases
+│   ├── commands.py              # Command dataclass + COMMANDS registry
+│   └── completion.py            # Autocomplete engine consuming registry
 │
 ├── context/                     # Context Engine
 │   ├── __init__.py
@@ -278,7 +285,7 @@ Each phase in the roadmap maps to specific code modules. Documentation drives im
 | v0.3 | `phases/phase-03-memory.md` | `memory/` |
 | v0.4 | `agents/planner.md` | `agents/planner.py` |
 | v0.5 | `agents/reviewer.md` | `agents/reviewer.py` |
-| v0.6 | `internals/quality-pipeline.md` + agent docs | `quality/`, `agents/tester.py`, `agents/documentation.py` |
+| v0.6 | `agents/planner.md` + Headless SI | `agents/planner.py`, `runtime/opencode.py` (headless hardening) |
 | v0.7 | `phases/phase-05-workflows.md` + agent docs | `workflows/`, `agents/git.py` |
 | v0.8 | `agents/*.md` (remaining) + `internals/scheduler.md` | `scheduler/`, remaining agents |
 | v0.9 | `internals/plugin-system.md` | `plugins/` |
@@ -327,8 +334,8 @@ The rest of the system never sees `CompletedProcess`, `returncode`, `stderr`, or
 
 - [x] Architecture diagram reflects all components through v1.0
 - [x] Package layout defined
-- [ ] Event schema must be defined before first implementation (`event_bus/events.py`)
-- [ ] Runtime Adapter interface must be stable before agent implementations begin
-- [ ] Security Manager must intercept events from day one (v0.1 skeleton), even if only logging
+- [x] Event schema defined (`event_bus/events.py`)
+- [x] Runtime Adapter interface stable — extended with capabilities parameter (v0.6.1)
+- [x] Security Manager intercepts events from day one (v0.1 skeleton), event bus logging active
 - [ ] Each phase implementation must pass the architecture review gate before being considered done
 - [ ] Cross-reference: every `internals/*.md` and `agents/*.md` must link back to this document

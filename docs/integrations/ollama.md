@@ -67,10 +67,11 @@ context["models"] = {
 
 ```
 1. Ollama (local)          → if available
-2. OpenAI (cloud)          → if API key configured
-3. Anthropic (cloud)       → if API key configured
-4. Google Gemini (cloud)   → if API key configured
-5. No model available      → error
+2. DeepSeek (Cloud)        → if API key configured
+3. OpenAI (cloud)          → if API key configured
+4. Anthropic (cloud)       → if API key configured
+5. Google Gemini (cloud)   → if API key configured
+6. No model available      → error
 ```
 
 The fallback chain is configured, not hardcoded.

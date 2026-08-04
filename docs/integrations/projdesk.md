@@ -1,7 +1,7 @@
 # ProjDesk Integration
 
 **Status**: Accepted
-**Date**: 2026-08-02
+**Date**: 2026-08-04
 **Updated**: v0.5 (ProjDeskClient)
 
 ## Context
@@ -82,11 +82,12 @@ except ProjDeskError as exc:
 
 ### CLI Integration
 
-In `cli/main.py`, project resolution follows this priority:
+Project resolution logic lives in `cli/main.py`. Resolution follows this priority:
 
 1. No argument → `Path.cwd()` (current directory)
 2. Argument is a directory on disk → `Path.resolve()`
 3. Argument is a project name → `ProjDeskClient().resolve(name)`
+4. ProjDesk not installed / resolution fails → `Path.cwd()` (v0.6.1 fallback)
 
 ```python
 def _resolve_project(args: list[str]) -> Path:

@@ -141,6 +141,18 @@ A YAML configuration that defines which capabilities each agent receives. Polici
 
 **First used in**: `internals/security.md`. **Introduced**: v0.1 (skeleton), v0.6 (full enforcement).
 
+### Command Registry
+
+The single source of truth for CLI commands, help output, and autocomplete suggestions. Defined in `cli/commands.py` as `COMMANDS: dict[str, Command]`. Each `Command` has `name`, `description`, `aliases`, `subcommands`, `execute`, and `hidden`. Adding a command requires one entry — the parser, help system, and autocomplete all consume the same registry. The thin dispatcher in `cli/main.py` resolves command names and aliases against COMMANDS.
+
+**First used in**: `cli-philosophy.md`. **Introduced**: v0.6.1.
+
+### OpenCode Permission
+
+A runtime-level tool permission injected by the Runtime Adapter via the `OPENCODE_PERMISSION` environment variable. Used in headless mode to prevent tools that require human interaction (e.g., `question`) from causing silent subprocess timeouts. Permissions are binary (`allow`/`deny`) and derived from agent capabilities: PlannerAgent gets `edit: deny, bash: deny`; DeveloperAgent only gets `question: deny`.
+
+**First used in**: `integrations/opencode.md`. **Introduced**: v0.6.1.
+
 ---
 
 *Terms are added to this glossary incrementally. Each new document that introduces a concept must submit a glossary entry.*

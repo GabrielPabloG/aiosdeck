@@ -1,8 +1,8 @@
 # CLI Philosophy
 
-**Status**: Accepted (Implemented in v0.5 DX)
-**Date**: 2026-08-02
-**Target Version**: v0.5 (DX)
+**Status**: Accepted (Implemented in v0.6.1)
+**Date**: 2026-08-04
+**Target Version**: v0.6.1
 
 ## Context
 
@@ -62,7 +62,7 @@ component doesn't exist yet, the command doesn't appear in the tree.
 | Memory from previous sessions | SQLite restore on kernel start | Memory Engine v0.3 skeleton |
 | Which workflow to run | Intent classification from free text | Deferred (requires Planner v0.4) |
 | Locale / output language | System `$LANG`, same as ProjDesk | Not yet — inherit ProjDesk behavior |
-| Permissions already granted | Policy Engine per-agent capabilities | Security skeleton exists, enforcement v0.6 |
+| Permissions already granted | Policy Engine per-agent capabilities | Enforced via OPENCODE_PERMISSION in headless mode (v0.6.1) |
 
 ### Primary verb
 
@@ -122,13 +122,13 @@ parser.
 
 ## Implementation Notes
 
-- [ ] `docs/cli-philosophy.md` — this document
-- [ ] `src/aios/cli/commands.py` — Command protocol + Registry
-- [ ] `src/aios/cli/completion.py` — autocomplete engine consuming Registry
+- [x] `docs/cli-philosophy.md` — this document
+- [x] `src/aios/cli/commands.py` — Command protocol + Registry
+- [x] `src/aios/cli/completion.py` — autocomplete engine consuming Registry
 - [ ] `completion/bash.sh` — thin wrapper calling `aios __complete`
 - [ ] `completion/zsh.sh` — thin wrapper calling `aios __complete`
-- [ ] `src/aios/cli/main.py` — rewritten CLI surface consuming Registry
-- [ ] `__complete` must not appear in `--help` output
-- [ ] `start`, `status`, `exit` remain functional as hidden aliases
-- [ ] `tests/test_cli.py` updated for new command surface
-- [ ] `tests/test_completion.py` — new tests for completion engine
+- [x] `src/aios/cli/main.py` — rewritten CLI surface consuming Registry
+- [x] `__complete` must not appear in `--help` output (hidden=True)
+- [x] `start`, `status`, `exit` remain functional as hidden aliases
+- [x] `tests/test_cli.py` updated for new command surface
+- [x] `tests/test_registry.py` — test suite for Command Registry

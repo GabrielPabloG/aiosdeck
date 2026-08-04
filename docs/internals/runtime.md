@@ -1,7 +1,7 @@
 # Runtime Adapter
 
 **Status**: Accepted
-**Date**: 2026-08-02
+**Date**: 2026-08-04
 
 ## Context
 
@@ -144,6 +144,17 @@ async def health_check(self) -> bool:
     return True
 ```
 
+### Headless Tool Permissions (v0.6.1)
+
+The adapter enforces OpenCode tool permissions at the process boundary via the `OPENCODE_PERMISSION` environment variable. This prevents tools that require human interaction (e.g., `question`) from causing silent timeouts in headless mode.
+
+Permissions are derived from the agent's capabilities:
+- `question: deny` — always blocked (no human to answer)
+- PlannerAgent (`filesystem_read` only): `edit: deny`, `bash: deny`
+- DeveloperAgent (`filesystem_write`, `shell`): only `question: deny`
+
+Permissions are cached by capabilities set in `runtime/opencode.py` via `_build_permissions()`.
+
 ### Configuration
 
 Runtime configuration is read from the Project Manifest:
@@ -186,13 +197,14 @@ runtime:
 
 ## Implementation Notes
 
-- [ ] Implement `runtime/base.py` — RuntimeAdapter protocol
-- [ ] Implement `runtime/opencode.py` — OpenCodeAdapter implementation
-- [ ] `_resolve_runtime_command()` must detect ai-jail and return correct command
-- [ ] Prompt construction must inject context from Context Packet
-- [ ] Health check must verify both OpenCode and ai-jail availability
-- [ ] Adapter must log every invocation with timestamp and result for the Audit Trail
-- [ ] Test: OpenCodeAdapter.execute() returns a Result
-- [ ] Test: adapter detects missing ai-jail and falls back with warning
-- [ ] Test: health check returns True when OpenCode is installed
-- [ ] Test: prompt includes task description, context, and instructions
+- [x] Implement `runtime/base.py` — RuntimeAdapter protocol
+- [x] Implement `runtime/opencode.py` — OpenCodeAdapter implementation
+- [x] `_resolve_runtime_command()` must detect ai-jail and return correct command
+- [x] Prompt construction must inject context from Context Packet
+- [x] Health check must verify both OpenCode and ai-jail availability
+- [x] Adapter must log every invocation with timestamp and result for the Audit Trail
+- [x] Test: OpenCodeAdapter.execute() returns a Result
+- [x] Test: adapter detects missing ai-jail and falls back with warning
+- [x] Test: health check returns True when OpenCode is installed
+- [x] Test: prompt includes task description, context, and instructions
+- [x] Inject OPENCODE_PERMISSION with per-agent tool lockdown (v0.6.1)

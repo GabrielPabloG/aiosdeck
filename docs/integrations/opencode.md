@@ -1,7 +1,7 @@
 # OpenCode Integration
 
 **Status**: Accepted
-**Date**: 2026-08-02
+**Date**: 2026-08-04
 
 ## Context
 
@@ -78,6 +78,36 @@ runtime:
 
 OpenCode configuration (providers, models, permissions) is managed separately in `~/.config/opencode/opencode.json` or `.opencode/opencode.json`.
 
+### Headless Mode Security
+
+When running headless (no interactive terminal), the Runtime Adapter enforces strict tool permissions to prevent silent timeouts. Any tool that requires human interaction (e.g., `question`) will hang the subprocess.
+
+To prevent this, the adapter injects the `OPENCODE_PERMISSION` environment variable before every invocation:
+
+```json
+{
+  "question": "deny"
+}
+```
+
+The permission model is binary: `"allow"` or `"deny"` — never `"ask"` (which requires interactive approval).
+
+#### Per-Agent Tool Lockdown
+
+Permissions are derived from each agent's `required_capabilities`:
+
+| Agent | Capabilities | Tool Permissions |
+|-------|-------------|-----------------|
+| PlannerAgent | `filesystem_read` | `question: deny`, `edit: deny`, `bash: deny` |
+| DeveloperAgent | `filesystem_read`, `filesystem_write`, `shell` | `question: deny` |
+
+This ensures:
+- The **question** tool is never available (no human to answer).
+- The **Planner** (read-only) cannot modify files or execute shell commands.
+- The **Developer** retains full tool access except `question`.
+
+Permissions are cached by capabilities set in the adapter, avoiding repeated JSON serialization.
+
 ## Consequences
 
 - OpenCode is a runtime dependency. Without it, AiosDeck cannot execute agents.
@@ -86,11 +116,14 @@ OpenCode configuration (providers, models, permissions) is managed separately in
 
 ## Implementation Notes
 
-- [ ] Runtime Adapter must detect OpenCode installation: `which opencode`
-- [ ] Runtime Adapter must invoke OpenCode through ai-jail: `ai-jail opencode`
-- [ ] Skill names passed to OpenCode must match directory names in skills paths
-- [ ] Prompt construction: task description + context packet + instructions
-- [ ] Result parsing: extract text output, files changed, errors from OpenCode output
-- [ ] Test: OpenCode installed → adapter reports available
-- [ ] Test: OpenCode not installed → critical error
-- [ ] Test: skill not found → warning logged, execution continues
+- [x] Runtime Adapter must detect OpenCode installation: `which opencode`
+- [x] Runtime Adapter must invoke OpenCode through ai-jail: `ai-jail opencode`
+- [x] Skill names passed to OpenCode must match directory names in skills paths
+- [x] Prompt construction: task description + context packet + instructions
+- [x] Result parsing: extract text output, files changed, errors from OpenCode output
+- [x] Test: OpenCode installed → adapter reports available
+- [x] Test: OpenCode not installed → critical error
+- [x] Test: skill not found → warning logged, execution continues
+- [x] Inject `OPENCODE_PERMISSION` env var with `question: deny` in headless mode
+- [x] PlannerAgent gets `edit: deny, bash: deny` via capabilities check
+- [x] Permission JSON cached by capabilities set for performance

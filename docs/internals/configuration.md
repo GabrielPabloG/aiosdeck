@@ -1,7 +1,7 @@
 # Configuration
 
 **Status**: Accepted
-**Date**: 2026-08-02
+**Date**: 2026-08-04
 
 ## Context
 
@@ -74,6 +74,7 @@ All environment variables use the `AIOS_` prefix and are uppercase with undersco
 | `AIOS_MEMORY_ENABLED` | `memory_enabled` | `true` |
 | `AIOS_LOG_LEVEL` | `log_level` | `DEBUG` |
 | `AIOS_PROJECTS_DIR` | `projects_dir` | `~/projects` |
+| `AIOS_OPENCODE_PERMISSION` | OpenCode tool permissions (injected by Runtime Adapter) | `{"question": "deny"}` |
 
 ### Project Manifest
 

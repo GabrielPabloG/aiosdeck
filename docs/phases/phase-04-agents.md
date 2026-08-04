@@ -66,7 +66,7 @@ Agents are registered with the Scheduler by type:
 ```python
 AGENT_REGISTRY = {
     "developer": DeveloperAgent,      # v0.2
-    "planner": PlannerAgent,          # v0.4
+    "planner": PlannerAgent,          # v0.6
     "reviewer": ReviewerAgent,        # v0.5
     "coder": CoderAgent,              # v0.8
     "tester": TesterAgent,            # v0.6
@@ -101,7 +101,7 @@ Skills are additive. The agent's base capabilities are always present. Skills ad
 
 ### Capability Model
 
-Every agent declares its minimum capabilities. The Security Manager enforces them:
+Every agent declares its minimum capabilities. The Security Manager enforces them at the AiosDeck level. Additionally, the Runtime Adapter (v0.6.1) enforces them at the OpenCode tool level via `OPENCODE_PERMISSION`: read-only agents (Planner, Reviewer) have `edit` and `bash` denied; the `question` tool is denied for all agents in headless mode.
 
 | Agent | filesystem_read | filesystem_write | shell | internet | git | docker |
 |-------|:---:|:---:|:---:|:---:|:---:|:---:|

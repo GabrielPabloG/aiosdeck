@@ -149,7 +149,7 @@ All planned phases. Documented, specified, but not all implemented.
 | v0.3 Memory | **Implemented** | SQLite-backed persistence for conventions, decisions, architecture |
 | v0.4 PromptBuilder | **Implemented** | Structured prompt assembly with context, memory, skills |
 | v0.5 AgentExecutor + DX | **Implemented** | Execution guardrail, CLI redesign, autocomplete, ProjDesk integration |
-| v0.6 Planner | Specified | Task decomposition, prioritization |
+| v0.6 Planner | **Implemented** | Task decomposition, prioritization, headless security hardening |
 | v0.7 Reviewer | Specified | Architecture critique, convention enforcement |
 | v0.8 Workflows | Specified | Multi-agent pipelines, quality gates |
 | v0.9 Plugins | Specified | Extension points for Runtimes, Agents, Skills, Workflows |
@@ -161,19 +161,19 @@ The only roadmap that matters day to day. Everything else is blocked.
 
 | Component | Version | Task |
 |-----------|---------|------|
-| CLI (`aios`) | v0.5 | Dashboard, doctor, memory commands, help, autocomplete |
-| Command Registry | v0.5 | Single source of truth for CLI + help + completion |
+| CLI (`aios`) | v0.6.1 | Dashboard, doctor, plan, memory commands, help, autocomplete |
+| Command Registry | v0.6.1 | Single source of truth for CLI + help + completion |
 | Configuration | v0.1 | Detection > manifest > user config > env > defaults |
 | Context Engine | v0.1 | Language detection, tool detection, Git/Docker/OpenCode status |
 | Memory Engine | v0.3 | SQLite-backed CRUD for conventions, decisions, patterns, mistakes |
 | PromptBuilder | v0.4 | Structured prompt assembly (task, context, git, memory, skills) |
 | AgentExecutor | v0.5 | Execution guardrail (Event Bus, metrics, logging) shared by all agents |
 | Developer Agent | v0.2 | Builds prompt, delegates to AgentExecutor, interprets outcome |
-| Runtime Adapter | v0.1 | OpenCode invocation via ai-jail, skill loading, prompt construction |
+| Runtime Adapter | v0.6.1 | OpenCode invocation via ai-jail, skill loading, headless tool permission enforcement |
 | Event Bus | v0.1 | In-process pub/sub, topics, audit logging |
 | Shell Completion | v0.5 | bash and zsh scripts delegating to `aios __complete` |
 | ProjDesk Client | v0.5 | `resolve(name)` → Path, domain exceptions |
-| Security (skeleton) | v0.1 | Policy loading, audit logging. Full enforcement in v0.7 |
+| Security (skeleton) | v0.1 | Policy loading, audit logging. Headless hardening in v0.6.1. Full enforcement in v0.7 |
 | Logger | v0.1 | Structured logging, session audit trail |
 
 **Rule**: Every abstraction must solve an existing problem. Never an anticipated one. If a component is not in this table, it has not earned its existence yet.
@@ -398,7 +398,7 @@ Agents are specialized. One job each. Nothing more.
 | **Developer** | v0.2 | Write code, understand context | (replaced by specialists in v0.9) |
 | **Memory** | v0.3 | Store and retrieve knowledge | Execute code, access internet |
 | **AgentExecutor** | v0.5 | Guard execution (Event Bus, metrics, logging) | Execute code (wraps agents, not a worker) |
-| **Planner** | v0.6 | Decompose tasks, prioritize | Write code, touch Git, modify files |
+| **Planner** | v0.6 | Decompose tasks, prioritize | Write code, touch Git, modify files. Enforced by capabilities + OPENCODE_PERMISSION |
 | **Reviewer** | v0.7 | Critique code, architecture, conventions | Write new code |
 | **Tester** | v0.8 | Run tests, verify behavior | Write production code |
 | **Documentation** | v0.8 | Update docs, ADRs, CHANGELOG | Write application code |

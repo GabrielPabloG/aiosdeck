@@ -1,7 +1,7 @@
 # Security Manager
 
-**Status**: Proposed
-**Date**: 2026-08-02
+**Status**: Accepted (Headless hardening in v0.6.1)
+**Date**: 2026-08-04
 
 ## Context
 
@@ -234,8 +234,26 @@ In v0.1, the Security Manager is a **skeleton**: it loads policy files, logs all
 
 ### Neutral
 
-- Security is defense-in-depth. The Security Manager enforces application-level policies. ai-jail enforces OS-level sandboxing. Neither replaces the other.
+- Security is defense-in-depth. The Security Manager enforces application-level policies. ai-jail enforces OS-level sandboxing. OpenCode tool permissions (v0.6.1) add a runtime-level guard. No single layer replaces another.
 - Approval Gates require a user interface. CLI prompts are the v0.6 implementation. Future versions may support non-interactive modes with pre-approved actions.
+
+### Headless Tool Permission Hardening (v0.6.1)
+
+When AiosDeck runs headless (no interactive terminal), any OpenCode tool that requires human input (e.g., `question`) causes a silent timeout. The `OPENCODE_PERMISSION` environment variable is injected before every `subprocess.run()` call to enforce tool-level controls directly at the runtime boundary:
+
+```json
+{
+  "question": "deny"
+}
+```
+
+The permission model is binary (`allow`/`deny`). No `ask` — there is no user to ask.
+
+Permissions are derived from each agent's `required_capabilities`:
+- **PlannerAgent** (`filesystem_read` only): `edit: deny`, `bash: deny`
+- **DeveloperAgent** (`filesystem_write`, `shell`): full access except `question: deny`
+
+This is enforced in `runtime/opencode.py` via `_build_permissions(capabilities)` and injected through the subprocess environment. Permissions are cached by capabilities set.
 
 ## Implementation Notes
 

@@ -43,19 +43,19 @@ Engines are initialized in dependency order. If an engine fails to initialize, t
 
 ### Entry Point Contract
 
-The CLI (`aios`) maps commands to Kernel methods:
+The CLI (`aios`) uses a Command Registry pattern (v0.6.1) instead of hardcoded if/elif chains. Commands are registered in `cli/commands.py` as `COMMANDS = { ... }` with name, description, aliases, and execute callable. The thin dispatcher in `cli/main.py` resolves command names or aliases and delegates execution.
 
-| Command | Kernel Method | Event Emitted |
-|---------|--------------|---------------|
-| `aios` (no args) | `start()` | `session.start` |
-| `aios doctor` | `start()` + diagnostics | `session.start` |
-| `aios memory <cmd>` | `start()` + memory operations | `session.start`, `memory.*` |
-| `aios help` | (prints help) | (none) |
-| `aios exit` | `shutdown()` (hidden alias) | `session.shutdown` |
-| `aios start` | `start()` (hidden alias) | `session.start` |
-| `aios status` | `start()` (hidden alias) | (query, no event) |
+| Command | Description | Event Emitted |
+|---------|-------------|---------------|
+| `aios` (no args) | Show dashboard | `session.start` |
+| `aios doctor` | Run diagnostics | `session.start` |
+| `aios plan <intent>` | Decompose goal into subtasks | `session.start` |
+| `aios memory <cmd>` | Manage project knowledge | `session.start`, `memory.*` |
+| `aios help` | Show help | (none) |
+| `aios exit` | Shut down gracefully (hidden) | `session.shutdown` |
+| `aios dashboard` | Show dashboard (primary, aliases: start, status) | `session.start` |
 
-Note: `aios` without arguments is the primary entry point. `start`, `status`, and `exit` remain as hidden aliases. Workflow commands (`/feature`, `/fix`, etc.) are deferred to the Workflow Engine (v0.8).
+Note: `aios` without arguments is the primary entry point. `start`, `status`, and `exit` remain as hidden aliases. `__complete` is a hidden command for shell autocomplete. All commands derive from the single `COMMANDS` registry.
 
 ### Subsystem Contract
 
@@ -129,13 +129,14 @@ Configuration is documented in [internals/configuration.md](../internals/configu
 
 ## Implementation Notes
 
-- [ ] Implement `core/kernel.py` — Engine protocol, registration, lifecycle management
-- [ ] Implement `core/cli.py` — Argument parsing, command dispatch to Kernel methods
-- [ ] Implement `core/__init__.py` — Package initialization
-- [ ] Implement `__main__.py` — `python -m aiosdeck` entry point
-- [ ] Kernel must validate that ai-jail and OpenCode are installed before proceeding
-- [ ] `aios status` must render the dashboard shown in the README
-- [ ] `aios status --json` must output machine-readable status for scripting
-- [ ] Config merge order must be verified with tests: defaults < manifest < user config < env
+- [x] Implement `core/kernel.py` — Engine protocol, registration, lifecycle management
+- [x] Implement `cli/main.py` — Thin dispatcher consuming Command Registry (v0.6.1)
+- [x] Implement `cli/commands.py` — Command dataclass + COMMANDS registry (v0.6.1)
+- [x] Implement `core/__init__.py` — Package initialization
+- [x] Implement `__main__.py` — `python -m aiosdeck` entry point
+- [x] Kernel must validate that ai-jail and OpenCode are installed before proceeding
+- [x] `aios` dashboard renders the status overview shown in the README
+- [x] `aios doctor --json` must output machine-readable status for scripting
+- [x] Config merge order must be verified with tests: defaults < manifest < user config < env
 - [ ] Graceful degradation tests: start with missing ai-jail, missing Docker, etc.
 - [ ] Event: emit `session.start` on initialization, `session.ready` when all engines are up, `session.shutdown` on exit

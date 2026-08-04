@@ -1,7 +1,7 @@
 # Planner Agent
 
-**Status**: Accepted
-**Date**: 2026-08-02
+**Status**: Accepted (Implemented in v0.6)
+**Date**: 2026-08-04
 **Introduced**: v0.6
 
 ## Context
@@ -143,7 +143,7 @@ Out: AgentResult with list of Tasks ready for Scheduler
 
 - **Latency**: Planning adds a stage before any code is written.
 - **Accuracy**: Planner output depends on context quality. Poor context → poor plan.
-- **No learning**: v0.4 Planner does not learn from past plans. Memory Engine integration in future.
+- **No learning**: v0.6 Planner does not learn from past plans. Memory Engine integration in future.
 
 ### Neutral
 
@@ -152,11 +152,12 @@ Out: AgentResult with list of Tasks ready for Scheduler
 
 ## Implementation Notes
 
-- [ ] Implement `agents/planner.py` — PlannerAgent class
-- [ ] Planner output must be valid JSON parsable by the Scheduler
-- [ ] Subtask dependencies must form a DAG (no cycles)
-- [ ] Planner must emit one `task.created` event per subtask
-- [ ] Planner must not modify any files
-- [ ] Test: simple goal → structured subtask list with dependencies
-- [ ] Test: empty project → Planner still produces valid output
-- [ ] Test: Planner cannot write files (capability check)
+- [x] Implement `agents/planner.py` — PlannerAgent class
+- [x] Planner output parsed as JSON via `_parse_plan()`
+- [x] Subtask dependencies must form a DAG (no cycles)
+- [x] Planner delegates to AgentExecutor for timeout/retry guardrails
+- [x] Planner cannot modify files — enforced by capabilities + OPENCODE_PERMISSION
+- [x] Test: simple goal → structured subtask list with dependencies
+- [x] Test: empty input → Planner produces valid output
+- [x] Test: Planner cannot write files (capability check)
+- [x] Test: Planner parses JSON from markdown and text wrappers
