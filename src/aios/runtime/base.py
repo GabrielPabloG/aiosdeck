@@ -19,6 +19,13 @@ class RuntimeAdapter(Protocol):
         """The resolved runtime command (with sandbox)."""
         ...
 
-    def execute(self, prompt: str, skills: list[str]) -> str:
-        """Execute a prompt with the runtime. Returns raw output."""
+    def execute(self, prompt: str, skills: list[str], capabilities: list[str] | None = None) -> str:
+        """Execute a prompt with the runtime. Returns raw output.
+        
+        Args:
+            prompt: The prompt to send to the runtime.
+            skills: Skill names to load for this execution.
+            capabilities: Agent capabilities (e.g. filesystem_read, shell).
+                          Used to lock down tool permissions in headless mode.
+        """
         ...

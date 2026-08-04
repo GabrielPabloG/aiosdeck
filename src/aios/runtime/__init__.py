@@ -30,6 +30,6 @@ class RuntimeEngine:
     def has_sandbox(self) -> bool:
         return self.adapter.has_sandbox
 
-    def execute(self, prompt: str, skills: list[str]) -> str:
+    def execute(self, prompt: str, skills: list[str], capabilities: list[str] | None = None) -> str:
         """Execute a prompt via the runtime adapter."""
-        return self.adapter.execute(prompt, skills)
+        return self.adapter.execute(prompt, skills, capabilities)

@@ -35,7 +35,9 @@ class PlannerAgent(BaseAgent):
     def execute(self, task: Task, context) -> AgentResult:
         prompt = self._build_planning_prompt(task, context)
         request = ExecutionRequest(
-            invoke=lambda: self._runtime.execute(prompt, self.required_skills),
+            invoke=lambda: self._runtime.execute(
+                prompt, self.required_skills, self.required_capabilities
+            ),
             timeout=120.0,
         )
         outcome = self._executor.execute(request)

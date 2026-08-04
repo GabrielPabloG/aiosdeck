@@ -29,7 +29,9 @@ class DeveloperAgent(BaseAgent):
     def execute(self, task: Task, context) -> AgentResult:
         prompt = self._builder.build(task, context)
         request = ExecutionRequest(
-            invoke=lambda: self._runtime.execute(prompt, self.required_skills),
+            invoke=lambda: self._runtime.execute(
+                prompt, self.required_skills, self.required_capabilities
+            ),
         )
         outcome = self._executor.execute(request)
 

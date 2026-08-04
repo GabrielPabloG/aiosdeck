@@ -1,6 +1,8 @@
 """OpenCode runtime adapter — always invoked through ai-jail."""
 
+import json
 import logging
+import os
 import shutil
 import subprocess
 
@@ -15,6 +17,7 @@ class OpenCodeAdapter:
         self._opencode_installed = False
         self._ai_jail_installed = False
         self._resolved_command = "opencode"
+        self._permission_cache: dict[tuple[str, ...], str] = {}
 
     def initialize(self) -> None:
         self._opencode_installed = shutil.which("opencode") is not None
@@ -46,12 +49,16 @@ class OpenCodeAdapter:
             self._resolved_command = "opencode"
             logger.warning("ai-jail not found. Running OpenCode without sandbox.")
 
-    def execute(self, prompt: str, skills: list[str]) -> str:
+    def execute(self, prompt: str, skills: list[str], capabilities: list[str] | None = None) -> str:
         args = self._resolved_command.split()
         args.extend(["run", prompt, "--auto"])
 
         if not self._opencode_installed:
             raise RuntimeError(f"Runtime not available: {self._resolved_command}")
+
+        env = os.environ.copy()
+        permissions_json = self._build_permissions(capabilities or [])
+        env["OPENCODE_PERMISSION"] = permissions_json
 
         try:
             result = subprocess.run(
@@ -60,6 +67,7 @@ class OpenCodeAdapter:
                 text=True,
                 timeout=120,
                 check=False,
+                env=env,
             )
         except subprocess.TimeoutExpired as exc:
             raise RuntimeError("Runtime execution timed out after 120s") from exc
@@ -71,3 +79,20 @@ class OpenCodeAdapter:
             raise RuntimeError(f"Runtime exited with code {result.returncode}: {stderr}")
 
         return result.stdout.strip()
+
+    def _build_permissions(self, capabilities: list[str]) -> str:
+        key = tuple(sorted(capabilities))
+        if key in self._permission_cache:
+            return self._permission_cache[key]
+
+        permissions: dict[str, str] = {
+            "question": "deny",
+        }
+
+        if "filesystem_write" not in capabilities and "shell" not in capabilities:
+            permissions["edit"] = "deny"
+            permissions["bash"] = "deny"
+
+        json_str = json.dumps(permissions)
+        self._permission_cache[key] = json_str
+        return json_str
