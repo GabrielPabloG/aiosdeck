@@ -65,12 +65,12 @@ class OpenCodeAdapter:
                 args,
                 capture_output=True,
                 text=True,
-                timeout=120,
+                timeout=600,
                 check=False,
                 env=env,
             )
         except subprocess.TimeoutExpired as exc:
-            raise RuntimeError("Runtime execution timed out after 120s") from exc
+            raise RuntimeError("Runtime execution timed out after 600s") from exc
         except FileNotFoundError as exc:
             raise RuntimeError(f"Runtime command not found: {self._resolved_command}") from exc
 
