@@ -5,6 +5,7 @@ import logging
 import os
 import shutil
 import subprocess
+import sys
 
 logger = logging.getLogger("aios.runtime.opencode")
 
@@ -60,15 +61,22 @@ class OpenCodeAdapter:
         permissions_json = self._build_permissions(capabilities or [])
         env["OPENCODE_PERMISSION"] = permissions_json
 
+        caps = capabilities or []
+
         try:
-            result = subprocess.run(
-                args,
-                capture_output=True,
-                text=True,
-                timeout=600,
-                check=False,
-                env=env,
-            )
+            kwargs: dict = {
+                "text": True,
+                "timeout": 600,
+                "check": False,
+                "env": env,
+            }
+            if "question" in caps:
+                kwargs["stdin"] = sys.stdin
+                kwargs["stdout"] = sys.stdout
+            else:
+                kwargs["capture_output"] = True
+
+            result = subprocess.run(args, **kwargs)
         except subprocess.TimeoutExpired as exc:
             raise RuntimeError("Runtime execution timed out after 600s") from exc
         except FileNotFoundError as exc:
@@ -86,7 +94,7 @@ class OpenCodeAdapter:
             return self._permission_cache[key]
 
         permissions: dict[str, str] = {
-            "question": "deny",
+            "question": "allow" if "question" in capabilities else "deny",
         }
 
         if "filesystem_write" not in capabilities and "shell" not in capabilities:
