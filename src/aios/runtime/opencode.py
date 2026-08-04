@@ -67,7 +67,6 @@ class OpenCodeAdapter:
             kwargs: dict = {
                 "text": True,
                 "timeout": 600,
-                "check": False,
                 "env": env,
             }
             if "question" in caps:
@@ -76,7 +75,7 @@ class OpenCodeAdapter:
             else:
                 kwargs["capture_output"] = True
 
-            result = subprocess.run(args, **kwargs)
+            result = subprocess.run(args, check=False, **kwargs)
         except subprocess.TimeoutExpired as exc:
             raise RuntimeError("Runtime execution timed out after 600s") from exc
         except FileNotFoundError as exc:
