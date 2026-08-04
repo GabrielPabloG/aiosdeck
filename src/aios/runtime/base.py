@@ -21,7 +21,7 @@ class RuntimeAdapter(Protocol):
 
     def execute(self, prompt: str, skills: list[str], capabilities: list[str] | None = None) -> str:
         """Execute a prompt with the runtime. Returns raw output.
-        
+
         Args:
             prompt: The prompt to send to the runtime.
             skills: Skill names to load for this execution.
