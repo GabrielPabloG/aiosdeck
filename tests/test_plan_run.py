@@ -73,10 +73,22 @@ class TestPlanRunUnit:
         developer = MagicMock()
 
         subtasks = [
-            {"id": "1", "description": "Add login", "type": "code", "priority": "high",
-             "dependencies": [], "estimated_complexity": "medium"},
-            {"id": "2", "description": "Add tests", "type": "test", "priority": "high",
-             "dependencies": ["1"], "estimated_complexity": "low"},
+            {
+                "id": "1",
+                "description": "Add login",
+                "type": "code",
+                "priority": "high",
+                "dependencies": [],
+                "estimated_complexity": "medium",
+            },
+            {
+                "id": "2",
+                "description": "Add tests",
+                "type": "test",
+                "priority": "high",
+                "dependencies": ["1"],
+                "estimated_complexity": "low",
+            },
         ]
         planner.execute.return_value = _make_plan_result(subtasks)
         developer.execute.side_effect = [
@@ -106,8 +118,14 @@ class TestPlanRunUnit:
         developer = MagicMock()
 
         subtasks = [
-            {"id": "1", "description": "Task A", "type": "code", "priority": "high",
-             "dependencies": [], "estimated_complexity": "low"},
+            {
+                "id": "1",
+                "description": "Task A",
+                "type": "code",
+                "priority": "high",
+                "dependencies": [],
+                "estimated_complexity": "low",
+            },
         ]
         planner.execute.return_value = _make_plan_result(subtasks)
         developer.execute.return_value = _make_exec_success("Task A")
@@ -132,8 +150,14 @@ class TestPlanRunUnit:
         developer = MagicMock()
 
         subtasks = [
-            {"id": "1", "description": "Failing task", "type": "code", "priority": "high",
-             "dependencies": [], "estimated_complexity": "low"},
+            {
+                "id": "1",
+                "description": "Failing task",
+                "type": "code",
+                "priority": "high",
+                "dependencies": [],
+                "estimated_complexity": "low",
+            },
         ]
         planner.execute.return_value = _make_plan_result(subtasks)
         developer.execute.return_value = _make_exec_failure("Failing task")
@@ -158,10 +182,22 @@ class TestPlanRunUnit:
         developer = MagicMock()
 
         subtasks = [
-            {"id": "1", "description": "First (fails)", "type": "code", "priority": "high",
-             "dependencies": [], "estimated_complexity": "low"},
-            {"id": "2", "description": "Second (never runs)", "type": "test", "priority": "high",
-             "dependencies": ["1"], "estimated_complexity": "low"},
+            {
+                "id": "1",
+                "description": "First (fails)",
+                "type": "code",
+                "priority": "high",
+                "dependencies": [],
+                "estimated_complexity": "low",
+            },
+            {
+                "id": "2",
+                "description": "Second (never runs)",
+                "type": "test",
+                "priority": "high",
+                "dependencies": ["1"],
+                "estimated_complexity": "low",
+            },
         ]
         planner.execute.return_value = _make_plan_result(subtasks)
         developer.execute.return_value = _make_exec_failure("First (fails)")
@@ -182,10 +218,22 @@ class TestPlanRunUnit:
         developer = MagicMock()
 
         subtasks = [
-            {"id": "1", "description": "Task 1", "type": "code", "priority": "high",
-             "dependencies": [], "estimated_complexity": "low"},
-            {"id": "2", "description": "Task 2", "type": "code", "priority": "medium",
-             "dependencies": ["1"], "estimated_complexity": "low"},
+            {
+                "id": "1",
+                "description": "Task 1",
+                "type": "code",
+                "priority": "high",
+                "dependencies": [],
+                "estimated_complexity": "low",
+            },
+            {
+                "id": "2",
+                "description": "Task 2",
+                "type": "code",
+                "priority": "medium",
+                "dependencies": ["1"],
+                "estimated_complexity": "low",
+            },
         ]
         planner.execute.return_value = _make_plan_result(subtasks)
         developer.execute.side_effect = [
@@ -237,8 +285,14 @@ class TestPlanRunUnit:
         developer = MagicMock()
 
         subtasks = [
-            {"id": "1", "description": "Do something", "type": "code", "priority": "high",
-             "dependencies": [], "estimated_complexity": "low"},
+            {
+                "id": "1",
+                "description": "Do something",
+                "type": "code",
+                "priority": "high",
+                "dependencies": [],
+                "estimated_complexity": "low",
+            },
         ]
         planner.execute.return_value = _make_plan_result(subtasks)
         developer.execute.return_value = _make_exec_success("Do something")
