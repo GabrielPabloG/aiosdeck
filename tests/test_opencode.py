@@ -1,9 +1,9 @@
 """Tests for OpenCodeAdapter — permissions, subprocess interaction."""
 
 import json
-import sys
-from unittest.mock import ANY, patch
+from unittest.mock import patch
 
+from aios.agents.developer import DeveloperAgent
 from aios.runtime.opencode import OpenCodeAdapter
 
 
@@ -67,6 +67,4 @@ def test_execute_with_question_passes_stdin():
 
 
 def test_developer_agent_capabilities_include_question():
-    from aios.agents.developer import DeveloperAgent
-
     assert "question" in DeveloperAgent.required_capabilities
