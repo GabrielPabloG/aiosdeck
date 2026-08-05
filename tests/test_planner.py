@@ -1,10 +1,12 @@
 """Tests for PlannerAgent — planning prompt, JSON parsing, execution."""
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from aios.agents.planner import PlannerAgent
 from aios.context.packet import ContextPacket, GitInfo, ProjectInfo, ToolsInfo
 from aios.core.task import Task
+
+_RETRY_CALLS = 2
 
 
 def _make_context(language: str = "python") -> ContextPacket:
@@ -102,3 +104,38 @@ def test_planner_passes_ask_user_capability_to_runtime():
     result = agent.execute(Task(description="do something"), _make_context())
     assert result.success is True
     assert "ask_user" in runtime.execute.call_args[0][2]
+
+
+def test_planner_self_healing_json():
+    runtime = MagicMock()
+    runtime.execute.side_effect = [
+        "Here is the plan: {'goal':'test','subtasks':[broken],'risks':[],'unknowns':[]}",
+        '{"goal":"test","subtasks":[{"id":"1","type":"code","description":"build","priority":"high","dependencies":[],"estimated_complexity":"low"}],"risks":[],"unknowns":[]}',
+    ]
+    agent = PlannerAgent(runtime)
+    result = agent.execute(Task(description="do something"), _make_context())
+
+    assert result.success is True
+    assert "subtasks" in result.output
+    assert runtime.execute.call_count == _RETRY_CALLS
+    second_prompt = runtime.execute.call_args_list[1][0][0]
+    assert "invalid" in second_prompt.lower() or "json" in second_prompt.lower()
+
+
+def test_planner_tool_call_loop():
+    runtime = MagicMock()
+    runtime.execute.side_effect = [
+        "I need to clarify. Let me ask the user: ask_user('Which platform?')",
+        '{"goal":"test","subtasks":[{"id":"1","type":"code","description":"build","priority":"high","dependencies":[],"estimated_complexity":"low"}],"risks":[],"unknowns":[]}',
+    ]
+    agent = PlannerAgent(runtime)
+
+    with patch("aios.agents.planner.ask_user", return_value="terminal") as mock_ask_user:
+        result = agent.execute(Task(description="do something"), _make_context())
+
+    assert result.success is True
+    assert "subtasks" in result.output
+    assert mock_ask_user.called is True
+    assert runtime.execute.call_count == _RETRY_CALLS
+    second_prompt = runtime.execute.call_args_list[1][0][0]
+    assert "terminal" in second_prompt

@@ -3,24 +3,36 @@
 Read-only agent. Receives a high-level goal, builds a planning prompt
 with project context, delegates to AgentExecutor, and parses the LLM
 output as a structured JSON plan.
+
+The execution is a reasoning loop (max 3 iterations) with self-healing:
+- If the LLM requests the `ask_user` tool, the tool is executed and its
+  result is appended to the conversation history before retrying.
+- If the LLM output is not valid JSON, the parse error is appended to
+  the history and the LLM is asked to retry.
 """
 
 import json
 import logging
+import re
 
 from aios.agents.base import BaseAgent
 from aios.agents.executor import AgentExecutor
 from aios.agents.models import AgentResult, ExecutionRequest
 from aios.core.task import Task
 from aios.prompts import PromptBuilder
+from aios.tools import ask_user
 
 logger = logging.getLogger("aios.agent.planner")
+
+
+_TOOL_CALL_RE = re.compile(r"ask_user\(\s*(['\"])(.*?)\1\s*\)")
 
 
 class PlannerAgent(BaseAgent):
     name = "planner"
     required_capabilities = ["filesystem_read", "ask_user"]
     required_skills = ["project-dna", "coding-style"]
+    max_iterations = 3
 
     def __init__(
         self,
@@ -33,24 +45,66 @@ class PlannerAgent(BaseAgent):
         self._executor = executor or AgentExecutor()
 
     def execute(self, task: Task, context) -> AgentResult:
-        prompt = self._build_planning_prompt(task, context)
+        transcript = [self._build_planning_prompt(task, context)]
+        last_error = "Model failed to produce a valid plan"
+        outcome = None
+
+        for _ in range(self.max_iterations):
+            outcome = self._invoke(self._build_transcript_prompt(transcript))
+
+            if outcome.error:
+                logger.error("PlannerAgent execution failed: %s", outcome.error)
+                return AgentResult(
+                    success=False,
+                    errors=[str(outcome.error)],
+                    duration_ms=outcome.duration_ms,
+                )
+
+            output = outcome.output
+
+            tool_result = self._exec_tool_call(output)
+            if tool_result is not None:
+                transcript.append(f"[Assistant]: {output}")
+                transcript.append(f"[Tool ask_user]: {tool_result}")
+                continue
+
+            result = self._parse_plan(output, outcome.duration_ms)
+            if result.success:
+                return result
+
+            last_error = result.errors[0]
+            transcript.append(f"[Assistant]: {output}")
+            transcript.append(
+                f"[System]: Error: Invalid format. {last_error} Please return strictly valid JSON."
+            )
+
+        duration_ms = outcome.duration_ms if outcome is not None else 0.0
+        logger.error("PlannerAgent exceeded max iterations: %s", last_error)
+        return AgentResult(
+            success=False,
+            errors=[f"Exceeded max iterations: {last_error}"],
+            duration_ms=duration_ms,
+        )
+
+    def _invoke(self, prompt: str) -> ExecutionRequest:
         request = ExecutionRequest(
-            invoke=lambda: self._runtime.execute(
-                prompt, self.required_skills, self.required_capabilities
+            invoke=lambda p=prompt: self._runtime.execute(
+                p, self.required_skills, self.required_capabilities
             ),
             timeout=120.0,
         )
-        outcome = self._executor.execute(request)
+        return self._executor.execute(request)
 
-        if outcome.error:
-            logger.error("PlannerAgent execution failed: %s", outcome.error)
-            return AgentResult(
-                success=False,
-                errors=[str(outcome.error)],
-                duration_ms=outcome.duration_ms,
-            )
+    @staticmethod
+    def _build_transcript_prompt(transcript: list[str]) -> str:
+        return "\n\n".join(transcript)
 
-        return self._parse_plan(outcome.output, outcome.duration_ms)
+    @staticmethod
+    def _exec_tool_call(output: str) -> str | None:
+        match = _TOOL_CALL_RE.search(output)
+        if not match:
+            return None
+        return ask_user(match.group(2))
 
     def _build_planning_prompt(self, task: Task, context) -> str:
         plan_prompt = (
