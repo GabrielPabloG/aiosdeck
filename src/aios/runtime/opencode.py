@@ -5,7 +5,6 @@ import logging
 import os
 import shutil
 import subprocess
-import sys
 
 logger = logging.getLogger("aios.runtime.opencode")
 
@@ -61,19 +60,13 @@ class OpenCodeAdapter:
         permissions_json = self._build_permissions(capabilities or [])
         env["OPENCODE_PERMISSION"] = permissions_json
 
-        caps = capabilities or []
-
         try:
             kwargs: dict = {
                 "text": True,
                 "timeout": 600,
                 "env": env,
+                "capture_output": True,
             }
-            if "question" in caps:
-                kwargs["stdin"] = sys.stdin
-                kwargs["stdout"] = sys.stdout
-            else:
-                kwargs["capture_output"] = True
 
             result = subprocess.run(args, check=False, **kwargs)
         except subprocess.TimeoutExpired as exc:
@@ -93,7 +86,7 @@ class OpenCodeAdapter:
             return self._permission_cache[key]
 
         permissions: dict[str, str] = {
-            "question": "allow" if "question" in capabilities else "deny",
+            "question": "deny",
         }
 
         if "filesystem_write" not in capabilities and "shell" not in capabilities:
