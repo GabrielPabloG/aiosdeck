@@ -74,7 +74,7 @@ The architecture follows a **hub-and-spoke** model: the Kernel is the hub, dispa
 | **CLI** | Entry point. Thin dispatcher via Command Registry. | Producer | v0.1 |
 | **Kernel** | Bootstrap, lifecycle, dispatches events to engines. | Hub | v0.1 |
 | **Event Dispatcher** | Routes events between components. Pub/sub with topics. | Core infrastructure | v0.1 |
-| **Scheduler** | Manages task queue, priority, concurrency, agent dispatch. | Consumer + Producer | v0.8 |
+| **Scheduler** | Manages the kanban board: boards/cards/subtasks, column flow (Backlog→Done), TDD gate enforcement, sprint progress rendering. Persistent via SQLite. | Consumer + Producer | v0.8 (kanban engine) |
 | **Memory Engine** | Persistent storage of conventions, decisions, patterns, session history. | Consumer + Producer | v0.3 |
 | **Context Engine** | Detects project characteristics, assembles enriched context for agents. | Consumer + Producer | v0.1 |
 | **Security Manager** | Enforces zero-trust policies, manages capabilities, filters prompts, logs audits. | Interceptor | v0.1 (skeleton), v0.6 (full) |
@@ -148,10 +148,11 @@ aiosdeck/
 │   ├── engine.py                # Store, retrieve, index
 │   └── store.py                 # SQLite backend
 │
-├── scheduler/                   # Task Scheduler
-│   ├── __init__.py
-│   ├── engine.py                # Queue management, dispatch
-│   └── queue.py                 # Priority queue, retry logic
+├── scheduler/                   # Kanban Engine (v0.8)
+│   ├── __init__.py              # Public API exports
+│   ├── engine.py                # KanbanEngine (Engine protocol facade)
+│   ├── models.py                # KanbanBoard, KanbanCard, KanbanSubtask, KanbanError, COLUMNS
+│   └── store.py                 # SQLite backend (kanban_ tables in .aios/memory.db)
 │
 ├── security/                    # Security Manager
 │   ├── __init__.py
@@ -287,8 +288,8 @@ Each phase in the roadmap maps to specific code modules. Documentation drives im
 | v0.5 | `agents/reviewer.md` | `agents/reviewer.py` |
 | v0.6 | `agents/planner.md` + Headless SI | `agents/planner.py`, `runtime/opencode.py` (headless hardening) |
 | v0.7 | `phases/phase-05-workflows.md` + agent docs | `workflows/`, `agents/git.py` |
-| v0.8 | `agents/*.md` (remaining) + `internals/scheduler.md` | `scheduler/`, remaining agents |
-| v0.9 | `internals/plugin-system.md` | `plugins/` |
+| v0.8 | `internals/scheduler.md` (kanban) + `agents/planner.md` | `scheduler/` (kanban engine), kanban integration in `plan --run` |
+| v0.9 | `agents/*.md` (remaining) + `phases/phase-05-workflows.md` | `scheduler/` (queue + concurrency), `workflows/`, `plugins/` |
 | v1.0 | `phases/phase-06-integrations.md` | `integrations/` adapters |
 
 ## Consequences

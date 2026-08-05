@@ -1,31 +1,135 @@
-# Scheduler
+# Scheduler — Kanban Engine
 
-**Status**: Proposed
-**Date**: 2026-08-02
+**Status**: In Progress (v0.8.0)
+**Date**: 2026-08-02 (updated 2026-08-05)
 
 ## Context
 
-As AiosDeck grows beyond a single agent, it needs a component that manages which agent runs when, in what order, and with what priority. The Scheduler receives tasks, queues them, and dispatches them to the correct agent.
+The Scheduler manages the lifecycle of development work: which cards exist, where
+they are in the flow, what must happen before a card is done. In v0.8 the Scheduler
+is implemented as a **persistent Kanban Engine** with Scrum columns — a durable,
+verifiable task board rather than a transient in-memory queue.
 
-The Scheduler is introduced in v0.8 when the system supports multiple concurrent agents. In earlier versions (v0.1–v0.7), task dispatch is a simple sequential call handled by the Kernel.
+This decision follows the project philosophy — *every abstraction must solve an
+existing problem, never an anticipated one*. AiosDeck runs agents sequentially
+today, so a concurrent dispatch queue would solve no existing problem. The problem
+that existed was persistence and verification of work, solved by the Kanban Engine.
+See [ADR-0006](../decisions/ADR-0006-kanban-scrum-scheduler.md).
 
 ## Decision
 
 ### Architecture
 
 ```
-Workflow Engine  ──► task.created ──► Scheduler
-                                          │
-                                          ├── Priority Queue
-                                          │     ├── high
-                                          │     ├── medium
-                                          │     └── low
-                                          │
-                                          ├── Dispatch Logic
-                                          │     └── Maps task.type → agent.name
-                                          │
-                                          └── Concurrency Manager
-                                                └── Limits concurrent agent count
+Kernel ──► KanbanEngine (scheduler)
+                │
+                ├── SQLiteStore (kanban_ tables in .aios/memory.db)
+                │     ├── kanban_boards     (id, name, status, project_id)
+                │     ├── kanban_cards      (id, board_id, title, column, tdd_gate)
+                │     └── kanban_subtasks   (id, card_id, description, done)
+                │
+                ├── Column flow validation
+                ├── TDD gate enforcement
+                └── Terminal rendering (ProgressSpinner, render_kanban)
+```
+
+### Domain Model
+
+| Concept | Description |
+|---------|-------------|
+| `KanbanBoard` | A sprint. Has a name and a status (`active`). Scoped to a project. |
+| `KanbanCard` | A unit of work on the board. Always in exactly one column. |
+| `KanbanSubtask` | A sub-item of a card (e.g., the failing-test step of the TDD cycle). |
+| `KanbanError` | Domain error for flow violations. Hides SQLite from callers. |
+
+### Columns
+
+```
+Backlog → Todo → InProgress → Review → Done
+```
+
+Rules enforced by `move_card(card_id, column)`:
+
+- Forward moves advance exactly **one** column.
+- Backward moves (rework) are allowed at any depth.
+- Skipping forward (e.g., `Backlog → InProgress`) raises `KanbanError`.
+- Unknown columns raise `KanbanError`.
+
+### TDD Gate
+
+The TDD gate is the structural enforcement of the Red → Green cycle:
+
+1. A card enters `InProgress` with a subtask `failing test (RED)` — the Red step.
+2. Execution runs against the card while it is `InProgress`.
+3. On success (Green achieved), the flow:
+   - completes the RED subtask,
+   - moves the card to `Review`,
+   - calls `pass_tdd_gate(card_id)`,
+   - moves the card to `Done`.
+
+A card **cannot** be moved to `Done` while `tdd_gate` is `False`. The store rejects
+the transition with a `KanbanError` regardless of how the caller reaches it.
+
+### API
+
+```python
+engine = KanbanEngine(project_path=project, db_path=...)  # defaults to .aios/memory.db
+engine.initialize()
+
+board = engine.create_board("Sprint 1")
+card = engine.create_card(board_id=board.id, title="Add OAuth2 login")
+engine.move_card(card.id, "Todo")
+subtask = engine.create_subtask(card_id=card.id, description="failing test (RED)")
+engine.move_card(card.id, "InProgress")
+# ... execute ...
+engine.complete_subtask(subtask.id)
+engine.move_card(card.id, "Review")
+engine.pass_tdd_gate(card.id)
+engine.move_card(card.id, "Done")
+
+engine.list_cards(board.id)   # board state for rendering
+engine.list_boards()          # all sprints for this project
+engine.shutdown()
+```
+
+### Planner/Executor Integration
+
+`aios plan <intent> --run` drives the Kanban Engine:
+
+1. A sprint board is created from the intent.
+2. Each planned subtask becomes a card in `Backlog`.
+3. Cards move `Todo → InProgress` with a RED subtask.
+4. On success, cards complete the TDD cycle and land in `Done`.
+5. On failure, the loop stops (fail-fast) and the board is rendered, showing
+   exactly where the work stalled.
+
+The board render is a non-blocking summary written to stderr:
+
+```
+  📋 Sprint Board
+  Backlog (0) | Todo (0) | InProgress (1) | Review (0) | Done (2)
+```
+
+### Event Contract
+
+The Kanban Engine is a pure persistence/validation layer and does not yet publish
+domain events. Event bus integration (`kanban.card_moved`, `kanban.tdd_gate_passed`)
+is a v0.9 concern.
+
+## Next Steps (v0.9+)
+
+The original Scheduler spec — a concurrent priority queue with agent dispatch —
+remains valid as future work, building **on top of** the Kanban Engine rather than
+replacing it.
+
+### Priority Queue
+
+```
+Workflow Engine ──► task.created ──► Scheduler
+                                        │
+                                        ├── Priority Queue (high / medium / low)
+                                        ├── Dispatch Logic (task.type → agent.name)
+                                        └── Concurrency Manager
 ```
 
 ### Task Lifecycle
@@ -34,155 +138,52 @@ Workflow Engine  ──► task.created ──► Scheduler
 Created ──► Queued ──► Dispatched ──► Running ──► Completed
                 │                       │
                 │                       ├──► Failed ──► Retrying (max 3)
-                │                       │
                 └──► Cancelled          └──► Timed out
 ```
 
-### Task Schema
+### Planned Behaviors
 
-```python
-@dataclass
-class Task:
-    id: str                           # UUID
-    type: str                         # code, review, test, document, git, research
-    priority: TaskPriority            # high, medium, low
-    workflow_id: str                  # parent workflow (nullable)
-    agent_requirement: str            # agent name or "any"
-    payload: dict                     # task-specific data
-    status: TaskStatus                # created, queued, dispatched, running, completed, failed
-    retries: int = 0
-    max_retries: int = 3
-    timeout: int = 300                # seconds
-    created_at: datetime
-    assigned_agent: str | None = None
-    completed_at: datetime | None = None
-```
-
-### Priority Queue
-
-Tasks are ordered by:
-1. Priority (high > medium > low)
-2. Creation time (FIFO within same priority)
-
-```python
-class PriorityQueue:
-    def enqueue(self, task: Task) -> None: ...
-    def dequeue(self) -> Task | None: ...
-    def requeue(self, task: Task) -> None: ...  # retry
-    def cancel(self, task_id: str) -> None: ...
-    def peek(self) -> Task | None: ...
-    def size(self) -> int: ...
-```
-
-### Dispatch
-
-The Scheduler maps task types to agents:
-
-```python
-AGENT_MAP = {
-    "code": "coder",
-    "review": "reviewer",
-    "test": "tester",
-    "document": "documentation",
-    "git": "git",
-    "research": "researcher",
-}
-```
-
-When a task is dequeued, the Scheduler:
-1. Finds the correct agent by type
-2. Checks if the agent is available (not busy)
-3. Assigns the task to the agent
-4. Emits `task.dispatched`
-
-### Concurrency
-
-The Scheduler supports running multiple agents concurrently (v0.8+):
-
-```python
-class Scheduler:
-    max_concurrent_agents: int = 3
-
-    async def _dispatch_loop(self) -> None:
-        while self.active_agents < self.max_concurrent_agents:
-            task = self.queue.dequeue()
-            if task is None:
-                break
-            agent = self._resolve_agent(task)
-            if agent and await agent.is_available():
-                self.active_agents += 1
-                asyncio.create_task(self._run_task(task, agent))
-```
-
-### Retry Logic
-
-Failed tasks are retried up to 3 times with exponential backoff:
-
-```
-Attempt 1 → fail → wait 2s
-Attempt 2 → fail → wait 4s
-Attempt 3 → fail → wait 8s
-Attempt 4 (final) → fail → emit task.failed (permanent)
-```
-
-### Event Contract
-
-| Event | Direction | Description |
-|-------|-----------|-------------|
-| `task.created` | Consumed | New task enters the queue |
-| `task.dispatched` | Emitted | Task assigned to an agent |
-| `agent.completed` | Consumed | Task succeeded |
-| `agent.errored` | Consumed | Task failed, may retry |
-| `task.completed` | Emitted | Task finished successfully |
-| `task.failed` | Emitted | Task failed permanently (max retries exhausted) |
-| `task.retrying` | Emitted | Task retry initiated |
-
-### Workflow Integration
-
-Workflows submit tasks to the Scheduler:
-
-```python
-# Workflow Engine
-await bus.publish("task.created", Task(
-    type="code",
-    priority=TaskPriority.HIGH,
-    workflow_id=workflow.id,
-    payload={"files": ["src/auth.py"], "description": "Implement OAuth2 login"},
-))
-```
-
-The Scheduler receives the task and manages its lifecycle. The Workflow Engine listens for `task.completed` and `task.failed` to advance or abort the workflow.
+- Concurrent agent execution (`max_concurrent_agents`, default 3)
+- Retry with exponential backoff (2^n seconds, max 3 retries)
+- Per-task timeout with cancellation
+- Observable queue (`queue.size()`, `queue.peek()`)
 
 ## Consequences
 
 ### Positive
 
-- **Scalability**: Supports multiple concurrent agents without additional infrastructure.
-- **Reliability**: Retry logic with backoff handles transient failures.
-- **Visibility**: Every task transition emits an event. Queue depth and agent load are observable.
-- **Decoupling**: Agents are unaware of scheduling. They receive tasks and produce results.
+- **Persistent**: The board survives restarts and doubles as the sprint audit trail.
+- **Verifiable**: The TDD gate makes "done" a structural property, not an assertion.
+- **Zero dependencies**: SQLite via the standard library.
+- **Single database**: Memory and Kanban share `.aios/memory.db`.
 
 ### Negative
 
-- **Complexity**: Queue management, retry, timeout, and concurrency add significant code.
-- **No persistence**: v0.8 Scheduler is in-memory. System restart loses the queue. Persistent queues are post-v1.0.
-- **Single process**: Concurrency is async-based. True parallel execution requires process-based agents.
+- **Single-writer**: SQLite serializes writes; fine while agents run sequentially.
+- **Strict flow**: Forward-by-one moves may not fit every process. Custom columns
+  are a future concern.
+- **No concurrency yet**: Parallel agent dispatch is deferred to v0.9+.
 
 ### Neutral
 
-- The Scheduler runs in the same process as the Kernel. Distributed scheduling is a post-v1.0 concern.
-- Task priorities are advisory. No preemption. A running task completes before a higher-priority task starts.
+- The store abstraction isolates the backend. Only `scheduler/store.py` knows SQLite.
+- Queueing and dispatch, when they arrive, will consume and extend this engine.
 
 ## Implementation Notes
 
-- [ ] Implement `scheduler/engine.py` — Scheduler class with dispatch loop and retry logic
-- [ ] Implement `scheduler/queue.py` — PriorityQueue with enqueue/dequeue/cancel/requeue
-- [ ] Task schema: UUID id, priority enum, status enum, retry count, timeout
-- [ ] Concurrency limit: configurable via config (default 3)
-- [ ] Retry: exponential backoff (2^n seconds), max 3 retries
-- [ ] Timeout: if a task runs longer than its timeout, cancel it and emit task.failed
-- [ ] Queue must be observable: expose `queue.size()` and `queue.peek()` for debugging
-- [ ] Test: enqueue 3 tasks → dequeue returns highest priority first
-- [ ] Test: task fails → retries 3 times → permanent failure after max retries
-- [ ] Test: task succeeds → emits task.completed → queue removes task
-- [ ] Test: concurrency limit respected (only N tasks running simultaneously)
+- [x] Implement `scheduler/engine.py` — `KanbanEngine` (name = "scheduler"), Engine protocol
+- [x] Implement `scheduler/store.py` — SQLite store with WAL, FKs, 3 kanban tables
+- [x] Implement `scheduler/models.py` — `KanbanBoard`, `KanbanCard`, `KanbanSubtask`, `KanbanError`, `COLUMNS`
+- [x] Column flow validation — forward by one, backward free, skip rejected
+- [x] TDD gate — `move_card(..., "Done")` blocked until `pass_tdd_gate()`
+- [x] Planner integration — `plan --run` creates sprint, cards, TDD cycle
+- [x] Terminal DX — `ProgressSpinner`, `log_step`, `render_kanban`
+- [x] Register in Kernel `INIT_ORDER` and CLI kernel factory
+- [x] Test: board create/retrieve, project isolation
+- [x] Test: card move through the full flow
+- [x] Test: TDD gate blocks `Done` without green tests
+- [x] Test: TDD gate allows `Done` after `pass_tdd_gate`
+- [x] Test: invalid column and skip transitions raise `KanbanError`
+- [x] Test: persistence across sessions and sessions reopened on same DB
+- [ ] Emit kanban domain events (`kanban.card_moved`, `kanban.tdd_gate_passed`) — v0.9
+- [ ] Priority queue with concurrent agent dispatch — v0.9
