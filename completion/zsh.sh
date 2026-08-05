@@ -1,4 +1,4 @@
-#compdef aios aiosdeck
+#compdef aios aiosdeck ad
 
 # AiosDeck zsh completion
 # Source this file: source completion/zsh.sh
@@ -15,4 +15,4 @@ _aios_completion() {
     _describe 'command' completions
 }
 
-compdef _aios_completion aios aiosdeck
+compdef _aios_completion aios aiosdeck ad
