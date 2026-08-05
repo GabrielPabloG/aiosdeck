@@ -21,6 +21,7 @@ from aios.integrations.projdesk import (
 )
 from aios.memory import MemoryEngine
 from aios.runtime import RuntimeEngine
+from aios.scheduler import KanbanEngine
 from aios.security import SecurityEngine
 
 VERSION_TEXT = f"AiosDeck v{__version__}"
@@ -147,6 +148,7 @@ def _create_kernel(project_path: Path) -> Kernel:
     kernel.register(ConfigEngine(project_path=project_path))
     kernel.register(ContextEngine(project_path=project_path))
     kernel.register(MemoryEngine(project_path=project_path))
+    kernel.register(KanbanEngine(project_path=project_path))
     runtime = RuntimeEngine()
     kernel.register(runtime)
     kernel.register(DeveloperAgent(runtime))
