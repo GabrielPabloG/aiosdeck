@@ -1,5 +1,6 @@
 """Dashboard rendering — separate from kernel logic."""
 
+import shutil
 import sys
 import threading
 import time
@@ -11,7 +12,17 @@ HEADER_BAR = "─" * 30
 
 SPINNER_FRAMES = ("⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏")
 
+CLEAR_LINE = "\033[K"
+
 KANBAN_COLUMNS = ("Backlog", "Todo", "InProgress", "Review", "Done")
+
+
+def _fit_message(message: str, width: int) -> str:
+    """Truncate a message so it fits on one line, leaving room for the spinner frame."""
+    available = max(1, width - 2)
+    if len(message) > available:
+        return message[: available - 1] + "…"
+    return message
 
 
 class ProgressSpinner:
@@ -41,14 +52,16 @@ class ProgressSpinner:
         if self._thread is not None:
             self._thread.join(timeout=0.3)
         if self._stream.isatty():
-            self._stream.write("\r" + " " * (len(self._message) + 2) + "\r")
+            self._stream.write("\r" + CLEAR_LINE)
             self._stream.flush()
 
     def _spin(self) -> None:
         index = 0
         while not self._stop.is_set():
             frame = SPINNER_FRAMES[index % len(SPINNER_FRAMES)]
-            self._stream.write(f"\r{frame} {self._message}")
+            width = shutil.get_terminal_size().columns
+            message = _fit_message(self._message, width)
+            self._stream.write(f"\r{CLEAR_LINE}{frame} {message}")
             self._stream.flush()
             time.sleep(0.08)
             index += 1
