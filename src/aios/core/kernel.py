@@ -19,6 +19,7 @@ INIT_ORDER = [
     "config",
     "context",
     "memory",
+    "scheduler",
     "runtime",
     "developer",
     "planner",

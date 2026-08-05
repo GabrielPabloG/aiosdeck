@@ -15,7 +15,14 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from aios import __version__
-from aios.core.console import render_row, render_section
+from aios.core.console import (
+    KANBAN_COLUMNS,
+    ProgressSpinner,
+    log_step,
+    render_kanban,
+    render_row,
+    render_section,
+)
 from aios.core.task import Task
 from aios.memory.models import ProjectKnowledge
 
@@ -110,10 +117,11 @@ def _cmd_plan(raw_args: list[str], project_path: Path, kernel_factory: Callable)
     if planner is None:
         _error("Planner agent not available.")
 
-    print("Planning...", file=sys.stderr)
     context = kernel.get_context()
     task = Task(description=intent, task_type="plan")
-    result = planner.execute(task, context)
+
+    with ProgressSpinner("Planning"):
+        result = planner.execute(task, context)
 
     if not result.success:
         msg = result.errors[0] if result.errors else "Planning failed."
@@ -125,8 +133,11 @@ def _cmd_plan(raw_args: list[str], project_path: Path, kernel_factory: Callable)
         return
 
     plan = json.loads(result.output)
-    subtasks = plan.get("subtasks", [])
+    _execute_subtasks(plan, intent, kernel, context)
 
+
+def _execute_subtasks(plan: dict, intent: str, kernel, context) -> None:
+    subtasks = plan.get("subtasks", [])
     if not subtasks:
         print("No subtasks to execute.")
         return
@@ -135,14 +146,36 @@ def _cmd_plan(raw_args: list[str], project_path: Path, kernel_factory: Callable)
     if developer is None:
         _error("Developer agent not available.")
 
+    scheduler = kernel.get_engine("scheduler")
+    board = None
+    if scheduler is not None:
+        board = scheduler.create_board(f"Sprint: {intent[:40]}")
+
     total = len(subtasks)
     completed = 0
 
     for st in subtasks:
+        card = None
+        red_subtask = None
+        if board is not None:
+            card = scheduler.create_card(board_id=board.id, title=st["description"])
+            scheduler.move_card(card.id, "Todo")
+            red_subtask = scheduler.create_subtask(
+                card_id=card.id,
+                description="failing test (RED)",
+            )
+            scheduler.move_card(card.id, "InProgress")
+
         dev_task = Task(description=st["description"], task_type="code")
-        dev_result = developer.execute(dev_task, context)
+        with ProgressSpinner(st["description"]):
+            dev_result = developer.execute(dev_task, context)
 
         if dev_result.success:
+            if card is not None and red_subtask is not None:
+                scheduler.complete_subtask(red_subtask.id)
+                scheduler.move_card(card.id, "Review")
+                scheduler.pass_tdd_gate(card.id)
+                scheduler.move_card(card.id, "Done")
             print(f"  [✓] {st['description']}")
             completed += 1
         else:
@@ -150,6 +183,14 @@ def _cmd_plan(raw_args: list[str], project_path: Path, kernel_factory: Callable)
             break
 
     print(f"\n{completed}/{total} tasks completed")
+
+    if board is not None and scheduler is not None:
+        summary = {column: 0 for column in KANBAN_COLUMNS}
+        for card in scheduler.list_cards(board.id):
+            summary[card.column] = summary.get(card.column, 0) + 1
+        log_step("", "")
+        log_step("📋", "Sprint Board")
+        log_step("", render_kanban(summary))
 
 
 def _cmd_exit(raw_args: list[str], project_path: Path, kernel_factory: Callable) -> None:
