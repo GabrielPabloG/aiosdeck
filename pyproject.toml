@@ -24,6 +24,7 @@ classifiers = [
 ]
 
 [project.scripts]
+ad = "aios.cli.main:main"
 aios = "aios.cli.main:main"
 aiosdeck = "aios.cli.main:main"
 

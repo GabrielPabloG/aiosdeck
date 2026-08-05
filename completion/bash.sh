@@ -15,4 +15,4 @@ _aios_completion() {
     return 0
 }
 
-complete -F _aios_completion aios aiosdeck
+complete -F _aios_completion aios aiosdeck ad
