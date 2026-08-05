@@ -13,7 +13,7 @@ logger = logging.getLogger("aios.agent.developer")
 
 class DeveloperAgent(BaseAgent):
     name = "developer"
-    required_capabilities = ["filesystem_read", "filesystem_write", "shell", "question"]
+    required_capabilities = ["filesystem_read", "filesystem_write", "shell", "ask_user"]
     required_skills = ["project-dna", "coding-style"]
 
     def __init__(

@@ -7,11 +7,11 @@ from aios.agents.developer import DeveloperAgent
 from aios.runtime.opencode import OpenCodeAdapter
 
 
-def test_build_permissions_allows_question_when_in_capabilities():
+def test_build_permissions_denies_question_even_when_in_capabilities():
     adapter = OpenCodeAdapter()
-    result = adapter._build_permissions(["question"])
+    result = adapter._build_permissions(["question", "ask_user"])
     perms = json.loads(result)
-    assert perms["question"] == "allow"
+    assert perms["question"] == "deny"
 
 
 def test_build_permissions_denies_question_when_not_in_capabilities():
@@ -21,7 +21,7 @@ def test_build_permissions_denies_question_when_not_in_capabilities():
     assert perms["question"] == "deny"
 
 
-def test_execute_with_question_disables_capture_output():
+def test_execute_always_uses_capture_output_even_with_question():
     adapter = OpenCodeAdapter()
 
     with (
@@ -36,7 +36,9 @@ def test_execute_with_question_disables_capture_output():
 
         mock_run.assert_called_once()
         kwargs = mock_run.call_args.kwargs
-        assert kwargs.get("capture_output") is False or kwargs.get("capture_output") is None
+        assert kwargs.get("capture_output") is True
+        assert "stdin" not in kwargs
+        assert "stdout" not in kwargs
 
 
 def test_execute_without_question_keeps_capture_output():
@@ -92,7 +94,7 @@ def test_execute_with_question_handles_none_stderr_on_error():
             raise AssertionError("Expected RuntimeError")
 
 
-def test_execute_with_question_passes_stdin():
+def test_execute_never_passes_stdin():
     adapter = OpenCodeAdapter()
 
     with (
@@ -107,8 +109,9 @@ def test_execute_with_question_passes_stdin():
 
         mock_run.assert_called_once()
         kwargs = mock_run.call_args.kwargs
-        assert "stdin" in kwargs
+        assert "stdin" not in kwargs
+        assert "stdout" not in kwargs
 
 
-def test_developer_agent_capabilities_include_question():
-    assert "question" in DeveloperAgent.required_capabilities
+def test_developer_agent_capabilities_do_not_include_question():
+    assert "question" not in DeveloperAgent.required_capabilities
