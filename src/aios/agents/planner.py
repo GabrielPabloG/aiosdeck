@@ -19,7 +19,7 @@ logger = logging.getLogger("aios.agent.planner")
 
 class PlannerAgent(BaseAgent):
     name = "planner"
-    required_capabilities = ["filesystem_read"]
+    required_capabilities = ["filesystem_read", "ask_user"]
     required_skills = ["project-dna", "coding-style"]
 
     def __init__(

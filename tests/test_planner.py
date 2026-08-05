@@ -90,3 +90,15 @@ def test_planner_handles_runtime_error():
     result = agent.execute(Task(description="do something"), _make_context())
     assert result.success is False
     assert "connection lost" in result.errors[0]
+
+
+def test_planner_agent_has_ask_user_capability():
+    assert "ask_user" in PlannerAgent.required_capabilities
+
+
+def test_planner_passes_ask_user_capability_to_runtime():
+    runtime = _make_runtime('{"goal":"test","subtasks":[],"risks":[],"unknowns":[]}')
+    agent = PlannerAgent(runtime)
+    result = agent.execute(Task(description="do something"), _make_context())
+    assert result.success is True
+    assert "ask_user" in runtime.execute.call_args[0][2]

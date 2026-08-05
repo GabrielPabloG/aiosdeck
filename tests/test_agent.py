@@ -94,8 +94,8 @@ def test_agent_handles_runtime_error():
     assert "connection lost" in result.errors[0]
 
 
-def test_developer_agent_has_ask_user_capability():
-    assert "ask_user" in DeveloperAgent.required_capabilities
+def test_developer_agent_does_not_have_ask_user_capability():
+    assert "ask_user" not in DeveloperAgent.required_capabilities
 
 
 def test_developer_agent_does_not_have_question_capability():
