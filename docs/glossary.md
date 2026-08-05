@@ -65,9 +65,74 @@ A predefined sequence of agent actions and quality gates that accomplishes a spe
 
 ### Scheduler
 
-The component that manages the task queue. It receives tasks from the Kernel or Workflow Engine, prioritizes them, and dispatches them to available agents. The Scheduler supports concurrency (multiple agents running in parallel) starting in v0.8.
+The component that manages the lifecycle of development work as a **persistent
+Kanban board**. Introduced in v0.8 as the Kanban Engine (`KanbanEngine`), it
+persists boards, cards, and subtasks in SQLite, enforces column flow
+(`Backlog → Todo → InProgress → Review → Done`), and blocks moving a card to
+`Done` until its TDD gate has been passed. A concurrent priority queue with agent
+dispatch is a v0.9+ extension on top of this engine.
 
-**First used in**: `internals/scheduler.md`. **Introduced**: v0.8 (basic queue from v0.1).
+**First used in**: `internals/scheduler.md`. **Introduced**: v0.8 (kanban engine).
+
+### KanbanBoard
+
+A sprint on the board. Has a name, a status (`active`), a project scope, and a
+creation timestamp. Created via `KanbanEngine.create_board()`. Stored in the
+`kanban_boards` table.
+
+**First used in**: `scheduler/models.py`. **Introduced**: v0.8.
+
+### KanbanCard
+
+A unit of work on the board. Always in exactly one column, initially `Backlog`.
+Carries a `tdd_gate` flag that must be `True` before the card can move to `Done`.
+Cards belong to a board and are scoped to a project. Stored in the `kanban_cards`
+table.
+
+**First used in**: `scheduler/models.py`. **Introduced**: v0.8.
+
+### KanbanSubtask
+
+A sub-item of a card. Used to track steps inside a card's lifecycle — for example,
+the `failing test (RED)` step of the TDD cycle, which is completed when tests turn
+green. Stored in the `kanban_subtasks` table.
+
+**First used in**: `scheduler/models.py`. **Introduced**: v0.8.
+
+### TDD Gate
+
+The structural rule that a card cannot move to `Done` while its `tdd_gate` is
+`False`. The gate enforces the Red → Green cycle: work enters `InProgress` with a
+failing-test subtask, and only passes the gate after successful execution. The
+validation lives in the scheduler store, so the rule cannot be bypassed by the
+caller.
+
+**First used in**: `internals/scheduler.md`. **Introduced**: v0.8.
+
+### KanbanColumn
+
+One of the five flow states a card can occupy:
+`Backlog`, `Todo`, `InProgress`, `Review`, `Done`. Forward moves advance one column;
+backward moves are allowed (rework); skipping forward or using an unknown column
+raises `KanbanError`.
+
+**First used in**: `scheduler/models.py` (`COLUMNS`). **Introduced**: v0.8.
+
+### KanbanError
+
+The domain exception raised for flow violations: unknown columns, skipped forward
+transitions, and moving to `Done` without the TDD gate. Hides SQLite from callers.
+
+**First used in**: `scheduler/models.py`. **Introduced**: v0.8.
+
+### ProgressSpinner
+
+The terminal component that replaces static status text ("Planning...") with an
+animated spinner. Renders braille frames on a single line when the stream is a TTY,
+and falls back to a single static line otherwise (so piped output stays clean).
+Complements `log_step` status lines and the `render_kanban` board summary.
+
+**First used in**: `core/console.py`. **Introduced**: v0.8.
 
 ### Kernel
 

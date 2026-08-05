@@ -23,7 +23,7 @@ Just as an operating system abstracts hardware (CPU, memory, disk) and provides 
 |-----------|-------------------|
 | Process | Agent |
 | Process Scheduler | AgentExecutor (v0.5) |
-| Scheduler | Task Queue + Workflow Engine |
+| Scheduler | Kanban/Scrum board (v0.8) — later Task Queue + Workflow Engine (v0.9+) |
 | Memory (RAM) | Context Engine |
 | Disk | Memory Engine (persistent knowledge) |
 | Filesystem Permissions | Capability-Based Security |
@@ -105,7 +105,11 @@ Introduce Planner, Reviewer, and Quality Pipeline. Establish the pattern of one-
 
 ### Phase 3 — Orchestration (v0.7–v0.8)
 
-Introduce Workflows and a Scheduler that can run agents concurrently. Prove that autonomous agent coordination works reliably for real development tasks.
+Introduce a Scheduler that manages work as a persistent, verifiable flow. The v0.8
+Scheduler is a **Kanban/Scrum engine**: boards, cards, and subtasks persist in
+SQLite, columns enforce a Red→Green TDD cycle, and the terminal renders live
+progress. Workflows and concurrent agent dispatch build on this foundation in v0.9+.
+Prove that autonomous agent coordination works reliably for real development tasks.
 
 ### Phase 4 — Ecosystem (v0.9–v1.0)
 

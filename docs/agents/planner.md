@@ -123,12 +123,13 @@ Out: AgentResult with list of Tasks ready for Scheduler
 - `project-dna` — must understand project identity, architecture, conventions
 - `coding-style` — must propose tasks that align with code conventions
 
-### Future (v0.8+)
+### Future (v0.9+)
 
 - Parallel subtask generation for independent tasks
 - Complexity estimation based on historical task data (Memory Engine)
 - Risk detection from known mistake patterns (Memory Engine)
 - Human-AI collaborative planning (approval gate for task acceptance)
+- Emit `task.created` events per subtask consumed by the concurrent Scheduler (v0.9+)
 
 ## Consequences
 
@@ -161,3 +162,5 @@ Out: AgentResult with list of Tasks ready for Scheduler
 - [x] Test: empty input → Planner produces valid output
 - [x] Test: Planner cannot write files (capability check)
 - [x] Test: Planner parses JSON from markdown and text wrappers
+- [x] Kanban integration: `aios plan <intent> --run` creates a sprint board, one
+  card per subtask, and drives the TDD gate cycle (RED subtask → green → Done)
