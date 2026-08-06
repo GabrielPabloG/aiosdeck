@@ -25,6 +25,8 @@ CREATE TABLE IF NOT EXISTS kanban_cards (
     description TEXT NOT NULL DEFAULT '',
     column_name TEXT NOT NULL DEFAULT 'Backlog',
     tdd_gate INTEGER NOT NULL DEFAULT 0,
+    blocked INTEGER NOT NULL DEFAULT 0,
+    block_reason TEXT NOT NULL DEFAULT '',
     project_id TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT '',
     updated_at TEXT NOT NULL DEFAULT '',
@@ -59,10 +61,24 @@ class KanbanStore:
             self._conn.execute("PRAGMA journal_mode=WAL")
             self._conn.execute("PRAGMA foreign_keys = ON")
             self._conn.executescript(SCHEMA)
+            self._migrate()
             self._conn.commit()
         except sqlite3.Error as exc:
             self._conn = None
             raise KanbanError(f"Database open failed: {exc}") from exc
+
+    def _migrate(self) -> None:
+        if self._conn is None:
+            return
+        columns = {row[1] for row in self._conn.execute("PRAGMA table_info(kanban_cards)")}
+        if "blocked" not in columns:
+            self._conn.execute(
+                "ALTER TABLE kanban_cards ADD COLUMN blocked INTEGER NOT NULL DEFAULT 0"
+            )
+        if "block_reason" not in columns:
+            self._conn.execute(
+                "ALTER TABLE kanban_cards ADD COLUMN block_reason TEXT NOT NULL DEFAULT ''"
+            )
 
     def close(self) -> None:
         if self._conn:
@@ -114,8 +130,8 @@ class KanbanStore:
         now = _now()
         cursor = self._execute(
             "INSERT INTO kanban_cards (board_id, title, description, column_name, tdd_gate, "
-            "project_id, created_at, updated_at) "
-            "VALUES (?, ?, ?, 'Backlog', 0, ?, ?, ?)",
+            "blocked, block_reason, project_id, created_at, updated_at) "
+            "VALUES (?, ?, ?, 'Backlog', 0, 0, '', ?, ?, ?)",
             (board_id, title, description, self._project_id, now, now),
         )
         self._commit()
@@ -129,12 +145,14 @@ class KanbanStore:
             project_id=self._project_id,
             created_at=now,
             updated_at=now,
+            blocked=False,
+            block_reason="",
         )
 
     def get_card(self, card_id: int) -> KanbanCard | None:
         row = self._fetch_one(
             "SELECT id, board_id, title, description, column_name, tdd_gate, "
-            "project_id, created_at, updated_at FROM kanban_cards "
+            "project_id, created_at, updated_at, blocked, block_reason FROM kanban_cards "
             "WHERE id=? AND project_id=?",
             (card_id, self._project_id),
         )
@@ -142,13 +160,14 @@ class KanbanStore:
             return None
         card = KanbanCard(*row)
         card.tdd_gate = bool(card.tdd_gate)
+        card.blocked = bool(card.blocked)
         card.subtasks = self.get_subtasks(card_id)
         return card
 
     def list_cards(self, board_id: int) -> list[KanbanCard]:
         rows = self._fetch_all(
             "SELECT id, board_id, title, description, column_name, tdd_gate, "
-            "project_id, created_at, updated_at FROM kanban_cards "
+            "project_id, created_at, updated_at, blocked, block_reason FROM kanban_cards "
             "WHERE board_id=? AND project_id=? ORDER BY id ASC",
             (board_id, self._project_id),
         )
@@ -156,6 +175,7 @@ class KanbanStore:
         for row in rows:
             card = KanbanCard(*row)
             card.tdd_gate = bool(card.tdd_gate)
+            card.blocked = bool(card.blocked)
             card.subtasks = self.get_subtasks(card.id)
             cards.append(card)
         return cards
@@ -191,6 +211,14 @@ class KanbanStore:
             (_now(), card_id),
         )
         self._commit()
+
+    def set_blocked(self, card_id: int, reason: str = "") -> KanbanCard:
+        self._execute(
+            "UPDATE kanban_cards SET blocked=1, block_reason=?, updated_at=? WHERE id=?",
+            (reason, _now(), card_id),
+        )
+        self._commit()
+        return self.get_card(card_id)
 
     def create_subtask(self, card_id: int, description: str) -> KanbanSubtask:
         now = _now()

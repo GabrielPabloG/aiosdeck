@@ -63,11 +63,13 @@ AGENT_EXECUTION_FAILED = "agent.execution.failed"
 
 KANBAN_TOPICS = [
     "kanban.card_moved",
+    "kanban.card_blocked",
     "kanban.subtask_created",
     "kanban.subtask_completed",
 ]
 
 KANBAN_CARD_MOVED = "kanban.card_moved"
+KANBAN_CARD_BLOCKED = "kanban.card_blocked"
 KANBAN_SUBTASK_CREATED = "kanban.subtask_created"
 KANBAN_SUBTASK_COMPLETED = "kanban.subtask_completed"
 

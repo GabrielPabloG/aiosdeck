@@ -95,6 +95,12 @@ def log_step(icon: str, message: str) -> None:
 
 
 def render_kanban(summary: dict[str, int]) -> str:
-    """Render kanban columns with per-column card counts."""
+    """Render kanban columns with per-column card counts.
+
+    An optional ``Blocked`` key renders a trailing blocked-status cell.
+    """
     cells = [f"{name} ({summary.get(name, 0)})" for name in KANBAN_COLUMNS]
+    blocked = summary.get("Blocked", 0)
+    if blocked:
+        cells.append(f"⛔ Blocked ({blocked})")
     return "  " + " | ".join(cells)

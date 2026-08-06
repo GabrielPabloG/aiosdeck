@@ -13,6 +13,7 @@ import os
 from pathlib import Path
 
 from aios.events.events import (
+    KANBAN_CARD_BLOCKED,
     KANBAN_CARD_MOVED,
     KANBAN_SUBTASK_COMPLETED,
     KANBAN_SUBTASK_CREATED,
@@ -80,7 +81,25 @@ class KanbanEngine:
             card = self._store.get_card(card_id)
             old_column = card.column if card else None
 
-        result = self._store.move_card(card_id, column)
+        try:
+            result = self._store.move_card(card_id, column)
+        except KanbanError:
+            if column == "Done" and self._bus is not None:
+                card = self._store.get_card(card_id)
+                if card is not None:
+                    self._bus.publish(
+                        KANBAN_CARD_BLOCKED,
+                        {
+                            "card_id": card.id,
+                            "card_title": card.title,
+                            "reason": (
+                                "TDD gate not passed: cannot move to 'Done' without green tests"
+                            ),
+                            "column": card.column,
+                            "board_id": card.board_id,
+                        },
+                    )
+            raise
 
         if self._bus is not None and old_column != result.column:
             self._bus.publish(
@@ -90,6 +109,21 @@ class KanbanEngine:
                     "card_title": result.title,
                     "from_column": old_column,
                     "to_column": result.column,
+                    "board_id": result.board_id,
+                },
+            )
+        return result
+
+    def block_card(self, card_id: int, reason: str = "") -> KanbanCard:
+        result = self._store.set_blocked(card_id, reason)
+        if self._bus is not None:
+            self._bus.publish(
+                KANBAN_CARD_BLOCKED,
+                {
+                    "card_id": result.id,
+                    "card_title": result.title,
+                    "reason": reason,
+                    "column": result.column,
                     "board_id": result.board_id,
                 },
             )

@@ -112,9 +112,19 @@ The board render is a non-blocking summary written to stderr:
 
 ### Event Contract
 
-The Kanban Engine is a pure persistence/validation layer and does not yet publish
-domain events. Event bus integration (`kanban.card_moved`, `kanban.tdd_gate_passed`)
-is a v0.9 concern.
+The Kanban Engine publishes domain events to the Event Bus:
+
+| Topic | Payload | When |
+|-------|---------|------|
+| `kanban.card_moved` | card_id, card_title, from_column, to_column, board_id | A card changes column |
+| `kanban.card_blocked` | card_id, card_title, reason, column, board_id | A card fails the TDD gate or is blocked (`block_card`) |
+| `kanban.subtask_created` | subtask_id, card_id, description | A subtask (e.g., RED step) is added |
+| `kanban.subtask_completed` | subtask_id | A subtask is completed |
+
+`block_card(card_id, reason)` persists the blocked state (`blocked`, `block_reason`)
+on the card — it stays in its origin column — and emits `kanban.card_blocked`.
+Attempting to move a card to `Done` without a green TDD gate also emits
+`kanban.card_blocked` before raising `KanbanError`.
 
 ## Next Steps (v0.9+)
 
@@ -185,5 +195,8 @@ Created ──► Queued ──► Dispatched ──► Running ──► Comple
 - [x] Test: TDD gate allows `Done` after `pass_tdd_gate`
 - [x] Test: invalid column and skip transitions raise `KanbanError`
 - [x] Test: persistence across sessions and sessions reopened on same DB
-- [ ] Emit kanban domain events (`kanban.card_moved`, `kanban.tdd_gate_passed`) — v0.9
+- [x] Emit kanban domain events (`kanban.card_moved`, `kanban.card_blocked`, `kanban.subtask_*`)
+- [x] Blocked state — `block_card` persists `blocked`/`block_reason`, live board alert `⛔ Blocked`
+- [x] Backlog prepopulation — `plan --run` renders the full plan and `Backlog (N)` before executing
+- [x] E2E test — `tests/test_cli_e2e.py` validates DB state and Event Bus over a real kernel
 - [ ] Priority queue with concurrent agent dispatch — v0.9
