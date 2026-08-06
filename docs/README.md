@@ -464,6 +464,13 @@ aios memory add convention "Use snake_case"
 # Plan and execute on a sprint board
 aios plan "add OAuth2 login" --run
 
+# Review code (read-only, deterministic detectors)
+aios review
+aios review . --level architecture --output json --dry-run
+aios review src/aios --level security
+aios review --diff            # review the current git diff only
+aios review --output file     # write report to reviewer_report.json
+
 # Run diagnostics
 aios doctor
 

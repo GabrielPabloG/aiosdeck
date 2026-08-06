@@ -28,3 +28,27 @@ jobs:
 
       - name: Pytest
         run: python -m pytest tests/ -v
+
+  integration-reviewer:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: pip install -e ".[dev]"
+
+      - name: Reviewer CLI smoke test (read-only, JSON report)
+        run: |
+          aios review tests/fixtures/simple_repo --output json --dry-run > /tmp/review.json
+          python -c "
+          import json, sys
+          data = json.load(open('/tmp/review.json'))
+          assert set(data) == {'items', 'stats', 'summary'}, data
+          assert isinstance(data['items'], list)
+          print('reviewer CLI OK:', data['summary'])
+          "
