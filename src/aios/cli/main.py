@@ -8,6 +8,7 @@ from pathlib import Path
 from aios import __version__
 from aios.agents.developer import DeveloperAgent
 from aios.agents.planner import PlannerAgent
+from aios.agents.reviewer import ReviewerAgent
 from aios.cli.commands import COMMANDS, _error, _print_command_help, _print_help
 from aios.config import ConfigEngine
 from aios.context import ContextEngine
@@ -153,6 +154,7 @@ def _create_kernel(project_path: Path) -> Kernel:
     kernel.register(runtime)
     kernel.register(DeveloperAgent(runtime))
     kernel.register(PlannerAgent(runtime))
+    kernel.register(ReviewerAgent(runtime))
     kernel.register(EventsEngine())
     kernel.register(SecurityEngine(project_path=project_path))
     _active_kernel = kernel

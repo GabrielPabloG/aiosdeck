@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import json
 import logging
+import subprocess
 import sys
+import tempfile
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -99,6 +101,100 @@ def _cmd_doctor(raw_args: list[str], project_path: Path, kernel_factory: Callabl
         logger.warning("\nWarnings:")
         for err in errors:
             logger.warning(f"  {err}")
+
+
+_REVIEW_LEVELS = ("architecture", "conventions", "security")
+_REVIEW_OUTPUTS = ("text", "json", "file")
+
+
+def _parse_review_args(raw_args: list[str]) -> dict:
+    opts: dict = {
+        "level": "conventions",
+        "output": "text",
+        "dry_run": False,
+        "diff_only": False,
+        "target": None,
+    }
+    i = 0
+    while i < len(raw_args):
+        arg = raw_args[i]
+        if arg == "--dry-run":
+            opts["dry_run"] = True
+        elif arg == "--diff":
+            opts["diff_only"] = True
+        elif arg in ("--level", "--output"):
+            i += 1
+            value = raw_args[i] if i < len(raw_args) else ""
+            choices = _REVIEW_LEVELS if arg == "--level" else _REVIEW_OUTPUTS
+            if value not in choices:
+                _error(f"{arg} must be one of {', '.join(choices)}")
+            opts["level" if arg == "--level" else "output"] = value
+        elif arg.startswith("-"):
+            _error(f"unknown option {arg}")
+        elif opts["target"] is None:
+            opts["target"] = arg
+        i += 1
+    return opts
+
+
+def _print_review_text(report: dict) -> None:
+    print(report["summary"])
+    for item in report.get("items", [])[:20]:
+        line = item.get("line", "?")
+        print(f"{item['severity'].upper()}: {item['file']}:{line} {item['message']}")
+
+
+def _cmd_review(raw_args: list[str], project_path: Path, kernel_factory: Callable) -> None:
+    opts = _parse_review_args(raw_args or [])
+    target = opts["target"] or str(Path.cwd())
+
+    kernel = kernel_factory(project_path)
+    kernel.start()
+
+    reviewer = kernel.get_engine("reviewer")
+    if reviewer is None:
+        _error("Reviewer agent not available.")
+
+    if opts["diff_only"]:
+        target = _resolve_diff_target(target)
+
+    with ProgressSpinner("Reviewing"):
+        report = reviewer.review(target, level=opts["level"])
+
+    if opts["dry_run"]:
+        report["summary"] = f"{report['summary']} (dry-run, read-only)"
+        print(json.dumps(report, indent=2))
+        return
+    if opts["output"] == "json":
+        print(json.dumps(report, indent=2))
+        return
+    if opts["output"] == "file":
+        with Path("reviewer_report.json").open("w", encoding="utf-8") as f:
+            json.dump(report, f, ensure_ascii=False, indent=2)
+        print("Wrote report: reviewer_report.json")
+        return
+    _print_review_text(report)
+
+
+def _resolve_diff_target(target: str) -> str:
+    result = subprocess.run(
+        ["git", "diff", "HEAD", "--name-only"],
+        capture_output=True,
+        text=True,
+        check=False,
+        cwd=target,
+    )
+    names = [line for line in result.stdout.splitlines() if line]
+    if not names:
+        return target
+    diff_dir = Path(tempfile.mkdtemp(prefix="aios-review-diff-"))
+    for name in names:
+        source = Path(target) / name
+        if source.is_file():
+            dest = diff_dir / name
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_text(source.read_text(encoding="utf-8", errors="replace"))
+    return str(diff_dir)
 
 
 def _cmd_plan(raw_args: list[str], project_path: Path, kernel_factory: Callable) -> None:
@@ -319,6 +415,7 @@ def _print_help() -> None:
     print("  aios doctor [--json]    Run diagnostics")
     print("  aios memory <cmd>     Manage project knowledge")
     print("  aios plan <intent>    Decompose goal into subtasks")
+    print("  aios review [target]  Review code/architecture/conventions (read-only)")
     print("  aios help             Show this help")
     print()
     print("Commands:")
@@ -558,6 +655,12 @@ COMMANDS: dict[str, Command] = {
         name="plan",
         description="Decompose goal into subtasks",
         execute=_cmd_plan,
+    ),
+    "review": Command(
+        name="review",
+        description="Review code, architecture, or conventions (read-only)",
+        aliases=["rev"],
+        execute=_cmd_review,
     ),
     "help": Command(
         name="help",
