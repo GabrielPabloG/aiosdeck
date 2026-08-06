@@ -7,7 +7,7 @@ Instead of talking to a single language model, you work with a coordinated team
 of specialized agents — each with one responsibility, governed by a kernel that
 manages context, memory, scheduling, workflows, and security.
 
-- **Status**: pre-alpha
+- **Status**: alpha
 - **Platform**: Linux
 - **Language**: Python 3.12+ (zero runtime dependencies)
 

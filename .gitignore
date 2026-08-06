@@ -18,5 +18,5 @@ venv/
 .pytest_cache/
 .coverage
 htmlcov/
-.aios/memory.db
+**/.aios/memory.db
 .ai-jail

@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/badge/platform-linux-blue">
   <img src="https://img.shields.io/badge/license-MIT-green">
   <img src="https://img.shields.io/badge/python-3.12+-blue">
-  <img src="https://img.shields.io/badge/status-pre--alpha-orange">
+  <img src="https://img.shields.io/badge/status-alpha-yellow">
   <img src="https://github.com/GabrielPabloG/aiosdeck/actions/workflows/ci.yml/badge.svg">
 </p>
 
@@ -150,10 +150,13 @@ All planned phases. Documented, specified, but not all implemented.
 | v0.4 PromptBuilder | **Implemented** | Structured prompt assembly with context, memory, skills |
 | v0.5 AgentExecutor + DX | **Implemented** | Execution guardrail, CLI redesign, autocomplete, ProjDesk integration |
 | v0.6 Planner | **Implemented** | Task decomposition, prioritization, headless security hardening |
-| v0.7 Reviewer | Specified | Architecture critique, convention enforcement |
+| v0.7 Reviewer | Component (no CLI yet) | Architecture critique, convention enforcement |
 | v0.8 Scheduler (Kanban/Scrum) | **Implemented** | Persistent board, TDD gate, terminal DX (spinners, board rendering) |
 | v0.9 Workflows + Plugins | Specified | Multi-agent pipelines, quality gates, extension points for Runtimes, Agents, Skills, Workflows |
 | v1.0 AI OS | Specified | Full ProjDesk integration, status dashboard |
+
+> The Reviewer component ships tested in v0.9 but is not yet exposed via `aios`
+> commands or the Kernel — CLI integration is planned for a future release.
 
 ### Implementation Roadmap — What We Are Building Now
 
@@ -444,7 +447,7 @@ Architecture Decision Records explain **why** each foundational choice was made 
 
 ## Getting Started
 
-AiosDeck is in pre-alpha. The following will become available as versions ship.
+AiosDeck is in alpha. The following will become available as versions ship.
 
 ```bash
 # Install (future)
