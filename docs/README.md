@@ -151,7 +151,7 @@ All planned phases. Documented, specified, but not all implemented.
 | v0.5 AgentExecutor + DX | **Implemented** | Execution guardrail, CLI redesign, autocomplete, ProjDesk integration |
 | v0.6 Planner | **Implemented** | Task decomposition, prioritization, headless security hardening |
 | v0.7 Reviewer | Component (no CLI yet) | Architecture critique, convention enforcement |
-| v0.8 Scheduler (Kanban/Scrum) | **Implemented** | Persistent board, TDD gate, terminal DX (spinners, board rendering) |
+| v0.8 Scheduler (Kanban/Scrum) | **Implemented** | Persistent board, TDD gate, terminal DX (spinners, TODO.md backlog) |
 | v0.9 Workflows + Plugins | Specified | Multi-agent pipelines, quality gates, extension points for Runtimes, Agents, Skills, Workflows |
 | v1.0 AI OS | Specified | Full ProjDesk integration, status dashboard |
 
@@ -169,7 +169,7 @@ The only roadmap that matters day to day. Everything else is blocked.
 | Configuration | v0.1 | Detection > manifest > user config > env > defaults |
 | Context Engine | v0.1 | Language detection, tool detection, Git/Docker/OpenCode status |
 | Memory Engine | v0.3 | SQLite-backed CRUD for conventions, decisions, patterns, mistakes |
-| Scheduler (Kanban) | v0.8 | KanbanEngine: persistent boards/cards/subtasks, TDD gate, board rendering |
+| Scheduler (Kanban) | v0.8 | KanbanEngine: persistent boards/cards/subtasks, TDD gate, textual TODO.md backlog |
 | PromptBuilder | v0.4 | Structured prompt assembly (task, context, git, memory, skills) |
 | AgentExecutor | v0.5 | Execution guardrail (Event Bus, metrics, logging) shared by all agents |
 | Developer Agent | v0.2 | Builds prompt, delegates to AgentExecutor, interprets outcome |
@@ -316,7 +316,7 @@ aios
    ├── Restores memory from previous sessions
    ├── Assembles context (language, tools, conventions, architecture)
    ├── Loads active Skills (project-dna, coding-style)
-   ├── Opens the project kanban board (scheduler engine)
+    ├── Initializes the project scheduler engine (kanban persistence)
    ├── Starts Runtime (OpenCode via ai-jail)
    └── Shows dashboard
 ```
@@ -407,7 +407,7 @@ Agents are specialized. One job each. Nothing more.
 | **AgentExecutor** | v0.5 | Guard execution (Event Bus, metrics, logging) | Execute code (wraps agents, not a worker) |
 | **Planner** | v0.6 | Decompose tasks, prioritize | Write code, touch Git, modify files. Enforced by capabilities + OPENCODE_PERMISSION |
 | **Reviewer** | v0.7 | Critique code, architecture, conventions | Write new code |
-| **Scheduler** | v0.8 | Manage kanban board, enforce TDD gate, render sprint progress | Execute code |
+| **Scheduler** | v0.8 | Manage kanban board, enforce TDD gate, write TODO.md backlog | Execute code |
 | **Tester** | v0.9 | Run tests, verify behavior | Write production code |
 | **Documentation** | v0.9 | Update docs, ADRs, CHANGELOG | Write application code |
 | **Git** | v0.9 | Commits, branches, tags | Write code (only agent with git permission) |

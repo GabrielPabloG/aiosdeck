@@ -139,7 +139,6 @@ def test_e2e_plan_run_all_cards_land_in_done(tmp_path):
 
     assert "Plano de Execução (2 tarefas):" in output
     assert "• Add login" in output
-    assert "Backlog (2)" in output
 
     rows = _load_kanban_cards(tmp_path)
     assert len(rows) == len(subtasks)
@@ -180,4 +179,3 @@ def test_e2e_plan_run_blocks_card_on_failure(tmp_path):
 
     topics = {event.topic for event in received}
     assert KANBAN_CARD_BLOCKED in topics
-    assert "⛔ Blocked: Second (fails)" in output
