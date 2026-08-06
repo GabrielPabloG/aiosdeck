@@ -12,6 +12,11 @@ import logging
 import os
 from pathlib import Path
 
+from aios.events.events import (
+    KANBAN_CARD_MOVED,
+    KANBAN_SUBTASK_COMPLETED,
+    KANBAN_SUBTASK_CREATED,
+)
 from aios.scheduler.models import KanbanBoard, KanbanCard, KanbanError, KanbanSubtask
 from aios.scheduler.store import KanbanStore
 
@@ -21,11 +26,17 @@ logger = logging.getLogger("aios.scheduler")
 class KanbanEngine:
     name = "scheduler"
 
-    def __init__(self, project_path: Path | None = None, db_path: str | None = None) -> None:
+    def __init__(
+        self,
+        project_path: Path | None = None,
+        db_path: str | None = None,
+        event_bus=None,
+    ) -> None:
         self._project_path = project_path or Path.cwd()
         self._project_id = self._project_path.resolve().as_posix()
         self._db_path = self._resolve_db_path(db_path)
         self._store: KanbanStore | None = None
+        self._bus = event_bus
 
     def initialize(self) -> None:
         try:
@@ -64,16 +75,52 @@ class KanbanEngine:
         return self._store.list_cards(board_id)
 
     def move_card(self, card_id: int, column: str) -> KanbanCard:
-        return self._store.move_card(card_id, column)
+        old_column = None
+        if self._bus is not None:
+            card = self._store.get_card(card_id)
+            old_column = card.column if card else None
+
+        result = self._store.move_card(card_id, column)
+
+        if self._bus is not None and old_column != result.column:
+            self._bus.publish(
+                KANBAN_CARD_MOVED,
+                {
+                    "card_id": result.id,
+                    "card_title": result.title,
+                    "from_column": old_column,
+                    "to_column": result.column,
+                    "board_id": result.board_id,
+                },
+            )
+        return result
 
     def pass_tdd_gate(self, card_id: int) -> None:
         self._store.pass_tdd_gate(card_id)
 
     def create_subtask(self, card_id: int, description: str) -> KanbanSubtask:
-        return self._store.create_subtask(card_id, description)
+        subtask = self._store.create_subtask(card_id, description)
+        if self._bus is not None:
+            self._bus.publish(
+                KANBAN_SUBTASK_CREATED,
+                {
+                    "subtask_id": subtask.id,
+                    "card_id": subtask.card_id,
+                    "description": subtask.description,
+                },
+            )
+        return subtask
 
     def complete_subtask(self, subtask_id: int) -> None:
         self._store.complete_subtask(subtask_id)
+        if self._bus is not None:
+            self._bus.publish(
+                KANBAN_SUBTASK_COMPLETED,
+                {"subtask_id": subtask_id},
+            )
+
+    def set_event_bus(self, bus) -> None:
+        self._bus = bus
 
     def _resolve_db_path(self, override: str | None) -> Path:
         if override:
