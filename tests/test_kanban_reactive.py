@@ -15,11 +15,12 @@ from aios.cli.commands import _execute_subtasks
 from aios.events import EventsEngine
 from aios.events.bus import EventBus
 from aios.events.events import (
+    KANBAN_CARD_BLOCKED,
     KANBAN_CARD_MOVED,
     KANBAN_SUBTASK_COMPLETED,
     KANBAN_SUBTASK_CREATED,
 )
-from aios.scheduler import COLUMNS, KanbanEngine
+from aios.scheduler import COLUMNS, KanbanEngine, KanbanError
 
 
 def _make_engine(tmp_path, event_bus=None, name: str = "kanban.db") -> KanbanEngine:
@@ -130,6 +131,69 @@ def test_set_event_bus_sets_internal_bus(tmp_path):
     engine.set_event_bus(bus)
 
     assert engine._bus is bus
+    engine.shutdown()
+
+
+def _card_blocked_calls(bus: MagicMock) -> list:
+    return [c for c in bus.publish.call_args_list if c.args[0] == KANBAN_CARD_BLOCKED]
+
+
+def test_block_card_marks_and_emits(tmp_path):
+    bus = MagicMock()
+    engine = _make_engine(tmp_path, event_bus=bus)
+    _, card = _make_board_card(engine)
+    engine.move_card(card.id, "Todo")
+
+    blocked = engine.block_card(card.id, reason="Reviewer rejected")
+
+    assert blocked.blocked is True
+    assert blocked.block_reason == "Reviewer rejected"
+    assert blocked.column == "Todo"
+
+    calls = _card_blocked_calls(bus)
+    assert len(calls) == 1
+    topic, payload = calls[0].args
+    assert topic == KANBAN_CARD_BLOCKED
+    assert payload["card_id"] == card.id
+    assert payload["card_title"] == "Add OAuth"
+    assert payload["reason"] == "Reviewer rejected"
+    assert payload["column"] == "Todo"
+    engine.shutdown()
+
+
+def test_block_card_persists_across_sessions(tmp_path):
+    db = tmp_path / "kanban.db"
+    engine_a = KanbanEngine(project_path=tmp_path, db_path=str(db))
+    engine_a.initialize()
+    board = engine_a.create_board("Sprint 1")
+    card = engine_a.create_card(board_id=board.id, title="Blocked card")
+    engine_a.block_card(card.id, reason="gate failed")
+    card_id = card.id
+    engine_a.shutdown()
+
+    engine_b = KanbanEngine(project_path=tmp_path, db_path=str(db))
+    engine_b.initialize()
+    loaded = engine_b.get_card(card_id)
+    assert loaded.blocked is True
+    assert loaded.block_reason == "gate failed"
+    engine_b.shutdown()
+
+
+def test_move_card_to_done_without_gate_emits_blocked(tmp_path):
+    bus = MagicMock()
+    engine = _make_engine(tmp_path, event_bus=bus)
+    _, card = _make_board_card(engine)
+    engine.move_card(card.id, "Todo")
+
+    with pytest.raises(KanbanError):
+        engine.move_card(card.id, "Done")
+
+    calls = _card_blocked_calls(bus)
+    assert len(calls) == 1
+    topic, payload = calls[0].args
+    assert topic == KANBAN_CARD_BLOCKED
+    assert payload["card_id"] == card.id
+    assert "TDD gate" in payload["reason"]
     engine.shutdown()
 
 

@@ -11,6 +11,8 @@ import pytest
 from aios.agents.models import AgentResult
 from aios.cli.commands import _cmd_plan
 from aios.context.packet import ContextPacket, GitInfo, ProjectInfo, ToolsInfo
+from aios.events import EventsEngine
+from aios.scheduler import KanbanEngine
 
 
 def _make_plan_result(subtasks: list[dict]) -> AgentResult:
@@ -58,6 +60,21 @@ def _make_raw_args(run: bool, intent: str) -> list[str]:
 
 def _make_kernel(planner: MagicMock, developer: MagicMock) -> MagicMock:
     engine_map = {"planner": planner, "developer": developer}
+    kernel = MagicMock()
+    kernel.get_engine.side_effect = engine_map.get
+    kernel.get_context.return_value = _make_context()
+    return kernel
+
+
+def _make_kernel_with_scheduler(
+    planner: MagicMock, developer: MagicMock, scheduler: KanbanEngine, events: EventsEngine
+) -> MagicMock:
+    engine_map = {
+        "planner": planner,
+        "developer": developer,
+        "scheduler": scheduler,
+        "events": events,
+    }
     kernel = MagicMock()
     kernel.get_engine.side_effect = engine_map.get
     kernel.get_context.return_value = _make_context()
@@ -308,3 +325,99 @@ class TestPlanRunUnit:
         task_arg = planner.execute.call_args[0][0]
         assert task_arg.description == "add tests"
         assert "--run" not in task_arg.description
+
+    def test_run_prints_plan_and_initial_backlog_before_execution(self, tmp_path):
+        """Plan list and initial board (all cards in Backlog) print before execution."""
+        planner = MagicMock()
+        developer = MagicMock()
+
+        subtasks = [
+            {
+                "id": str(i),
+                "description": f"Task {i}",
+                "type": "code",
+                "priority": "high",
+                "dependencies": [],
+                "estimated_complexity": "low",
+            }
+            for i in range(3)
+        ]
+        planner.execute.return_value = _make_plan_result(subtasks)
+        developer.execute.return_value = _make_exec_success("ok")
+
+        events = EventsEngine()
+        events.initialize()
+        scheduler = KanbanEngine(project_path=tmp_path, db_path=str(tmp_path / "kanban.db"))
+        scheduler.initialize()
+        kernel = _make_kernel_with_scheduler(planner, developer, scheduler, events)
+
+        stderr = io.StringIO()
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(sys, "stderr", stderr)
+            _cmd_plan(
+                _make_raw_args(run=True, intent="do all"),
+                MagicMock(),
+                lambda _: kernel,
+            )
+
+        output = stderr.getvalue()
+        assert "Plano de Execução (3 tarefas):" in output
+        assert "• Task 0" in output
+        assert "• Task 1" in output
+        assert "Backlog (3)" in output
+        assert developer.execute.call_count == len(subtasks)
+        scheduler.shutdown()
+
+    def test_run_blocks_card_when_tdd_gate_fails(self, tmp_path):
+        """A failing subtask keeps its card in origin column and marks it blocked."""
+        planner = MagicMock()
+        developer = MagicMock()
+
+        subtasks = [
+            {
+                "id": "1",
+                "description": "First (ok)",
+                "type": "code",
+                "priority": "high",
+                "dependencies": [],
+                "estimated_complexity": "low",
+            },
+            {
+                "id": "2",
+                "description": "Second (fails)",
+                "type": "code",
+                "priority": "high",
+                "dependencies": ["1"],
+                "estimated_complexity": "low",
+            },
+        ]
+        planner.execute.return_value = _make_plan_result(subtasks)
+        developer.execute.side_effect = [
+            _make_exec_success("First (ok)"),
+            _make_exec_failure("Second (fails)"),
+        ]
+
+        events = EventsEngine()
+        events.initialize()
+        scheduler = KanbanEngine(project_path=tmp_path, db_path=str(tmp_path / "kanban.db"))
+        scheduler.initialize()
+        kernel = _make_kernel_with_scheduler(planner, developer, scheduler, events)
+
+        stderr = io.StringIO()
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(sys, "stderr", stderr)
+            _cmd_plan(
+                _make_raw_args(run=True, intent="do it"),
+                MagicMock(),
+                lambda _: kernel,
+            )
+
+        board = scheduler.list_boards()[0]
+        cards = scheduler.list_cards(board.id)
+        assert cards[0].column == "Done"
+        assert cards[0].blocked is False
+        assert cards[1].column == "InProgress"
+        assert cards[1].blocked is True
+        assert cards[1].block_reason == "TDD gate failed: execution did not pass"
+        assert "⛔ Blocked: Second (fails)" in stderr.getvalue()
+        scheduler.shutdown()

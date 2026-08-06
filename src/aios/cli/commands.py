@@ -24,7 +24,7 @@ from aios.core.console import (
     render_section,
 )
 from aios.core.task import Task
-from aios.events.events import KANBAN_CARD_MOVED
+from aios.events.events import KANBAN_CARD_BLOCKED, KANBAN_CARD_MOVED
 from aios.memory.models import ProjectKnowledge
 
 VERSION_TEXT = f"AiosDeck v{__version__}"
@@ -144,20 +144,39 @@ def _wire_event_bus(kernel) -> None:
         scheduler.set_event_bus(events.bus)
 
 
+def _render_board_summary(scheduler, board) -> dict:
+    summary = {column: 0 for column in KANBAN_COLUMNS}
+    blocked = 0
+    for card in scheduler.list_cards(board.id):
+        summary[card.column] = summary.get(card.column, 0) + 1
+        if card.blocked:
+            blocked += 1
+    if blocked:
+        summary["Blocked"] = blocked
+    return summary
+
+
 def _subscribe_live_kanban(kernel, scheduler, board) -> None:
     events = kernel.get_engine("events")
     bus = getattr(events, "bus", None)
     if bus is None:
         return
 
-    def on_card_moved(_event) -> None:
-        summary = {column: 0 for column in KANBAN_COLUMNS}
-        for card in scheduler.list_cards(board.id):
-            summary[card.column] = summary.get(card.column, 0) + 1
+    def redraw(_event=None) -> None:
+        summary = _render_board_summary(scheduler, board)
         sys.stderr.write(f"\r\033[K{render_kanban(summary)}\n")
         sys.stderr.flush()
 
-    bus.subscribe(KANBAN_CARD_MOVED, on_card_moved)
+    def on_card_blocked(event) -> None:
+        redraw()
+        payload = event.payload or {}
+        sys.stderr.write(
+            f"  ⛔ Blocked: {payload.get('card_title', '')} — {payload.get('reason', 'blocked')}\n"
+        )
+        sys.stderr.flush()
+
+    bus.subscribe(KANBAN_CARD_MOVED, redraw)
+    bus.subscribe(KANBAN_CARD_BLOCKED, on_card_blocked)
 
 
 def _execute_subtasks(plan: dict, intent: str, kernel, context) -> None:
@@ -173,19 +192,28 @@ def _execute_subtasks(plan: dict, intent: str, kernel, context) -> None:
     scheduler = kernel.get_engine("scheduler")
     _wire_event_bus(kernel)
 
+    log_step("📋", f"Plano de Execução ({len(subtasks)} tarefas):")
+    for st in subtasks:
+        log_step("", f"  • {st['description']}")
+
     board = None
+    cards: list = []
     if scheduler is not None:
         board = scheduler.create_board(f"Sprint: {intent[:40]}")
+        for st in subtasks:
+            cards.append(scheduler.create_card(board_id=board.id, title=st["description"]))
         _subscribe_live_kanban(kernel, scheduler, board)
+        log_step("", "")
+        log_step("📋", "Sprint Board")
+        log_step("", render_kanban(_render_board_summary(scheduler, board)))
 
     total = len(subtasks)
     completed = 0
 
-    for st in subtasks:
-        card = None
+    for idx, st in enumerate(subtasks):
+        card = cards[idx] if idx < len(cards) else None
         red_subtask = None
-        if board is not None:
-            card = scheduler.create_card(board_id=board.id, title=st["description"])
+        if card is not None:
             scheduler.move_card(card.id, "Todo")
             red_subtask = scheduler.create_subtask(
                 card_id=card.id,
@@ -206,18 +234,20 @@ def _execute_subtasks(plan: dict, intent: str, kernel, context) -> None:
             print(f"  [✓] {st['description']}")
             completed += 1
         else:
+            if card is not None:
+                scheduler.block_card(
+                    card.id,
+                    reason="TDD gate failed: execution did not pass",
+                )
             print(f"  [✗] {st['description']}")
             break
 
     print(f"\n{completed}/{total} tasks completed")
 
     if board is not None and scheduler is not None:
-        summary = {column: 0 for column in KANBAN_COLUMNS}
-        for card in scheduler.list_cards(board.id):
-            summary[card.column] = summary.get(card.column, 0) + 1
         log_step("", "")
         log_step("📋", "Sprint Board")
-        log_step("", render_kanban(summary))
+        log_step("", render_kanban(_render_board_summary(scheduler, board)))
 
 
 def _cmd_exit(raw_args: list[str], project_path: Path, kernel_factory: Callable) -> None:

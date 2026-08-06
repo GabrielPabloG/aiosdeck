@@ -29,6 +29,8 @@ class KanbanCard:
     project_id: str = ""
     created_at: str = ""
     updated_at: str = ""
+    blocked: bool = False
+    block_reason: str = ""
     subtasks: list[KanbanSubtask] = field(default_factory=list)
 
 
