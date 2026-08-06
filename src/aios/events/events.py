@@ -61,6 +61,16 @@ AGENT_EXECUTION_STARTED = "agent.execution.started"
 AGENT_EXECUTION_FINISHED = "agent.execution.finished"
 AGENT_EXECUTION_FAILED = "agent.execution.failed"
 
+KANBAN_TOPICS = [
+    "kanban.card_moved",
+    "kanban.subtask_created",
+    "kanban.subtask_completed",
+]
+
+KANBAN_CARD_MOVED = "kanban.card_moved"
+KANBAN_SUBTASK_CREATED = "kanban.subtask_created"
+KANBAN_SUBTASK_COMPLETED = "kanban.subtask_completed"
+
 QUALITY_TOPICS = [
     "quality.started",
     "quality.gate_passed",
@@ -96,6 +106,7 @@ ALL_TOPICS = (
     + TASK_TOPICS
     + AGENT_TOPICS
     + AGENT_EXECUTION_TOPICS
+    + KANBAN_TOPICS
     + QUALITY_TOPICS
     + SECURITY_TOPICS
     + WORKFLOW_TOPICS

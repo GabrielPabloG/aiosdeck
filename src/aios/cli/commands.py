@@ -24,6 +24,7 @@ from aios.core.console import (
     render_section,
 )
 from aios.core.task import Task
+from aios.events.events import KANBAN_CARD_MOVED
 from aios.memory.models import ProjectKnowledge
 
 VERSION_TEXT = f"AiosDeck v{__version__}"
@@ -136,6 +137,29 @@ def _cmd_plan(raw_args: list[str], project_path: Path, kernel_factory: Callable)
     _execute_subtasks(plan, intent, kernel, context)
 
 
+def _wire_event_bus(kernel) -> None:
+    events = kernel.get_engine("events")
+    scheduler = kernel.get_engine("scheduler")
+    if scheduler is not None and events is not None and getattr(events, "bus", None) is not None:
+        scheduler.set_event_bus(events.bus)
+
+
+def _subscribe_live_kanban(kernel, scheduler, board) -> None:
+    events = kernel.get_engine("events")
+    bus = getattr(events, "bus", None)
+    if bus is None:
+        return
+
+    def on_card_moved(_event) -> None:
+        summary = {column: 0 for column in KANBAN_COLUMNS}
+        for card in scheduler.list_cards(board.id):
+            summary[card.column] = summary.get(card.column, 0) + 1
+        sys.stderr.write(f"\r\033[K{render_kanban(summary)}\n")
+        sys.stderr.flush()
+
+    bus.subscribe(KANBAN_CARD_MOVED, on_card_moved)
+
+
 def _execute_subtasks(plan: dict, intent: str, kernel, context) -> None:
     subtasks = plan.get("subtasks", [])
     if not subtasks:
@@ -147,9 +171,12 @@ def _execute_subtasks(plan: dict, intent: str, kernel, context) -> None:
         _error("Developer agent not available.")
 
     scheduler = kernel.get_engine("scheduler")
+    _wire_event_bus(kernel)
+
     board = None
     if scheduler is not None:
         board = scheduler.create_board(f"Sprint: {intent[:40]}")
+        _subscribe_live_kanban(kernel, scheduler, board)
 
     total = len(subtasks)
     completed = 0
