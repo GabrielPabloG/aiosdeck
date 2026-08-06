@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Scheduler now writes `TODO.md` (textual backlog with checkboxes + spinner)
+  instead of rendering the Kanban board to stderr during `plan --run`. The
+  Kanban visual display is deprecated; the Kanban Engine remains as internal
+  API for flow enforcement and TDD gate validation.
+
 ## [0.9.0] - 2026-08-06
 
 Milestone release capturing the implemented work since v0.1.0. Workflows,

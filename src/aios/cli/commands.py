@@ -18,16 +18,14 @@ from pathlib import Path
 
 from aios import __version__
 from aios.core.console import (
-    KANBAN_COLUMNS,
     ProgressSpinner,
     log_step,
-    render_kanban,
     render_row,
     render_section,
 )
 from aios.core.task import Task
-from aios.events.events import KANBAN_CARD_BLOCKED, KANBAN_CARD_MOVED
 from aios.memory.models import ProjectKnowledge
+from aios.scheduler.backlog_writer import write_backlog
 
 VERSION_TEXT = f"AiosDeck v{__version__}"
 
@@ -240,41 +238,6 @@ def _wire_event_bus(kernel) -> None:
         scheduler.set_event_bus(events.bus)
 
 
-def _render_board_summary(scheduler, board) -> dict:
-    summary = {column: 0 for column in KANBAN_COLUMNS}
-    blocked = 0
-    for card in scheduler.list_cards(board.id):
-        summary[card.column] = summary.get(card.column, 0) + 1
-        if card.blocked:
-            blocked += 1
-    if blocked:
-        summary["Blocked"] = blocked
-    return summary
-
-
-def _subscribe_live_kanban(kernel, scheduler, board) -> None:
-    events = kernel.get_engine("events")
-    bus = getattr(events, "bus", None)
-    if bus is None:
-        return
-
-    def redraw(_event=None) -> None:
-        summary = _render_board_summary(scheduler, board)
-        sys.stderr.write(f"\r\033[K{render_kanban(summary)}\n")
-        sys.stderr.flush()
-
-    def on_card_blocked(event) -> None:
-        redraw()
-        payload = event.payload or {}
-        sys.stderr.write(
-            f"  ⛔ Blocked: {payload.get('card_title', '')} — {payload.get('reason', 'blocked')}\n"
-        )
-        sys.stderr.flush()
-
-    bus.subscribe(KANBAN_CARD_MOVED, redraw)
-    bus.subscribe(KANBAN_CARD_BLOCKED, on_card_blocked)
-
-
 def _execute_subtasks(plan: dict, intent: str, kernel, context) -> None:
     subtasks = plan.get("subtasks", [])
     if not subtasks:
@@ -294,14 +257,12 @@ def _execute_subtasks(plan: dict, intent: str, kernel, context) -> None:
 
     board = None
     cards: list = []
+    tasks_list: list[dict] = [{"title": st["description"], "checked": False} for st in subtasks]
     if scheduler is not None:
         board = scheduler.create_board(f"Sprint: {intent[:40]}")
         for st in subtasks:
             cards.append(scheduler.create_card(board_id=board.id, title=st["description"]))
-        _subscribe_live_kanban(kernel, scheduler, board)
-        log_step("", "")
-        log_step("📋", "Sprint Board")
-        log_step("", render_kanban(_render_board_summary(scheduler, board)))
+        write_backlog(tasks_list, active_index=1)
 
     total = len(subtasks)
     completed = 0
@@ -327,6 +288,9 @@ def _execute_subtasks(plan: dict, intent: str, kernel, context) -> None:
                 scheduler.move_card(card.id, "Review")
                 scheduler.pass_tdd_gate(card.id)
                 scheduler.move_card(card.id, "Done")
+            tasks_list[idx]["checked"] = True
+            next_active = idx + 2 if idx + 2 <= total else None
+            write_backlog(tasks_list, active_index=next_active)
             print(f"  [✓] {st['description']}")
             completed += 1
         else:
@@ -335,15 +299,14 @@ def _execute_subtasks(plan: dict, intent: str, kernel, context) -> None:
                     card.id,
                     reason="TDD gate failed: execution did not pass",
                 )
+            write_backlog(tasks_list, active_index=idx + 1)
             print(f"  [✗] {st['description']}")
             break
 
     print(f"\n{completed}/{total} tasks completed")
 
     if board is not None and scheduler is not None:
-        log_step("", "")
-        log_step("📋", "Sprint Board")
-        log_step("", render_kanban(_render_board_summary(scheduler, board)))
+        write_backlog(tasks_list, active_index=None)
 
 
 def _cmd_exit(raw_args: list[str], project_path: Path, kernel_factory: Callable) -> None:

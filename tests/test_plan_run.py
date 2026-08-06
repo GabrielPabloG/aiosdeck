@@ -364,7 +364,6 @@ class TestPlanRunUnit:
         assert "Plano de Execução (3 tarefas):" in output
         assert "• Task 0" in output
         assert "• Task 1" in output
-        assert "Backlog (3)" in output
         assert developer.execute.call_count == len(subtasks)
         scheduler.shutdown()
 
@@ -419,5 +418,4 @@ class TestPlanRunUnit:
         assert cards[1].column == "InProgress"
         assert cards[1].blocked is True
         assert cards[1].block_reason == "TDD gate failed: execution did not pass"
-        assert "⛔ Blocked: Second (fails)" in stderr.getvalue()
         scheduler.shutdown()

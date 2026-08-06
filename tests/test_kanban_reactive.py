@@ -1,11 +1,10 @@
 """Tests for the reactive Kanban live board — event emission and live rendering.
 
 Covers v0.9: KanbanEngine publishing to the Event Bus on card/subtask
-mutations, and the live render callback that redraws the board in --run.
+mutations, and the backlog writer integration during --run.
 """
 
-import io
-import sys
+import os
 from unittest.mock import MagicMock
 
 import pytest
@@ -269,17 +268,20 @@ def _make_live_kernel(tmp_path) -> tuple:
     return kernel, scheduler
 
 
-def test_cli_run_redraws_live_board(tmp_path):
+def test_cli_run_writes_todo_md(tmp_path):
     kernel, scheduler = _make_live_kernel(tmp_path)
     plan = {"subtasks": [{"id": "1", "description": "Add login"}]}
 
-    stderr = io.StringIO()
-    with pytest.MonkeyPatch.context() as mp:
-        mp.setattr(sys, "stderr", stderr)
+    old_cwd = os.getcwd()
+    os.chdir(tmp_path)
+    try:
         _execute_subtasks(plan, "add login", kernel, MagicMock())
 
-    output = stderr.getvalue()
-    assert "\r\033[K" in output
-    assert "InProgress (1)" in output
-    assert "Done (1)" in output
-    scheduler.shutdown()
+        todo = tmp_path / "TODO.md"
+        assert todo.exists()
+        content = todo.read_text()
+        assert "# Backlog (1)" in content
+        assert "- [X] Add login" in content
+    finally:
+        os.chdir(old_cwd)
+        scheduler.shutdown()

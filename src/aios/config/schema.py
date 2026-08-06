@@ -42,6 +42,11 @@ class LoggingConfig:
 
 
 @dataclass
+class UIConfig:
+    backlog_mode: str = "text"
+
+
+@dataclass
 class ProjectConfig:
     name: str = ""
     directory: str = "~/projects"
@@ -56,6 +61,7 @@ class AiosDeckConfig:
     security: SecurityConfig = field(default_factory=SecurityConfig)
     quality: QualityConfig = field(default_factory=QualityConfig)
     logging: LoggingConfig = field(default_factory=LoggingConfig)
+    ui: UIConfig = field(default_factory=UIConfig)
     project: ProjectConfig = field(default_factory=ProjectConfig)
 
     _sources: dict[str, str] = field(default_factory=dict, repr=False)
