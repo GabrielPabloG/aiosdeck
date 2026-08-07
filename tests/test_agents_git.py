@@ -81,6 +81,27 @@ def test_create_tag(tmp_path):
     assert "v0.1.0" in tags.stdout
 
 
+def test_create_branch(tmp_path):
+    repo = _init_repo(tmp_path)
+    (repo / "file.txt").write_text("hello\n", encoding="utf-8")
+    agent = _git(repo)
+
+    agent.stage()
+    agent.commit("Initial commit")
+    result = agent.create_branch("feature/add-health-endpoint-1")
+
+    assert result.executed is True
+    assert result.returncode == 0
+    branch = subprocess.run(
+        ["git", "branch", "--show-current"],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert branch.stdout.strip() == "feature/add-health-endpoint-1"
+
+
 def test_push_requires_approval(tmp_path):
     result = GitAgent(repository=tmp_path).push(approved=False)
 

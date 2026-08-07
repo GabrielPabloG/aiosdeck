@@ -132,6 +132,17 @@ class KanbanEngine:
     def pass_tdd_gate(self, card_id: int) -> None:
         self._store.pass_tdd_gate(card_id)
 
+    def begin_work(self, card_id: int) -> KanbanCard:
+        """Move a card to the active work column for the current flow."""
+        self.move_card(card_id, "Todo")
+        return self.move_card(card_id, "InProgress")
+
+    def complete_work(self, card_id: int) -> KanbanCard:
+        """Move a card to the done column for the current flow, gate included."""
+        self.move_card(card_id, "Review")
+        self.pass_tdd_gate(card_id)
+        return self.move_card(card_id, "Done")
+
     def create_subtask(self, card_id: int, description: str) -> KanbanSubtask:
         subtask = self._store.create_subtask(card_id, description)
         if self._bus is not None:

@@ -177,3 +177,27 @@ def test_kanban_card_columns_are_validated(tmp_path):
     with pytest.raises(KanbanError):
         engine.move_card(card.id, "Sideways")
     engine.shutdown()
+
+
+def test_kanban_begin_work_moves_to_in_progress(tmp_path):
+    engine = _make_engine(tmp_path)
+    board = engine.create_board("Sprint 1")
+    card = engine.create_card(board_id=board.id, title="Feature")
+
+    moved = engine.begin_work(card.id)
+
+    assert moved.column == "InProgress"
+    engine.shutdown()
+
+
+def test_kanban_complete_work_moves_to_done_with_gate(tmp_path):
+    engine = _make_engine(tmp_path)
+    board = engine.create_board("Sprint 1")
+    card = engine.create_card(board_id=board.id, title="Tested feature")
+
+    engine.begin_work(card.id)
+    done = engine.complete_work(card.id)
+
+    assert done.column == "Done"
+    assert done.tdd_gate is True
+    engine.shutdown()

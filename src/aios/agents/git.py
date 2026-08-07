@@ -37,6 +37,9 @@ class GitAgent(BaseAgent):
     def commit(self, message: str) -> GitOperation:
         return self._run(["git", "commit", "-m", message])
 
+    def create_branch(self, name: str) -> GitOperation:
+        return self._run(["git", "checkout", "-b", name])
+
     def create_tag(self, name: str) -> GitOperation:
         return self._run(["git", "tag", name])
 
