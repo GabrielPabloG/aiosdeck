@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import subprocess
 import sys
 import tempfile
@@ -24,6 +23,7 @@ from aios.core.console import (
     render_row,
     render_section,
 )
+from aios.core.run_result import RunResult, StageSummary
 from aios.core.task import Task
 from aios.memory.models import ProjectKnowledge
 
@@ -195,14 +195,6 @@ def _resolve_diff_target(target: str) -> str:
     return str(diff_dir)
 
 
-def _use_workflow_engine() -> bool:
-    return os.environ.get("AIOS_USE_WORKFLOW_ENGINE", "1").strip().lower() not in (
-        "0",
-        "false",
-        "no",
-    )
-
-
 def _cmd_plan(raw_args: list[str], project_path: Path, kernel_factory: Callable) -> None:
     run_mode = "--run" in (raw_args or [])
 
@@ -218,28 +210,22 @@ def _cmd_plan(raw_args: list[str], project_path: Path, kernel_factory: Callable)
 
     context = kernel.get_context()
     task = Task(description=intent, task_type="plan")
+    mode = "plan-run" if run_mode else "plan"
 
-    if run_mode:
-        workflow = kernel.get_engine("workflow")
-        if workflow is not None and _use_workflow_engine():
-            _plan_run_via_workflow(kernel, task, context)
-            return
-        _plan_run_direct(task, kernel, context)
-        return
+    with ProgressSpinner("Running workflow" if run_mode else "Planning"):
+        result = kernel.run(
+            task,
+            context,
+            mode=mode,
+            on_stage=_render_stage if run_mode else None,
+        )
 
-    planner = kernel.get_engine("planner")
-    if planner is None:
-        _error("Planner agent not available.")
-
-    with ProgressSpinner("Planning"):
-        result = planner.execute(task, context)
+    _render_run_result(result)
 
     if not result.success:
-        msg = result.errors[0] if result.errors else "Planning failed."
-        print(f"Error: {msg}", file=sys.stderr)
+        for err in result.errors:
+            print(f"Error: {err}", file=sys.stderr)
         sys.exit(1)
-
-    print(result.output)
 
 
 def _render_plan_list(plan: dict) -> None:
@@ -252,76 +238,25 @@ def _render_plan_list(plan: dict) -> None:
         log_step("", f"  • {st['description']}")
 
 
-def _plan_run_via_workflow(kernel, task: Task, context) -> None:
-    """Run plan --run through the central WorkflowEngine.
-
-    The engine owns the full pipeline (Planner → Git → Scheduler →
-    Developer → Reviewer → Tester → Documentation → Git); the CLI only
-    renders progress from the stage callback.
-    """
-    workflow = kernel.get_engine("workflow")
-
-    def on_stage(stage) -> None:
-        if stage.name == "planner" and stage.success:
-            _render_plan_list(stage.details.get("plan", {}))
-            return
-        if stage.name.startswith("developer:"):
-            description = stage.details.get("description", stage.name)
-            mark = "✓" if stage.success else "✗"
-            print(f"  [{mark}] {description}")
-
-    with ProgressSpinner("Running workflow"):
-        try:
-            result = workflow.execute(task, context, on_stage=on_stage)
-        except Exception as exc:  # noqa: BLE001 - surface pipeline failures clearly
-            print(f"Error: workflow failed: {exc}", file=sys.stderr)
-            sys.exit(1)
-
-    print(f"\n{result.completed_count}/{result.subtask_count} tasks completed")
-
-    if not result.success:
-        for err in result.errors:
-            print(f"Error: {err}", file=sys.stderr)
-        sys.exit(1)
+def _render_stage(stage: StageSummary) -> None:
+    """Render a pipeline stage as it completes (real-time progress)."""
+    if stage.name == "planner":
+        plan = (stage.details or {}).get("plan")
+        if stage.status == "success" and plan:
+            _render_plan_list(plan)
+        return
+    if stage.name.startswith("developer:"):
+        description = (stage.details or {}).get("description", stage.name)
+        mark = "✓" if stage.status == "success" else "✗"
+        print(f"  [{mark}] {description}")
 
 
-def _plan_run_direct(task: Task, kernel, context) -> None:
-    """Legacy fallback used only when the workflow engine is unavailable or
-    disabled (AIOS_USE_WORKFLOW_ENGINE=0). Kept as a transitional safety net.
-    """
-    planner = kernel.get_engine("planner")
-    if planner is None:
-        _error("Planner agent not available.")
-
-    with ProgressSpinner("Planning"):
-        result = planner.execute(task, context)
-
-    if not result.success:
-        msg = result.errors[0] if result.errors else "Planning failed."
-        print(f"Error: {msg}", file=sys.stderr)
-        sys.exit(1)
-
-    plan = json.loads(result.output)
-    _render_plan_list(plan)
-
-    developer = kernel.get_engine("developer")
-    if developer is None:
-        _error("Developer agent not available.")
-
-    subtasks = plan.get("subtasks", [])
-    completed = 0
-    for st in subtasks:
-        dev_task = Task(description=st["description"], task_type="code")
-        with ProgressSpinner(st["description"]):
-            dev_result = developer.execute(dev_task, context)
-        if dev_result.success:
-            print(f"  [✓] {st['description']}")
-            completed += 1
-        else:
-            print(f"  [✗] {st['description']}")
-            break
-
-    print(f"\n{completed}/{len(subtasks)} tasks completed")
+def _render_run_result(result: RunResult) -> None:
+    """Render the final summary from the standardized RunResult."""
+    if result.subtask_count:
+        print(f"\n{result.completed_count}/{result.subtask_count} tasks completed")
+    elif result.output:
+        print(result.output)
 
 
 def _cmd_exit(raw_args: list[str], project_path: Path, kernel_factory: Callable) -> None:

@@ -1,8 +1,10 @@
 """Kernel: bootstrap, lifecycle, and engine coordination."""
 
 import logging
+from collections.abc import Callable
 from contextlib import suppress
 from pathlib import Path
+from typing import Literal
 
 from aios.core.console import (
     render_engine,
@@ -12,6 +14,8 @@ from aios.core.console import (
     render_section,
 )
 from aios.core.engine import Engine
+from aios.core.run_result import RunResult, StageSummary, stage_to_summary
+from aios.core.task import Task
 
 logger = logging.getLogger("aios.kernel")
 
@@ -92,6 +96,8 @@ class Kernel:
             status = self._engine_status.get(name, "unknown")
             logger.info(render_engine(name, status))
 
+        self._render_workflow_pipeline()
+
         logger.info(render_section("Status"))
         if self._errors:
             logger.info(" %-14s Degraded (%d warning(s))", "Health", len(self._errors))
@@ -99,6 +105,28 @@ class Kernel:
             logger.info(" %-14s Healthy", "Health")
 
         logger.info(render_footer())
+
+    def _render_workflow_pipeline(self) -> None:
+        """Show which pipeline stages are available and which optionals are absent."""
+        workflow = self._engines.get("workflow")
+        if workflow is None:
+            return
+        try:
+            health = workflow.health_check()
+        except Exception:  # noqa: BLE001 - a broken health probe must not crash the dashboard
+            return
+        agents = getattr(health, "agents", None)
+        if not isinstance(agents, dict):
+            return
+        optional = set(getattr(health, "optional", []) or [])
+        logger.info(render_section("Workflow Pipeline"))
+        for name, available in agents.items():
+            suffix = " (optional)" if name in optional else ""
+            mark = "✓" if available else "—"
+            logger.info(" %-24s %s", f"{name}{suffix}", mark)
+        missing = [name for name, ok in agents.items() if not ok and name in optional]
+        if missing:
+            logger.info(" Optional not installed: %s", ", ".join(missing))
 
     def status(self) -> dict:
         return {
@@ -115,6 +143,52 @@ class Kernel:
 
     def get_engine(self, name: str):
         return self._engines.get(name)
+
+    def run(
+        self,
+        task: Task,
+        context,
+        mode: Literal["plan", "plan-run"] = "plan",
+        on_stage: Callable[[StageSummary], None] | None = None,
+    ) -> RunResult:
+        """Canonical task entry point.
+
+        ``mode="plan"`` runs the planner only; ``mode="plan-run"`` runs the full
+        workflow pipeline. The Kernel resolves the right engine internally, so
+        callers never reach into individual agents. Failures are normalized into
+        ``RunResult.errors`` with a friendly message.
+        """
+        if mode == "plan-run":
+            return self._run_workflow(task, context, on_stage)
+        return self._run_plan(task, context)
+
+    def _run_plan(self, task: Task, context) -> RunResult:
+        planner = self._engines.get("planner")
+        if planner is None:
+            return RunResult(success=False, errors=("Planner agent not available.",))
+        try:
+            result = planner.execute(task, context)
+        except Exception as exc:  # noqa: BLE001 - surface a friendly message
+            return RunResult(success=False, errors=(f"Planning failed: {exc}",))
+        return RunResult.from_agent(result)
+
+    def _run_workflow(
+        self,
+        task: Task,
+        context,
+        on_stage: Callable[[StageSummary], None] | None,
+    ) -> RunResult:
+        workflow = self._engines.get("workflow")
+        if workflow is None:
+            return RunResult(success=False, errors=("Workflow engine not available.",))
+        wrapped: Callable | None = None
+        if on_stage is not None:
+            wrapped = lambda stage: on_stage(stage_to_summary(stage))  # noqa: E731
+        try:
+            result = workflow.execute(task, context, on_stage=wrapped)
+        except Exception as exc:  # noqa: BLE001 - surface a friendly message
+            return RunResult(success=False, errors=(f"Workflow failed: {exc}",))
+        return RunResult.from_workflow(result)
 
     def _wire_event_bus(self) -> None:
         events = self._engines.get("events")
