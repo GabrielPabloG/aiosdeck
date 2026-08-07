@@ -30,10 +30,10 @@ class SecurityEngine:
 
     def _load_policies(self) -> None:
         policies_dir = self._project_path / "aios" / "policies"
-        default_policy = policies_dir / "default.yaml"
+        capabilities_policy = policies_dir / "agent_capabilities.yaml"
 
-        if default_policy.exists():
-            logger.info("Security policy loaded: %s", default_policy)
+        if capabilities_policy.exists():
+            logger.info("Security policy loaded: %s", capabilities_policy)
             self._policies_loaded = True
         else:
             logger.debug("No security policies found at %s", policies_dir)

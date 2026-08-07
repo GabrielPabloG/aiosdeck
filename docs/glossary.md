@@ -202,7 +202,7 @@ A mandatory human confirmation step for destructive operations. Actions like `gi
 
 ### Policy
 
-A YAML configuration that defines which capabilities each agent receives. Policies can be per-project (`aios/policies/default.yaml`), per-agent, or per-environment. The Policy Engine evaluates policies at agent startup.
+A YAML configuration that defines which capabilities each agent receives. Policies can be per-project (`aios/policies/agent_capabilities.yaml`), per-agent, or per-environment. The Policy Engine evaluates policies at agent startup.
 
 **First used in**: `internals/security.md`. **Introduced**: v0.1 (skeleton), v0.6 (full enforcement).
 

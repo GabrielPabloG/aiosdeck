@@ -1,0 +1,11 @@
+# agent_capabilities.yaml — maps agent name -> capabilities
+# Capabilities: filesystem (read/write with optional restriction), shell, git, internet, approval_required
+reviewer:
+  filesystem:
+    - read
+  shell: false
+
+tester:
+  filesystem:
+    - read
+  shell: true

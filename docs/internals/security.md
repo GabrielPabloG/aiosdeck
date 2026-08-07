@@ -38,8 +38,10 @@ Firewall        Gates            Logger
 
 Evaluates whether an agent is authorized to perform an action. Policies are YAML files:
 
+> **Note:** The current implementation only requires the presence of `agent_capabilities.yaml`. The complete policy schema below describes the planned Policy Engine and is not fully implemented yet.
+
 ```yaml
-# aios/policies/default.yaml
+# aios/policies/agent_capabilities.yaml
 agents:
   planner:
     capabilities: [filesystem_read]
@@ -262,7 +264,7 @@ This is enforced in `runtime/opencode.py` via `_build_permissions(capabilities)`
 - [ ] Implement `security/secrets.py` — Load secrets from env, inject into runtime
 - [ ] Implement `security/firewall.py` — Prompt sanitization pipeline
 - [ ] Implement `security/audit.py` — Structured logging to file
-- [ ] Default policy (`aios/policies/default.yaml`) must ship with the project
+- [ ] Capabilities policy (`aios/policies/agent_capabilities.yaml`) must ship with the project
 - [ ] Capability check must run before every agent action
 - [ ] Audit log must be append-only; directory created if missing
 - [ ] Secrets must be masked in logs: `OPENAI_API_KEY=***`
