@@ -9,3 +9,9 @@ tester:
   filesystem:
     - read
   shell: true
+
+documentation:
+  filesystem:
+    - read
+    - write
+  shell: false
