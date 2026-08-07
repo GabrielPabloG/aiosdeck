@@ -15,3 +15,6 @@ documentation:
     - read
     - write
   shell: false
+
+research:
+  internet: true
