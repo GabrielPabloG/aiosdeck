@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import subprocess
 import sys
 import tempfile
@@ -25,7 +26,6 @@ from aios.core.console import (
 )
 from aios.core.task import Task
 from aios.memory.models import ProjectKnowledge
-from aios.scheduler.backlog_writer import write_backlog
 
 VERSION_TEXT = f"AiosDeck v{__version__}"
 
@@ -195,6 +195,14 @@ def _resolve_diff_target(target: str) -> str:
     return str(diff_dir)
 
 
+def _use_workflow_engine() -> bool:
+    return os.environ.get("AIOS_USE_WORKFLOW_ENGINE", "1").strip().lower() not in (
+        "0",
+        "false",
+        "no",
+    )
+
+
 def _cmd_plan(raw_args: list[str], project_path: Path, kernel_factory: Callable) -> None:
     run_mode = "--run" in (raw_args or [])
 
@@ -208,12 +216,20 @@ def _cmd_plan(raw_args: list[str], project_path: Path, kernel_factory: Callable)
     kernel = kernel_factory(project_path)
     kernel.start()
 
+    context = kernel.get_context()
+    task = Task(description=intent, task_type="plan")
+
+    if run_mode:
+        workflow = kernel.get_engine("workflow")
+        if workflow is not None and _use_workflow_engine():
+            _plan_run_via_workflow(kernel, task, context)
+            return
+        _plan_run_direct(task, kernel, context)
+        return
+
     planner = kernel.get_engine("planner")
     if planner is None:
         _error("Planner agent not available.")
-
-    context = kernel.get_context()
-    task = Task(description=intent, task_type="plan")
 
     with ProgressSpinner("Planning"):
         result = planner.execute(task, context)
@@ -223,90 +239,89 @@ def _cmd_plan(raw_args: list[str], project_path: Path, kernel_factory: Callable)
         print(f"Error: {msg}", file=sys.stderr)
         sys.exit(1)
 
-    if not run_mode:
-        print(result.output)
-        return
-
-    plan = json.loads(result.output)
-    _execute_subtasks(plan, intent, kernel, context)
+    print(result.output)
 
 
-def _wire_event_bus(kernel) -> None:
-    events = kernel.get_engine("events")
-    scheduler = kernel.get_engine("scheduler")
-    if scheduler is not None and events is not None and getattr(events, "bus", None) is not None:
-        scheduler.set_event_bus(events.bus)
-
-
-def _execute_subtasks(plan: dict, intent: str, kernel, context) -> None:
+def _render_plan_list(plan: dict) -> None:
     subtasks = plan.get("subtasks", [])
     if not subtasks:
         print("No subtasks to execute.")
         return
+    log_step("📋", f"Plano de Execução ({len(subtasks)} tarefas):")
+    for st in subtasks:
+        log_step("", f"  • {st['description']}")
+
+
+def _plan_run_via_workflow(kernel, task: Task, context) -> None:
+    """Run plan --run through the central WorkflowEngine.
+
+    The engine owns the full pipeline (Planner → Git → Scheduler →
+    Developer → Reviewer → Tester → Documentation → Git); the CLI only
+    renders progress from the stage callback.
+    """
+    workflow = kernel.get_engine("workflow")
+
+    def on_stage(stage) -> None:
+        if stage.name == "planner" and stage.success:
+            _render_plan_list(stage.details.get("plan", {}))
+            return
+        if stage.name.startswith("developer:"):
+            description = stage.details.get("description", stage.name)
+            mark = "✓" if stage.success else "✗"
+            print(f"  [{mark}] {description}")
+
+    with ProgressSpinner("Running workflow"):
+        try:
+            result = workflow.execute(task, context, on_stage=on_stage)
+        except Exception as exc:  # noqa: BLE001 - surface pipeline failures clearly
+            print(f"Error: workflow failed: {exc}", file=sys.stderr)
+            sys.exit(1)
+
+    print(f"\n{result.completed_count}/{result.subtask_count} tasks completed")
+
+    if not result.success:
+        for err in result.errors:
+            print(f"Error: {err}", file=sys.stderr)
+        sys.exit(1)
+
+
+def _plan_run_direct(task: Task, kernel, context) -> None:
+    """Legacy fallback used only when the workflow engine is unavailable or
+    disabled (AIOS_USE_WORKFLOW_ENGINE=0). Kept as a transitional safety net.
+    """
+    planner = kernel.get_engine("planner")
+    if planner is None:
+        _error("Planner agent not available.")
+
+    with ProgressSpinner("Planning"):
+        result = planner.execute(task, context)
+
+    if not result.success:
+        msg = result.errors[0] if result.errors else "Planning failed."
+        print(f"Error: {msg}", file=sys.stderr)
+        sys.exit(1)
+
+    plan = json.loads(result.output)
+    _render_plan_list(plan)
 
     developer = kernel.get_engine("developer")
     if developer is None:
         _error("Developer agent not available.")
 
-    scheduler = kernel.get_engine("scheduler")
-    _wire_event_bus(kernel)
-
-    log_step("📋", f"Plano de Execução ({len(subtasks)} tarefas):")
-    for st in subtasks:
-        log_step("", f"  • {st['description']}")
-
-    board = None
-    cards: list = []
-    tasks_list: list[dict] = [{"title": st["description"], "checked": False} for st in subtasks]
-    if scheduler is not None:
-        board = scheduler.create_board(f"Sprint: {intent[:40]}")
-        for st in subtasks:
-            cards.append(scheduler.create_card(board_id=board.id, title=st["description"]))
-        write_backlog(tasks_list, active_index=1)
-
-    total = len(subtasks)
+    subtasks = plan.get("subtasks", [])
     completed = 0
-
-    for idx, st in enumerate(subtasks):
-        card = cards[idx] if idx < len(cards) else None
-        red_subtask = None
-        if card is not None:
-            scheduler.move_card(card.id, "Todo")
-            red_subtask = scheduler.create_subtask(
-                card_id=card.id,
-                description="failing test (RED)",
-            )
-            scheduler.move_card(card.id, "InProgress")
-
+    for st in subtasks:
         dev_task = Task(description=st["description"], task_type="code")
         with ProgressSpinner(st["description"]):
             dev_result = developer.execute(dev_task, context)
-
         if dev_result.success:
-            if card is not None and red_subtask is not None:
-                scheduler.complete_subtask(red_subtask.id)
-                scheduler.move_card(card.id, "Review")
-                scheduler.pass_tdd_gate(card.id)
-                scheduler.move_card(card.id, "Done")
-            tasks_list[idx]["checked"] = True
-            next_active = idx + 2 if idx + 2 <= total else None
-            write_backlog(tasks_list, active_index=next_active)
             print(f"  [✓] {st['description']}")
             completed += 1
         else:
-            if card is not None:
-                scheduler.block_card(
-                    card.id,
-                    reason="TDD gate failed: execution did not pass",
-                )
-            write_backlog(tasks_list, active_index=idx + 1)
             print(f"  [✗] {st['description']}")
             break
 
-    print(f"\n{completed}/{total} tasks completed")
-
-    if board is not None and scheduler is not None:
-        write_backlog(tasks_list, active_index=None)
+    print(f"\n{completed}/{len(subtasks)} tasks completed")
 
 
 def _cmd_exit(raw_args: list[str], project_path: Path, kernel_factory: Callable) -> None:

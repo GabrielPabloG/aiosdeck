@@ -20,7 +20,7 @@ pip install -e .
 aios                                # Show dashboard
 aios doctor                         # Run diagnostics
 aios memory add convention "Use snake_case"
-aios plan "add OAuth2 login" --run  # Plan and execute on a sprint board
+aios plan "add OAuth2 login" --run  # Plan and run the central workflow pipeline
 ```
 
 Requirements: **OpenCode** (agent runtime) and **ai-jail** (security sandbox).

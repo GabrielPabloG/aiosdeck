@@ -4,14 +4,10 @@ Covers v0.9: KanbanEngine publishing to the Event Bus on card/subtask
 mutations, and the backlog writer integration during --run.
 """
 
-import os
 from unittest.mock import MagicMock
 
 import pytest
 
-from aios.agents.models import AgentResult
-from aios.cli.commands import _execute_subtasks
-from aios.events import EventsEngine
 from aios.events.bus import EventBus
 from aios.events.events import (
     KANBAN_CARD_BLOCKED,
@@ -241,47 +237,3 @@ def test_live_render_callback_redraws_board_summary(tmp_path):
     ]
     assert rendered == expected
     engine.shutdown()
-
-
-# ---------------------------------------------------------------------------
-# CLI --run live redraw
-# ---------------------------------------------------------------------------
-
-
-def _make_live_kernel(tmp_path) -> tuple:
-    events = EventsEngine()
-    events.initialize()
-
-    scheduler = KanbanEngine(project_path=tmp_path, db_path=str(tmp_path / "kanban.db"))
-    scheduler.initialize()
-
-    developer = MagicMock()
-    developer.execute.return_value = AgentResult(success=True, output="ok", errors=[])
-
-    kernel = MagicMock()
-    engine_map = {
-        "scheduler": scheduler,
-        "developer": developer,
-        "events": events,
-    }
-    kernel.get_engine.side_effect = engine_map.get
-    return kernel, scheduler
-
-
-def test_cli_run_writes_todo_md(tmp_path):
-    kernel, scheduler = _make_live_kernel(tmp_path)
-    plan = {"subtasks": [{"id": "1", "description": "Add login"}]}
-
-    old_cwd = os.getcwd()
-    os.chdir(tmp_path)
-    try:
-        _execute_subtasks(plan, "add login", kernel, MagicMock())
-
-        todo = tmp_path / "TODO.md"
-        assert todo.exists()
-        content = todo.read_text()
-        assert "# Backlog (1)" in content
-        assert "- [X] Add login" in content
-    finally:
-        os.chdir(old_cwd)
-        scheduler.shutdown()

@@ -101,14 +101,21 @@ class WorkflowResult:
 
 @dataclass
 class WorkflowHealth:
-    """Health status per required agent."""
+    """Health status per pipeline agent.
+
+    ``optional`` names (e.g. tester, documentation, git) are not required for
+    the pipeline to be healthy: a missing optional agent just skips its stage.
+    """
 
     agents: dict[str, bool]
+    optional: list[str] = field(default_factory=list)
 
     @property
     def healthy(self) -> bool:
-        return all(self.agents.values())
+        required = [name for name in self.agents if name not in self.optional]
+        return all(self.agents[name] for name in required)
 
     @property
     def missing_agents(self) -> list[str]:
-        return [name for name, ok in self.agents.items() if not ok]
+        required = [name for name in self.agents if name not in self.optional]
+        return [name for name in required if not self.agents[name]]

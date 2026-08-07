@@ -303,3 +303,88 @@ def test_workflow_configuration_error_on_missing_agent(tmp_path):
             documentation=DocumentationAgent(),
             git=GitAgent(repository=repo),
         )
+
+
+def _make_workflow_no_optionals(
+    tmp_path: Path,
+    planner_runtime: MagicMock | None = None,
+    dev_runtime: MagicMock | None = None,
+) -> tuple[WorkflowEngine, KanbanEngine]:
+    scheduler = KanbanEngine(project_path=tmp_path, db_path=str(tmp_path / "kanban.db"))
+    scheduler.initialize()
+    workflow = WorkflowEngine(
+        planner=PlannerAgent(planner_runtime or MagicMock()),
+        scheduler=scheduler,
+        developer=DeveloperAgent(dev_runtime or MagicMock()),
+        reviewer=ReviewerAgent(),
+        project_path=tmp_path,
+    )
+    return workflow, scheduler
+
+
+def test_workflow_optional_agents_skipped(tmp_path):
+    """Without tester/documentation/git the pipeline skips their stages gracefully."""
+    planner_runtime = MagicMock()
+    planner_runtime.execute.return_value = json.dumps(VALID_PLAN)
+    dev_runtime = MagicMock()
+    dev_runtime.execute.return_value = "Implementation complete."
+
+    workflow, scheduler = _make_workflow_no_optionals(tmp_path, planner_runtime, dev_runtime)
+    try:
+        result = workflow.execute(
+            Task(description="Add endpoint /health"), _make_context(str(tmp_path))
+        )
+
+        assert result.success is True
+        assert result.branch is None
+        assert [s.name for s in result.stages] == [
+            "planner",
+            "git",
+            "scheduler",
+            "developer:1",
+            "developer:2",
+            "reviewer",
+            "tester",
+            "documentation",
+            "git",
+        ]
+        skipped = [s for s in result.stages if s.details.get("skipped")]
+        assert [s.name for s in skipped] == ["git", "tester", "documentation", "git"]
+    finally:
+        scheduler.shutdown()
+
+
+def test_workflow_on_stage_callback(tmp_path):
+    """on_stage receives every stage as the pipeline progresses."""
+    planner_runtime = MagicMock()
+    planner_runtime.execute.return_value = json.dumps(VALID_PLAN)
+    dev_runtime = MagicMock()
+    dev_runtime.execute.return_value = "Implementation complete."
+
+    workflow, scheduler = _make_workflow_no_optionals(tmp_path, planner_runtime, dev_runtime)
+    received: list = []
+    try:
+        result = workflow.execute(
+            Task(description="Add endpoint /health"),
+            _make_context(str(tmp_path)),
+            on_stage=received.append,
+        )
+    finally:
+        scheduler.shutdown()
+
+    assert result.success is True
+    assert [s.name for s in received] == [s.name for s in result.stages]
+
+
+def test_workflow_health_with_missing_optionals(tmp_path):
+    """Missing optional agents do not make the pipeline unhealthy."""
+    workflow, scheduler = _make_workflow_no_optionals(tmp_path)
+    try:
+        health = workflow.health_check()
+
+        assert health.healthy is True
+        assert health.missing_agents == []
+        assert set(health.optional) == {"tester", "documentation", "git"}
+        assert health.agents["git"] is False
+    finally:
+        scheduler.shutdown()

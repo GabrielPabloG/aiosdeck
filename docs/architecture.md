@@ -246,8 +246,25 @@ aiosdeck/
 9. User runs `aios exit` or shutdown
    → Event: session.shutdown
    → Memory Engine persists session data
-   → Runtime Adapter terminates
+    → Runtime Adapter terminates
+ ```
+
+### Data Flow — `plan --run` via the Workflow Engine
+
+The CLI never talks to agents directly for `plan --run`. It asks the Kernel for
+the `workflow` engine and runs the whole pipeline through it:
+
 ```
+CLI → Kernel.get_engine("workflow") → WorkflowEngine.execute(task, context, on_stage)
+        │
+        └── Planner → Git(branch) → Scheduler → Developer → Reviewer
+            → Tester → Documentation → Git(commit)
+```
+
+The engine holds the orchestration (and skips optional stages — tester,
+documentation, git — gracefully when the corresponding agent is absent). The CLI
+only renders progress from the `on_stage` callback and the returned `WorkflowResult`.
+`AIOS_USE_WORKFLOW_ENGINE=0` restores the legacy direct path as a transitional fallback.
 
 ### Division of Responsibility Across Ecosystem
 

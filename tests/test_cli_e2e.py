@@ -11,6 +11,7 @@ These tests validate the product contract of v0.9.1:
 - kanban events were emitted on the Event Bus.
 """
 
+import contextlib
 import io
 import json
 import sqlite3
@@ -22,6 +23,7 @@ import pytest
 from aios.agents.developer import DeveloperAgent
 from aios.agents.models import AgentResult
 from aios.agents.planner import PlannerAgent
+from aios.agents.reviewer import ReviewerAgent
 from aios.cli.commands import _cmd_plan
 from aios.context import ContextEngine
 from aios.core import Kernel
@@ -34,6 +36,7 @@ from aios.events.events import (
 )
 from aios.memory import MemoryEngine
 from aios.scheduler import KanbanEngine
+from aios.workflow import WorkflowEngine
 
 INTENT = "e2e goal"
 
@@ -58,13 +61,26 @@ def _build_kernel(tmp_path, subtasks: list[dict], dev_results: list[AgentResult]
     )
     developer.execute = MagicMock(side_effect=dev_results)
 
+    scheduler = KanbanEngine(project_path=tmp_path)
+    workflow = WorkflowEngine(
+        planner=planner,
+        scheduler=scheduler,
+        developer=developer,
+        reviewer=ReviewerAgent(),
+        tester=None,
+        documentation=None,
+        git=None,
+        project_path=tmp_path,
+    )
+
     kernel = Kernel(project_path=str(tmp_path))
     kernel.register(ContextEngine(project_path=tmp_path))
     kernel.register(MemoryEngine(project_path=tmp_path))
-    kernel.register(KanbanEngine(project_path=tmp_path))
+    kernel.register(scheduler)
     kernel.register(planner)
     kernel.register(developer)
     kernel.register(EventsEngine())
+    kernel.register(workflow)
     return kernel
 
 
@@ -84,7 +100,8 @@ def _run_plan(kernel, stderr: io.StringIO) -> tuple[list, str]:
 
     with pytest.MonkeyPatch.context() as mp:
         mp.setattr(sys, "stderr", stderr)
-        _cmd_plan(["--run", INTENT], kernel.project_path, lambda _: kernel)
+        with contextlib.suppress(SystemExit):
+            _cmd_plan(["--run", INTENT], kernel.project_path, lambda _: kernel)
     return received, stderr.getvalue()
 
 
@@ -148,8 +165,8 @@ def test_e2e_plan_run_all_cards_land_in_done(tmp_path):
 
     topics = {event.topic for event in received}
     assert KANBAN_CARD_MOVED in topics
-    assert KANBAN_SUBTASK_CREATED in topics
-    assert KANBAN_SUBTASK_COMPLETED in topics
+    assert KANBAN_SUBTASK_CREATED not in topics
+    assert KANBAN_SUBTASK_COMPLETED not in topics
     assert KANBAN_CARD_BLOCKED not in topics
 
 

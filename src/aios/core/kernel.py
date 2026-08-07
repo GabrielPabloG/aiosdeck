@@ -23,6 +23,7 @@ INIT_ORDER = [
     "runtime",
     "developer",
     "planner",
+    "workflow",
     "events",
     "security",
 ]
@@ -43,6 +44,7 @@ class Kernel:
 
         self._print_banner()
         self._initialize_engines()
+        self._wire_event_bus()
         self._enrich_context_with_memory()
         self._render_dashboard()
 
@@ -113,6 +115,12 @@ class Kernel:
 
     def get_engine(self, name: str):
         return self._engines.get(name)
+
+    def _wire_event_bus(self) -> None:
+        events = self._engines.get("events")
+        scheduler = self._engines.get("scheduler")
+        if events is not None and scheduler is not None and events.bus is not None:
+            scheduler.set_event_bus(events.bus)
 
     def _enrich_context_with_memory(self) -> None:
         memory = self._engines.get("memory")

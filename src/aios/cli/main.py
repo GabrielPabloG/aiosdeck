@@ -7,8 +7,11 @@ from pathlib import Path
 
 from aios import __version__
 from aios.agents.developer import DeveloperAgent
+from aios.agents.documentation import DocumentationAgent
+from aios.agents.git import GitAgent
 from aios.agents.planner import PlannerAgent
 from aios.agents.reviewer import ReviewerAgent
+from aios.agents.tester import TesterAgent
 from aios.cli.commands import COMMANDS, _error, _print_command_help, _print_help
 from aios.config import ConfigEngine
 from aios.context import ContextEngine
@@ -24,6 +27,7 @@ from aios.memory import MemoryEngine
 from aios.runtime import RuntimeEngine
 from aios.scheduler import KanbanEngine
 from aios.security import SecurityEngine
+from aios.workflow import WorkflowEngine
 
 VERSION_TEXT = f"AiosDeck v{__version__}"
 
@@ -152,10 +156,26 @@ def _create_kernel(project_path: Path) -> Kernel:
     kernel.register(KanbanEngine(project_path=project_path))
     runtime = RuntimeEngine()
     kernel.register(runtime)
-    kernel.register(DeveloperAgent(runtime))
-    kernel.register(PlannerAgent(runtime))
-    kernel.register(ReviewerAgent(runtime))
+    developer = DeveloperAgent(runtime)
+    planner = PlannerAgent(runtime)
+    reviewer = ReviewerAgent(runtime)
+    kernel.register(developer)
+    kernel.register(planner)
+    kernel.register(reviewer)
     kernel.register(EventsEngine())
     kernel.register(SecurityEngine(project_path=project_path))
+    git = GitAgent(repository=project_path) if (project_path / ".git").exists() else None
+    kernel.register(
+        WorkflowEngine(
+            planner=planner,
+            scheduler=kernel.get_engine("scheduler"),
+            developer=developer,
+            reviewer=reviewer,
+            tester=TesterAgent(),
+            documentation=DocumentationAgent(docs_dir=str(project_path / "docs")),
+            git=git,
+            project_path=project_path,
+        )
+    )
     _active_kernel = kernel
     return kernel
