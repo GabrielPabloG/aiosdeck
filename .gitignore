@@ -20,3 +20,4 @@ venv/
 htmlcov/
 **/.aios/memory.db
 .ai-jail
+TODO.md
