@@ -71,8 +71,8 @@ The architecture follows a **hub-and-spoke** model: the Kernel is the hub, dispa
 
 | Component | Responsibility | Event Bus Role | Phase |
 |-----------|---------------|----------------|-------|
-| **CLI** | Entry point. Thin dispatcher via Command Registry. | Producer | v0.1 |
-| **Kernel** | Bootstrap, lifecycle, dispatches events to engines. | Hub | v0.1 |
+| **CLI** | Entry point. Thin dispatcher via Command Registry. Parses args and renders `RunResult`; owns zero pipeline logic. | Producer | v0.1 |
+| **Kernel** | Bootstrap, lifecycle, dispatches events to engines. Canonical `run()` entry point routes tasks to planner/workflow. | Hub | v0.1 |
 | **Event Dispatcher** | Routes events between components. Pub/sub with topics. | Core infrastructure | v0.1 |
 | **Scheduler** | Manages the kanban board: boards/cards/subtasks, column flow (Backlog→Done), TDD gate enforcement, sprint progress rendering. Persistent via SQLite. | Consumer + Producer | v0.8 (kanban engine) |
 | **Memory Engine** | Persistent storage of conventions, decisions, patterns, session history. | Consumer + Producer | v0.3 |
@@ -251,20 +251,29 @@ aiosdeck/
 
 ### Data Flow — `plan --run` via the Workflow Engine
 
-The CLI never talks to agents directly for `plan --run`. It asks the Kernel for
-the `workflow` engine and runs the whole pipeline through it:
+The CLI is thin: it parses arguments, calls the Kernel, and renders the result.
+It never talks to agents directly, and it never names an engine.
 
 ```
-CLI → Kernel.get_engine("workflow") → WorkflowEngine.execute(task, context, on_stage)
+CLI → Kernel.run(task, context, mode, on_stage) → RunResult
         │
-        └── Planner → Git(branch) → Scheduler → Developer → Reviewer
-            → Tester → Documentation → Git(commit)
+        ├── mode="plan"      → PlannerAgent.execute(task, context)
+        └── mode="plan-run"  → WorkflowEngine.execute(task, context, on_stage)
+                │
+                └── Planner → Git(branch) → Scheduler → Developer → Reviewer
+                    → Tester → Documentation → Git(commit)
 ```
 
-The engine holds the orchestration (and skips optional stages — tester,
-documentation, git — gracefully when the corresponding agent is absent). The CLI
-only renders progress from the `on_stage` callback and the returned `WorkflowResult`.
-`AIOS_USE_WORKFLOW_ENGINE=0` restores the legacy direct path as a transitional fallback.
+The Kernel resolves the right engine internally and normalizes every outcome
+into a single `RunResult` (status, stages executed/skipped, artifacts, logs,
+errors). The CLI consumes only `RunResult`/`StageSummary` shapes and renders
+them. Internal failures are normalized into `RunResult.errors` with a friendly
+message — a broken pipeline never escapes as a raw traceback.
+
+The workflow engine owns the orchestration and skips optional stages — tester,
+documentation, git — gracefully when the corresponding agent is absent. The
+legacy direct-execution path (`AIOS_USE_WORKFLOW_ENGINE`) has been removed:
+the workflow is the single source of the pipeline.
 
 ### Division of Responsibility Across Ecosystem
 
