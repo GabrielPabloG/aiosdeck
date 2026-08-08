@@ -57,7 +57,14 @@ class DeveloperAgent(BaseAgent):
         intent = getattr(context, "intent", None)
         effective = effective_permissions(intent, self.capabilities) if intent else None
         output = self._runtime.execute(
-            prompt, self.required_skills, self.required_capabilities, permissions=effective
+            prompt,
+            self.required_skills,
+            self.required_capabilities,
+            permissions=effective,
+            agent=self.name,
+            task_type=agent_task.task_type,
+            complexity=agent_task.params.get("complexity", "medium"),
+            context_size=len(prompt.split()),
         )
         return AgentResult(
             success=True,

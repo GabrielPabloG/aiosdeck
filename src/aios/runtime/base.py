@@ -22,12 +22,15 @@ class RuntimeAdapter(Protocol):
         """The resolved runtime command (with sandbox)."""
         ...
 
-    def execute(
+    def execute(  # noqa: PLR0913
         self,
         prompt: str,
         skills: list[str],
         capabilities: list[str] | None = None,
         permissions: EffectivePermissions | None = None,
+        *,
+        model: str = "",
+        variant: str = "",
     ) -> str:
         """Execute a prompt with the runtime. Returns raw output.
 
@@ -38,7 +41,11 @@ class RuntimeAdapter(Protocol):
                           Used to lock down tool permissions in headless mode
                           when no resolved permissions are provided.
             permissions: Resolved effective permissions from the security
-                         layer. When provided, the tool policy is derived from
-                         these; ``None`` falls back to the coarse capabilities.
+                          layer. When provided, the tool policy is derived from
+                          these; ``None`` falls back to the coarse capabilities.
+            model: Optional model override (e.g. ``anthropic/claude-sonnet``).
+                   When non-empty, passed as ``-m`` to the runtime.
+            variant: Optional variant override (e.g. ``high``). When non-empty,
+                     passed as ``--variant`` to the runtime.
         """
         ...

@@ -83,11 +83,16 @@ class PlannerAgent(BaseAgent):
         for _ in range(self.max_iterations):
             intent = getattr(context, "intent", None)
             effective = effective_permissions(intent, self.capabilities) if intent else None
+            transcript_prompt = self._build_transcript_prompt(transcript)
             output = self._runtime.execute(
-                self._build_transcript_prompt(transcript),
+                transcript_prompt,
                 self.required_skills,
                 self.required_capabilities,
                 permissions=effective,
+                agent=self.name,
+                task_type=agent_task.task_type,
+                complexity=agent_task.params.get("complexity", "medium"),
+                context_size=len(transcript_prompt.split()),
             )
 
             tool_result = self._exec_tool_call(output)
