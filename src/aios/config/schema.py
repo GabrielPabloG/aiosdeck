@@ -50,6 +50,16 @@ class UIConfig:
 
 
 @dataclass
+class LearningConfig:
+    enabled: bool = True
+    auto_capture: bool = True
+    confidence_threshold: float = 0.5
+    min_evidence: int = 1
+    recurrence_threshold: int = 2
+    policy: dict[str, str] = field(default_factory=dict)
+
+
+@dataclass
 class ProjectConfig:
     name: str = ""
     directory: str = "~/projects"
@@ -66,5 +76,6 @@ class AiosDeckConfig:
     logging: LoggingConfig = field(default_factory=LoggingConfig)
     ui: UIConfig = field(default_factory=UIConfig)
     project: ProjectConfig = field(default_factory=ProjectConfig)
+    learning: LearningConfig = field(default_factory=LearningConfig)
 
     _sources: dict[str, str] = field(default_factory=dict, repr=False)

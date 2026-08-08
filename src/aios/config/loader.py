@@ -55,6 +55,7 @@ class ConfigLoader:
             "AIOS_SECURITY_ENABLED": "security.enabled",
             "AIOS_LOG_LEVEL": "logging.level",
             "AIOS_AUDIT_PATH": "logging.audit_path",
+            "AIOS_LEARNING_ENABLED": "learning.enabled",
             "AIOS_PROJECT_NAME": "project.name",
             "AIOS_PROJECTS_DIR": "project.directory",
         }
@@ -98,6 +99,14 @@ class ConfigLoader:
                 "overrides": "quality.overrides",
             },
             "logging": {"level": "logging.level", "audit_path": "logging.audit_path"},
+            "learning": {
+                "enabled": "learning.enabled",
+                "auto_capture": "learning.auto_capture",
+                "confidence_threshold": "learning.confidence_threshold",
+                "min_evidence": "learning.min_evidence",
+                "recurrence_threshold": "learning.recurrence_threshold",
+                "policy": "learning.policy",
+            },
             "project": {"name": "project.name", "directory": "project.directory"},
         }
         source = str(config_path)
