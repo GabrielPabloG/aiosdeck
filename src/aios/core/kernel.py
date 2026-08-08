@@ -225,6 +225,7 @@ class Kernel:
         events = self._engines.get("events")
         scheduler = self._engines.get("scheduler")
         telemetry = self._engines.get("telemetry")
+        workflow = self._engines.get("workflow")
         if events is not None and events.bus is not None:
             if scheduler is not None:
                 scheduler.set_event_bus(events.bus)
@@ -232,6 +233,8 @@ class Kernel:
                 self._executor.set_event_bus(events.bus)
             if telemetry is not None:
                 telemetry.set_event_bus(events.bus)
+            if workflow is not None:
+                workflow.set_event_bus(events.bus)
 
     def _enrich_context_with_memory(self) -> None:
         memory = self._engines.get("memory")

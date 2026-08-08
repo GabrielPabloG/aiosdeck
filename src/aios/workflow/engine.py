@@ -9,6 +9,7 @@ import asyncio
 import json
 import logging
 import re
+import time
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
@@ -25,7 +26,20 @@ from aios.agents.reviewer import ReviewerAgent
 from aios.agents.tester import TesterAgent
 from aios.config.schema import QualityConfig
 from aios.core.task import Task
-from aios.quality.contracts import GateInput, GateResult, GateStatus, QualityGate
+from aios.events.events import (
+    QUALITY_COMPLETED,
+    QUALITY_GATE_BLOCKED,
+    QUALITY_GATE_COMPLETED,
+    QUALITY_GATE_STARTED,
+    QUALITY_STARTED,
+)
+from aios.quality.contracts import (
+    GateInput,
+    GateResult,
+    GateStatus,
+    QualityGate,
+    Severity,
+)
 from aios.quality.gates import (
     CodeGate,
     DocumentationGate,
@@ -50,6 +64,19 @@ _SLUG_RE = re.compile(r"[^a-z0-9]+")
 logger = logging.getLogger("aios.workflow")
 
 OPTIONAL_AGENTS = ("tester", "documentation", "git", "research")
+
+
+def _findings_counts(result: GateResult) -> dict[str, int]:
+    counts = {"low": 0, "medium": 0, "high": 0, "critical": 0}
+    for finding in result.findings:
+        label = (
+            finding.severity.value
+            if isinstance(finding.severity, Severity)
+            else str(finding.severity)
+        )
+        if label in counts:
+            counts[label] += 1
+    return counts
 
 
 class WorkflowEngine:
@@ -94,6 +121,11 @@ class WorkflowEngine:
         self._executor = executor
         self._quality_config = quality_config
         self._quality_gates = quality_gates
+        self._bus = None
+
+    def set_event_bus(self, bus) -> None:
+        """Wire the event bus late (the Kernel builds it during startup)."""
+        self._bus = bus
 
     def initialize(self) -> None:
         """No setup required."""
@@ -122,6 +154,10 @@ class WorkflowEngine:
         )
         agents = self._agents
         gates = self._gates()
+        ctx.quality_active = bool(gates)
+        if gates:
+            environment = self._quality_config.environment if self._quality_config else "dev"
+            self._publish_quality(ctx, QUALITY_STARTED, {"environment": environment})
 
         # 0. Research — optional front-gate. Only runs when a researcher is
         # injected; its structured result feeds the planner/developer context.
@@ -432,34 +468,49 @@ class WorkflowEngine:
             ctx.stages.append(stage)
             notify(stage)
             return True
+        self._publish_quality(ctx, QUALITY_GATE_STARTED, {"gate": name})
+        started = time.monotonic()
         try:
             result = asyncio.run(gate.run(gate_input))
         except Exception as exc:  # noqa: BLE001 - a crashed gate must not crash the workflow
             result = GateResult(status=GateStatus.ERROR, reason=f"gate crashed: {exc}")
+        duration_ms = (time.monotonic() - started) * 1000
+
         details: dict = {"gate": result.to_dict()}
-        if result.status is GateStatus.SKIPPED:
-            details["skipped"] = True
-            stage = WorkflowStage(name=name, success=True, details=details)
-            ctx.stages.append(stage)
-            notify(stage)
-            return True
+        policy = self._resolve_gate(name, result) if result.status is GateStatus.FAILED else None
+
+        blocked = False
+        overridden = False
+        reason = result.reason
         if result.status is GateStatus.ERROR:
-            stage = WorkflowStage(name=name, success=False, details=details, error=result.reason)
+            blocked = True
+            reason = reason or "gate error (fail-safe block)"
+        elif result.status is GateStatus.FAILED:
+            details["policy"] = policy.to_dict()
+            blocked = policy.blocks()
+            overridden = policy.overridden
+            reason = policy.reason if blocked else f"{result.reason}; {policy.reason}"
+        elif result.status is GateStatus.SKIPPED:
+            details["skipped"] = True
+
+        payload = {
+            "gate": name,
+            "status": result.status.value,
+            "duration_ms": duration_ms,
+            "findings": _findings_counts(result),
+            "blocked": blocked,
+            "overridden": overridden,
+            "reason": reason,
+        }
+        topic = QUALITY_GATE_BLOCKED if blocked else QUALITY_GATE_COMPLETED
+        self._publish_quality(ctx, topic, payload)
+
+        if blocked:
+            stage = WorkflowStage(name=name, success=False, details=details, error=reason)
             ctx.stages.append(stage)
             notify(stage)
-            ctx.errors.append(f"{name}: {result.reason}")
+            ctx.errors.append(f"{name}: blocked by policy - {reason}")
             return False
-        if result.status is GateStatus.FAILED:
-            decision = self._resolve_gate(name, result)
-            details["policy"] = decision.to_dict()
-            if decision.blocks():
-                stage = WorkflowStage(
-                    name=name, success=False, details=details, error=decision.reason
-                )
-                ctx.stages.append(stage)
-                notify(stage)
-                ctx.errors.append(f"{name}: blocked by policy - {decision.reason}")
-                return False
         stage = WorkflowStage(name=name, success=True, details=details)
         ctx.stages.append(stage)
         notify(stage)
@@ -477,7 +528,20 @@ class WorkflowEngine:
 
     def _finish(self, ctx: _WorkflowContext) -> WorkflowResult:
         ctx.finished_at = datetime.now(UTC).isoformat()
+        if ctx.quality_active:
+            self._publish_quality(
+                ctx,
+                QUALITY_COMPLETED,
+                {"success": not ctx.errors, "errors": list(ctx.errors)},
+            )
         return WorkflowResult.from_context(ctx)
+
+    def _publish_quality(self, ctx: _WorkflowContext, topic: str, payload: dict) -> None:
+        if self._bus is None:
+            return
+        event_payload = dict(payload)
+        event_payload["correlation_id"] = str(ctx.run_id)
+        self._bus.publish(topic, event_payload, correlation_id=event_payload["correlation_id"])
 
     def _run_research(self, ctx: _WorkflowContext, task: Task, context, notify) -> None:
         result = self._run_agent(
