@@ -33,6 +33,7 @@ from aios.knowledge.cli import (
     cmd_knowledge_sources,
 )
 from aios.memory.models import ProjectKnowledge
+from aios.quality.cli import cmd_quality_stats
 from aios.research.schema import research_result_from_dict, research_result_to_json
 from aios.skills.cli import (
     cmd_skills_discover,
@@ -512,6 +513,7 @@ def _print_help() -> None:
     print("  aios review [target]  Review code/architecture/conventions (read-only)")
     print("  aios research <q>     Research a question (repo/docs/web)")
     print("  aios usage [opts]     Show token usage and cost telemetry")
+    print("  aios quality stats     Show quality gate telemetry")
     print("  aios knowledge <cmd>   Manage knowledge store (index/search/sources)")
     print("  aios skills <cmd>     Discover skills and view lifecycle stats")
     print("  aios help             Show this help")
@@ -775,6 +777,18 @@ COMMANDS: dict[str, Command] = {
         name="usage",
         description="Show token usage and cost telemetry",
         execute=cmd_usage,
+    ),
+    "quality": Command(
+        name="quality",
+        description="Query quality gate telemetry",
+        subcommands={
+            "stats": Command(
+                name="stats",
+                description="Show quality gate stats or records",
+                aliases=["s"],
+                execute=cmd_quality_stats,
+            ),
+        },
     ),
     "knowledge": Command(
         name="knowledge",
