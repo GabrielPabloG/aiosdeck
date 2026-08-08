@@ -4,6 +4,14 @@ import logging
 from pathlib import Path
 
 from aios.context.collectors import DETECTORS
+from aios.context.layers import (
+    GUARDRAIL_LAYERS,
+    LAYER_PRECEDENCE,
+    Layer,
+    LayeredContext,
+    LayerType,
+    empty_layers,
+)
 from aios.context.packet import (
     ContextPacket,
     DockerInfo,
@@ -11,6 +19,15 @@ from aios.context.packet import (
     RuntimeInfo,
     StructureInfo,
 )
+
+__all__ = [
+    "GUARDRAIL_LAYERS",
+    "LAYER_PRECEDENCE",
+    "Layer",
+    "LayerType",
+    "LayeredContext",
+    "empty_layers",
+]
 
 logger = logging.getLogger("aios.context")
 
