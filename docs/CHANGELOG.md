@@ -9,6 +9,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Intent & Policy (v0.9.8)** — granular security policy enforced at the
+  executor and runtime boundaries.
+  - **Contracts** — `IntentPolicy` (explicit `actions` + `deny`, frozen,
+    deterministic `to_dict()`), `EffectivePermissions` (sorted serialization,
+    `allows`), and `SecurityDecision` (auditable verdict). `AgentCapabilities`
+    is reused from `agents/contracts`.
+  - **Granular vocabulary** — additive, deterministic `CAPABILITY_ACTIONS`
+    expansion table mapping each coarse capability to granular actions
+    (`filesystem.read`, `shell.execute`, `git.branch`, `git.commit`,
+    `network.access`, ...). Unmapped capabilities grant nothing (fail-safe).
+    Safe `DEFAULT_INTENTS` pinned by tests; `release` has no default and
+    destructive actions (`filesystem.delete`, `git.push`, `git.tag`,
+    `network.access`, `release.publish`) are never implicit.
+  - **Resolver** — `effective = (intent.actions - intent.deny) ∩
+    expand(capabilities)`; deny = absence, explicit deny always wins, an
+    intent never elevates capabilities. `decide()` returns a full
+    `SecurityDecision` with reason and violations.
+  - **Executor boundary** — opt-in run-gate: an intent resolves against the
+    agent's coarse capabilities; an empty effective set is a structured
+    `PERMISSION_DENIED` (never a silent fallback). The intent is attached to
+    the run context for the agent. `intent=None` is byte-identical.
+  - **Workflow intent** — the pipeline runs under `WORKFLOW_INTENT` (develop
+    defaults + `ask_user`), respecting a caller-supplied override on the
+    context. Stage details expose the effective permissions and intent.
+  - **Runtime mapping** — `OpenCodeAdapter` derives the least-privilege
+    `OPENCODE_PERMISSION` from effective permissions: `question` always
+    denied, `read/glob/grep` ↔ `filesystem.read`, `edit` ↔
+    `filesystem.write`, `webfetch/websearch` ↔ `network.access`, and a bash
+    policy that explicitly denies `git push`, `git tag`, `rm -rf`, `curl`,
+    `wget` while allowing the run's commands (`git branch`, `git commit`,
+    `grep`, `ruff`, `python`, `pytest`) — the denies survive `--auto`.
+  - **Audit trail** — `security.intent.applied` / `security.check.passed` /
+    `security.check.denied` events persisted into the additive
+    `telemetry_security` table with `insert_security_decision`,
+    `query_security_stats`, and `query_security_records`. Zero events without
+    an intent.
+  - **CLI** — `aios policy show` (canonical capabilities, default intents,
+    expansion table), `aios security stats` (queryable allow/deny trail), and
+    a plan intent summary (`intent: develop (source: default)` with effective
+    permissions per stage) on `aios plan --run`.
+
+### Changed
+
+- `docs/internals/security.md` — Policy Engine note updated; **Intent vs
+  Capability vs Enforcement** section added (v0.9.8).
+
 - **Quality Pipeline / Gates (v0.9.7)** — automated gates enforced by the
   workflow between agent stages.
   - **Gate contracts** — `GateStatus`, `Severity` (canonical
