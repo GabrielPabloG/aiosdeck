@@ -3,6 +3,7 @@
 import logging
 from pathlib import Path
 
+from aios.context.assembler import ContextAssembler
 from aios.context.assembly import (
     DEFAULT_LAYER_CAPS,
     ContextAssemblyResult,
@@ -31,6 +32,7 @@ from aios.context.packet import (
 __all__ = [
     "DEFAULT_LAYER_CAPS",
     "ContextAssemblyResult",
+    "ContextAssembler",
     "GUARDRAIL_LAYERS",
     "LAYER_PRECEDENCE",
     "Layer",
