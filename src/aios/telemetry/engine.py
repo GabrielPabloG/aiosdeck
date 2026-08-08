@@ -140,6 +140,46 @@ class TelemetryEngine:
             limit=limit,
         )
 
+    def query_security_stats(
+        self,
+        *,
+        decision: str | None = None,
+        agent: str | None = None,
+        date_from: str | None = None,
+        date_to: str | None = None,
+        limit: int = 100,
+    ) -> list[dict]:
+        if self._store is None:
+            return []
+        return self._store.query_security_stats(
+            decision=decision,
+            agent=agent,
+            date_from=date_from,
+            date_to=date_to,
+            limit=limit,
+        )
+
+    def query_security_records(  # noqa: PLR0913 - filters are the audit contract
+        self,
+        *,
+        decision: str | None = None,
+        agent: str | None = None,
+        allowed: bool | None = None,
+        date_from: str | None = None,
+        date_to: str | None = None,
+        limit: int = 100,
+    ) -> list[dict]:
+        if self._store is None:
+            return []
+        return self._store.query_security_records(
+            decision=decision,
+            agent=agent,
+            allowed=allowed,
+            date_from=date_from,
+            date_to=date_to,
+            limit=limit,
+        )
+
     # ------------------------------------------------------------------
     # EventBus subscriptions
     # ------------------------------------------------------------------
@@ -150,7 +190,8 @@ class TelemetryEngine:
         self._bus.subscribe("agent.lifecycle.changed", self._on_lifecycle_event)
         self._bus.subscribe("agent.execution.*", self._on_execution_event)
         self._bus.subscribe("quality.*", self._on_gate_event)
-        self._subscription_count += 3
+        self._bus.subscribe("security.*", self._on_security_event)
+        self._subscription_count += 4
 
     def _unsubscribe(self) -> None:
         if self._bus is None:
@@ -158,6 +199,7 @@ class TelemetryEngine:
         self._bus.unsubscribe("agent.lifecycle.changed", self._on_lifecycle_event)
         self._bus.unsubscribe("agent.execution.*", self._on_execution_event)
         self._bus.unsubscribe("quality.*", self._on_gate_event)
+        self._bus.unsubscribe("security.*", self._on_security_event)
         self._subscription_count = 0
 
     # ------------------------------------------------------------------
@@ -214,6 +256,26 @@ class TelemetryEngine:
             "timestamp": payload.get("timestamp", _now()),
         }
         self._store.insert_gate_record(record)
+
+    def _on_security_event(self, event) -> None:
+        if self._store is None:
+            return
+        payload = event.payload if hasattr(event, "payload") else event
+        if not isinstance(payload, dict):
+            return
+        record = {
+            "decision": payload.get("decision", ""),
+            "agent": payload.get("agent", ""),
+            "action": payload.get("action", ""),
+            "allowed": bool(payload.get("allowed")),
+            "reason": payload.get("reason", ""),
+            "violations": payload.get("violations", []),
+            "intent_source": payload.get("intent_source", ""),
+            "correlation_id": payload.get("correlation_id")
+            or (getattr(event, "correlation_id", "") or ""),
+            "timestamp": payload.get("timestamp", _now()),
+        }
+        self._store.insert_security_decision(record)
 
     # ------------------------------------------------------------------
     # Persistence helpers

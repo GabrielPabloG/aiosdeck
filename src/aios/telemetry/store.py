@@ -131,6 +131,26 @@ CREATE INDEX IF NOT EXISTS idx_tg_gate ON telemetry_gates(gate);
 CREATE INDEX IF NOT EXISTS idx_tg_status ON telemetry_gates(status);
 CREATE INDEX IF NOT EXISTS idx_tg_timestamp ON telemetry_gates(timestamp);
 CREATE INDEX IF NOT EXISTS idx_tg_correlation ON telemetry_gates(correlation_id);
+
+CREATE TABLE IF NOT EXISTS telemetry_security (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    decision TEXT NOT NULL,
+    agent TEXT NOT NULL DEFAULT '',
+    action TEXT NOT NULL DEFAULT '',
+    allowed INTEGER NOT NULL DEFAULT 0,
+    reason TEXT NOT NULL DEFAULT '',
+    violations TEXT NOT NULL DEFAULT '[]',
+    intent_source TEXT NOT NULL DEFAULT '',
+    correlation_id TEXT NOT NULL DEFAULT '',
+    timestamp TEXT NOT NULL DEFAULT '',
+    project_id TEXT NOT NULL DEFAULT ''
+);
+
+CREATE INDEX IF NOT EXISTS idx_tsec_decision ON telemetry_security(decision);
+CREATE INDEX IF NOT EXISTS idx_tsec_agent ON telemetry_security(agent);
+CREATE INDEX IF NOT EXISTS idx_tsec_allowed ON telemetry_security(allowed);
+CREATE INDEX IF NOT EXISTS idx_tsec_timestamp ON telemetry_security(timestamp);
+CREATE INDEX IF NOT EXISTS idx_tsec_correlation ON telemetry_security(correlation_id);
 """
 
 
@@ -900,6 +920,159 @@ class TelemetryStore:
                 "blocked": row[9],
                 "overridden": row[10],
                 "timestamp": row[11],
+            }
+            for row in rows
+        ]
+
+    # ------------------------------------------------------------------
+    # Security audit records
+    # ------------------------------------------------------------------
+
+    def insert_security_decision(self, record: dict) -> None:
+        if not self._conn:
+            return
+        violations = record.get("violations") or []
+        if not isinstance(violations, str):
+            violations = json.dumps(list(violations), ensure_ascii=False)
+        try:
+            self._conn.execute(
+                """INSERT INTO telemetry_security
+                   (decision, agent, action, allowed, reason,
+                    violations, intent_source, correlation_id,
+                    timestamp, project_id)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    record.get("decision", ""),
+                    record.get("agent", ""),
+                    record.get("action", ""),
+                    1 if record.get("allowed") else 0,
+                    record.get("reason", ""),
+                    violations,
+                    record.get("intent_source", ""),
+                    record.get("correlation_id", ""),
+                    record.get("timestamp", _now()),
+                    self._project_id,
+                ),
+            )
+            self._conn.commit()
+        except sqlite3.Error as exc:
+            logger.warning("insert_security_decision failed: %s", exc)
+
+    def query_security_stats(  # noqa: PLR0913
+        self,
+        *,
+        decision: str | None = None,
+        agent: str | None = None,
+        date_from: str | None = None,
+        date_to: str | None = None,
+        limit: int = 100,
+    ) -> list[dict]:
+        if not self._conn:
+            return []
+
+        conditions = ["project_id = ?"]
+        params: list = [self._project_id]
+
+        if decision:
+            conditions.append("decision = ?")
+            params.append(decision)
+        if agent:
+            conditions.append("agent = ?")
+            params.append(agent)
+        if date_from:
+            conditions.append("timestamp >= ?")
+            params.append(date_from)
+        if date_to:
+            conditions.append("timestamp <= ?")
+            params.append(date_to)
+
+        where = " AND ".join(conditions)
+        try:
+            rows = self._conn.execute(
+                f"""SELECT decision,
+                    COUNT(*) as runs,
+                    COALESCE(SUM(CASE WHEN allowed = 1 THEN 1 ELSE 0 END), 0) as allowed,
+                    COALESCE(SUM(CASE WHEN allowed = 0 THEN 1 ELSE 0 END), 0) as denied
+                FROM telemetry_security
+                WHERE {where}
+                GROUP BY decision
+                ORDER BY runs DESC
+                LIMIT ?""",
+                params + [limit],
+            ).fetchall()
+        except sqlite3.Error as exc:
+            logger.warning("query_security_stats failed: %s", exc)
+            return []
+
+        return [
+            {
+                "decision": row[0],
+                "runs": row[1],
+                "allowed": row[2],
+                "denied": row[3],
+            }
+            for row in rows
+        ]
+
+    def query_security_records(  # noqa: PLR0913
+        self,
+        *,
+        decision: str | None = None,
+        agent: str | None = None,
+        allowed: bool | None = None,
+        date_from: str | None = None,
+        date_to: str | None = None,
+        limit: int = 100,
+    ) -> list[dict]:
+        if not self._conn:
+            return []
+
+        conditions = ["project_id = ?"]
+        params: list = [self._project_id]
+
+        if decision:
+            conditions.append("decision = ?")
+            params.append(decision)
+        if agent:
+            conditions.append("agent = ?")
+            params.append(agent)
+        if allowed is not None:
+            conditions.append("allowed = ?")
+            params.append(1 if allowed else 0)
+        if date_from:
+            conditions.append("timestamp >= ?")
+            params.append(date_from)
+        if date_to:
+            conditions.append("timestamp <= ?")
+            params.append(date_to)
+
+        where = " AND ".join(conditions)
+        try:
+            rows = self._conn.execute(
+                f"""SELECT id, decision, agent, action, allowed, reason,
+                    violations, intent_source, correlation_id, timestamp
+                FROM telemetry_security
+                WHERE {where}
+                ORDER BY timestamp DESC
+                LIMIT ?""",
+                params + [limit],
+            ).fetchall()
+        except sqlite3.Error as exc:
+            logger.warning("query_security_records failed: %s", exc)
+            return []
+
+        return [
+            {
+                "id": row[0],
+                "decision": row[1],
+                "agent": row[2],
+                "action": row[3],
+                "allowed": row[4],
+                "reason": row[5],
+                "violations": json.loads(row[6]) if row[6] else [],
+                "intent_source": row[7],
+                "correlation_id": row[8],
+                "timestamp": row[9],
             }
             for row in rows
         ]
