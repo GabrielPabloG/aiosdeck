@@ -225,12 +225,15 @@ class Kernel:
     def _wire_event_bus(self) -> None:
         events = self._engines.get("events")
         scheduler = self._engines.get("scheduler")
+        runtime = self._engines.get("runtime")
         telemetry = self._engines.get("telemetry")
         workflow = self._engines.get("workflow")
         learning = self._engines.get("learning")
         if events is not None and events.bus is not None:
             if scheduler is not None:
                 scheduler.set_event_bus(events.bus)
+            if runtime is not None:
+                runtime.set_event_bus(events.bus)
             if self._executor is not None:
                 self._executor.set_event_bus(events.bus)
             if telemetry is not None:
