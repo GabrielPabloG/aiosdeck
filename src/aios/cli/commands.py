@@ -315,8 +315,9 @@ def _print_research_text(result) -> None:
 
 def _cmd_plan(raw_args: list[str], project_path: Path, kernel_factory: Callable) -> None:
     run_mode = "--run" in (raw_args or [])
+    as_json = "--json" in (raw_args or [])
 
-    clean_args = [a for a in (raw_args or []) if a != "--run"]
+    clean_args = [a for a in (raw_args or []) if a not in ("--run", "--json")]
     intent = " ".join(clean_args) if clean_args else None
     if not intent:
         print("Usage: aios plan <intent>", file=sys.stderr)
@@ -338,12 +339,74 @@ def _cmd_plan(raw_args: list[str], project_path: Path, kernel_factory: Callable)
             on_stage=_render_stage if run_mode else None,
         )
 
+    if as_json:
+        print(json.dumps(_run_result_to_json(result), indent=2))
+        if not result.success:
+            sys.exit(1)
+        return
+
     _render_run_result(result)
+    if run_mode:
+        _render_gate_trail(result)
 
     if not result.success:
         for err in result.errors:
             print(f"Error: {err}", file=sys.stderr)
         sys.exit(1)
+
+
+def _run_result_to_json(result: RunResult) -> dict:
+    return {
+        "success": result.success,
+        "errors": list(result.errors),
+        "gates": _gates_json(result),
+    }
+
+
+def _gates_json(result: RunResult) -> dict:
+    gates = {}
+    for stage in result.stages:
+        if not stage.name.endswith("_gate"):
+            continue
+        details = stage.details or {}
+        gate = details.get("gate") or {}
+        gates[stage.name] = {
+            "status": gate.get("status", stage.status),
+            "reason": stage.reason or gate.get("reason", ""),
+            "findings": gate.get("findings", []),
+            "policy": details.get("policy", {}),
+        }
+    return gates
+
+
+def _render_gate_trail(result: RunResult) -> None:
+    gate_stages = [s for s in result.stages if s.name.endswith("_gate")]
+    if not gate_stages:
+        return
+    log_step("", "Quality Gates:")
+    for stage in gate_stages:
+        label, detail = _gate_label(stage)
+        line = f"  [{label}] {stage.name}"
+        if detail:
+            line += f"  {detail}"
+        log_step("", line)
+
+
+def _gate_label(stage: StageSummary) -> tuple[str, str]:
+    details = stage.details or {}
+    gate = details.get("gate") or {}
+    policy = details.get("policy") or {}
+    status = gate.get("status", stage.status)
+    if status == "skipped":
+        return "SKIP", "(skipped)"
+    if policy.get("overridden"):
+        return "PASS", f"(override: {policy.get('override_reason', '')})"
+    if policy.get("decision") == "warn":
+        return "PASS", "(warn)"
+    if stage.status == "failed" or status in ("failed", "error"):
+        reason = stage.reason or gate.get("reason", "")
+        return "FAIL", f"- {reason}"
+    return "PASS", ""
 
 
 def _render_plan_list(plan: dict) -> None:
