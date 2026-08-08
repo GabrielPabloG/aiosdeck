@@ -32,6 +32,7 @@ from aios.events.events import (
     QUALITY_GATE_COMPLETED,
     QUALITY_GATE_STARTED,
     QUALITY_STARTED,
+    RESEARCH_COMPLETED,
 )
 from aios.quality.contracts import (
     GateInput,
@@ -592,6 +593,18 @@ class WorkflowEngine:
         event_payload["correlation_id"] = str(ctx.run_id)
         self._bus.publish(topic, event_payload, correlation_id=event_payload["correlation_id"])
 
+    def _publish_research(self, ctx: _WorkflowContext, serialized: dict) -> None:
+        if self._bus is None:
+            return
+        memory_candidates = serialized.get("memory_candidates", [])
+        payload = {
+            "correlation_id": str(ctx.run_id),
+            "memory_candidates": memory_candidates,
+            "findings": len(serialized.get("findings", [])),
+            "sources": len(serialized.get("sources", [])),
+        }
+        self._bus.publish(RESEARCH_COMPLETED, payload, correlation_id=str(ctx.run_id))
+
     def _run_research(self, ctx: _WorkflowContext, task: Task, context, notify) -> None:
         result = self._run_agent(
             self._agents["research"],
@@ -637,6 +650,7 @@ class WorkflowEngine:
             )
         )
         notify(ctx.stages[-1])
+        self._publish_research(ctx, serialized)
 
     @staticmethod
     def _build_branch(run_id: int, goal: str) -> str:

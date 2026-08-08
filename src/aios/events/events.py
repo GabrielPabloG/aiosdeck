@@ -130,6 +130,25 @@ TELEMETRY_TOPICS = [
     "telemetry.cost.calculated",
 ]
 
+RESEARCH_TOPICS = [
+    "research.completed",
+]
+
+LEARNING_TOPICS = [
+    "learning.observation_recorded",
+    "learning.candidate.created",
+    "learning.candidate.approved",
+    "learning.candidate.rejected",
+    "learning.ingested",
+]
+
+RESEARCH_COMPLETED = "research.completed"
+LEARNING_OBSERVATION_RECORDED = "learning.observation_recorded"
+LEARNING_CANDIDATE_CREATED = "learning.candidate.created"
+LEARNING_CANDIDATE_APPROVED = "learning.candidate.approved"
+LEARNING_CANDIDATE_REJECTED = "learning.candidate.rejected"
+LEARNING_INGESTED = "learning.ingested"
+
 ALL_TOPICS = (
     SYSTEM_TOPICS
     + SESSION_TOPICS
@@ -144,4 +163,6 @@ ALL_TOPICS = (
     + WORKFLOW_TOPICS
     + RUNTIME_TOPICS
     + TELEMETRY_TOPICS
+    + RESEARCH_TOPICS
+    + LEARNING_TOPICS
 )
