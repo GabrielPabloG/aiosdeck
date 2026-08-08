@@ -9,6 +9,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Learning Governance (v0.9.10)** — event-driven observation capture,
+  deterministic advisor, and approval-gated ingestion into project memory.
+  - **Contracts** — `ObservationRecord`, `LearningCandidate`,
+    `ConfidenceScore`, `ReviewDecision`, `Advisor` protocol (pluggable for
+    future LLM advisors), `ReviewPolicy` with default fail-safe (everything
+    requires human approval unless explicitly opted into `auto` via policy).
+  - **Extractor** — deterministic confidence from gate severity
+    (`critical`→0.9, `high`→0.7, `medium`→0.5, `low`→0.3), type mapping
+    (`gate finding`→`mistake/pattern`, `research memory_candidate`→memory
+    type), SHA-256 deduplication, recurrence counting for agent failures.
+  - **Advisor** — `RulesAdvisor` (deterministic, `advisor="rules-advisor"`)
+    recommends `approve|reject|needs_human` based on confidence, risk, and
+    type. High/critical risk or decision/architecture types always require
+    human review.
+  - **Ingestion** — `approve` → `ingest` pipeline blocked until `approved`;
+    maps candidate types to `MemoryEngine.remember_*` (convention/decision/
+    pattern/mistake); versioned (`ingest_version`, `ingested_memory_id`);
+    complete audit trail via `learning_reviews`.
+  - **Event-driven** — subscribes to `quality.gate_*`, `agent.execution.failed`,
+    `research.completed` (new); emits `learning.observation_recorded`,
+    `learning.candidate.*`, `learning.ingested`.
+  - **CLI** — `aios learning candidates [--state] [--limit] [--json]`,
+    `aios learning approve <id>`, `aios learning reject <id> --reason "..."`,
+    `aios learning ingest <id>`, `aios learning export [--format md] [--out]`.
+    Reject requires `--reason`; ingest blocks without approval.
+  - **Config** — `LearningConfig` with `enabled`, `auto_capture`,
+    `confidence_threshold`, `min_evidence`, `recurrence_threshold`, `policy`;
+    env `AIOS_LEARNING_ENABLED` + YAML section `learning:`.
+
 - **Context Layers (v0.9.9)** — formalizes context as explicit layers
   Global→User→Project→Task→Research→Retrieved with deterministic
   composition and token economy.
