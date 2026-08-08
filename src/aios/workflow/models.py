@@ -65,6 +65,7 @@ class _WorkflowContext:
     subtask_count: int = 0
     quality_active: bool = False
     metadata: dict[str, Any] = field(default_factory=dict)
+    intent: Any = None
     finished_at: str | None = None
 
 

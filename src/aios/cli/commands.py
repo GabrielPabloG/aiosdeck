@@ -35,6 +35,11 @@ from aios.knowledge.cli import (
 from aios.memory.models import ProjectKnowledge
 from aios.quality.cli import cmd_quality_stats
 from aios.research.schema import research_result_from_dict, research_result_to_json
+from aios.security.cli import (
+    _render_intent_summary,
+    cmd_policy_show,
+    cmd_security_stats,
+)
 from aios.skills.cli import (
     cmd_skills_discover,
     cmd_skills_inspect,
@@ -349,6 +354,7 @@ def _cmd_plan(raw_args: list[str], project_path: Path, kernel_factory: Callable)
     _render_run_result(result)
     if run_mode:
         _render_gate_trail(result)
+        _render_intent_summary(result)
 
     if not result.success:
         for err in result.errors:
@@ -514,6 +520,8 @@ def _print_help() -> None:
     print("  aios research <q>     Research a question (repo/docs/web)")
     print("  aios usage [opts]     Show token usage and cost telemetry")
     print("  aios quality stats     Show quality gate telemetry")
+    print("  aios policy show       Show security policy (capabilities/intents)")
+    print("  aios security stats    Show security allow/deny audit trail")
     print("  aios knowledge <cmd>   Manage knowledge store (index/search/sources)")
     print("  aios skills <cmd>     Discover skills and view lifecycle stats")
     print("  aios help             Show this help")
@@ -787,6 +795,30 @@ COMMANDS: dict[str, Command] = {
                 description="Show quality gate stats or records",
                 aliases=["s"],
                 execute=cmd_quality_stats,
+            ),
+        },
+    ),
+    "policy": Command(
+        name="policy",
+        description="Show the security policy (capabilities, intents, expansion)",
+        subcommands={
+            "show": Command(
+                name="show",
+                description="Show canonical capabilities, default intents, and expansion",
+                aliases=["s"],
+                execute=cmd_policy_show,
+            ),
+        },
+    ),
+    "security": Command(
+        name="security",
+        description="Query the security audit trail",
+        subcommands={
+            "stats": Command(
+                name="stats",
+                description="Show security allow/deny decisions",
+                aliases=["s"],
+                execute=cmd_security_stats,
             ),
         },
     ),

@@ -50,6 +50,7 @@ from aios.quality.gates import (
 from aios.quality.policy import DecisionResult, resolve_decision
 from aios.scheduler import KanbanEngine
 from aios.security.actions import WORKFLOW_INTENT
+from aios.security.resolver import effective_permissions
 from aios.workflow.models import (
     InMemoryRunIdGenerator,
     RunIdGenerator,
@@ -65,6 +66,15 @@ _SLUG_RE = re.compile(r"[^a-z0-9]+")
 logger = logging.getLogger("aios.workflow")
 
 OPTIONAL_AGENTS = ("tester", "documentation", "git", "research")
+
+_STAGE_AGENT = {
+    "planner": "planner",
+    "reviewer": "reviewer",
+    "tester": "tester",
+    "documentation": "documentation",
+    "git": "git",
+    "research": "research",
+}
 
 
 def _findings_counts(result: GateResult) -> dict[str, int]:
@@ -154,6 +164,7 @@ class WorkflowEngine:
             started_at=datetime.now(UTC).isoformat(),
         )
         self._apply_workflow_intent(context)
+        ctx.intent = getattr(context, "intent", None) if context is not None else None
         agents = self._agents
         gates = self._gates()
         ctx.quality_active = bool(gates)
@@ -427,6 +438,30 @@ class WorkflowEngine:
         except AttributeError:
             logger.warning("Workflow intent not attached: context has no settable 'intent'")
 
+    def _enrich_stage_effective(self, ctx: _WorkflowContext) -> None:
+        """Expose the effective permissions and intent on each agent stage."""
+        if ctx.intent is None:
+            return
+        for stage in ctx.stages:
+            agent_name = _STAGE_AGENT.get(stage.name)
+            if stage.name.startswith("developer:"):
+                agent_name = "developer"
+            if agent_name is None:
+                continue
+            agent = self._agents.get(agent_name)
+            if agent is None:
+                continue
+            effective = effective_permissions(ctx.intent, agent.capabilities)
+            if not effective:
+                continue
+            details = dict(stage.details)
+            details["effective"] = sorted(effective)
+            details.setdefault(
+                "intent",
+                {"name": ctx.intent.name or "", "source": ctx.intent.source or ""},
+            )
+            stage.details = details
+
     @staticmethod
     def _git_operation(result: AgentResult) -> dict | None:
         if not result.output:
@@ -541,6 +576,7 @@ class WorkflowEngine:
 
     def _finish(self, ctx: _WorkflowContext) -> WorkflowResult:
         ctx.finished_at = datetime.now(UTC).isoformat()
+        self._enrich_stage_effective(ctx)
         if ctx.quality_active:
             self._publish_quality(
                 ctx,
