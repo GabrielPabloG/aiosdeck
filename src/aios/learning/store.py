@@ -170,6 +170,30 @@ class LearningStore:
             return None
         return self._row_to_observation(row)
 
+    def get_observation(self, observation_id: int) -> ObservationRecord | None:
+        row = self._fetch_one(
+            "SELECT id, source_execution_id, source_event, source_id, content, "
+            "suggested_type, evidence_refs, confidence, risk_level, dedupe_hash, "
+            "state, project_id, created_at "
+            "FROM learning_observations "
+            "WHERE id=? AND project_id=?",
+            (observation_id, self._project_id),
+        )
+        if row is None:
+            return None
+        return self._row_to_observation(row)
+
+    def list_observations_by_state(self, state: str) -> list[ObservationRecord]:
+        rows = self._fetch_all(
+            "SELECT id, source_execution_id, source_event, source_id, content, "
+            "suggested_type, evidence_refs, confidence, risk_level, dedupe_hash, "
+            "state, project_id, created_at "
+            "FROM learning_observations "
+            "WHERE state=? AND project_id=? ORDER BY created_at DESC",
+            (state, self._project_id),
+        )
+        return [self._row_to_observation(row) for row in rows]
+
     # ------------------------------------------------------------------
     # Candidates
     # ------------------------------------------------------------------

@@ -5,6 +5,7 @@ Observations are drafts; candidates are proposals; ingestion is governed and aud
 """
 
 from aios.learning.contracts import Advisor, ConfidenceScore, ReviewDecision, ReviewPolicy
+from aios.learning.engine import LearningEngine
 from aios.learning.models import IngestionRecord, LearningCandidate, ObservationRecord
 
 __all__ = [
@@ -12,6 +13,7 @@ __all__ = [
     "ConfidenceScore",
     "IngestionRecord",
     "LearningCandidate",
+    "LearningEngine",
     "ObservationRecord",
     "ReviewDecision",
     "ReviewPolicy",
