@@ -12,10 +12,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from aios.events.events import (
+    LEARNING_CANDIDATE_APPROVED,
     LEARNING_CANDIDATE_CREATED,
+    LEARNING_CANDIDATE_REJECTED,
     LEARNING_OBSERVATION_RECORDED,
     Event,
 )
+from aios.learning.advisor import RulesAdvisor
 from aios.learning.extractor import (
     create_candidate_from_observation,
     extract_from_agent_failure,
@@ -169,6 +172,97 @@ class LearningEngine:
 
         return candidate_ids
 
+    def approve(self, candidate_id: int, reviewer: str = "human", reason: str = "") -> int:
+        """Approve a candidate. Returns review ID."""
+        if self._store is None:
+            raise RuntimeError("Learning store not available")
+
+        candidate = self._store.get_candidate(candidate_id)
+        if candidate is None:
+            raise RuntimeError(f"Candidate {candidate_id} not found")
+        if candidate.state in ("approved", "rejected", "ingested"):
+            raise RuntimeError(
+                f"Cannot approve candidate in state '{candidate.state}'"
+            )
+
+        advisor = self._get_advisor()
+        decision = advisor.review(candidate)
+
+        self._store.update_candidate_state(candidate_id, "approved")
+        review_id = self._store.insert_review(
+            candidate_id=candidate_id,
+            advisor=advisor.name,
+            recommendation=decision.recommendation,
+            justification=decision.justification,
+            reviewer=reviewer,
+            decision="approve",
+            reason=reason or decision.justification,
+        )
+
+        if self._bus:
+            self._bus.publish(
+                LEARNING_CANDIDATE_APPROVED,
+                {"candidate_id": candidate_id, "type": candidate.suggested_type},
+            )
+
+        return review_id
+
+    def reject(self, candidate_id: int, reason: str, reviewer: str = "human") -> int:
+        """Reject a candidate. Reason is required."""
+        if not reason:
+            raise RuntimeError("Reason is required to reject a candidate")
+        if self._store is None:
+            raise RuntimeError("Learning store not available")
+
+        candidate = self._store.get_candidate(candidate_id)
+        if candidate is None:
+            raise RuntimeError(f"Candidate {candidate_id} not found")
+        if candidate.state in ("approved", "rejected", "ingested"):
+            raise RuntimeError(
+                f"Cannot reject candidate in state '{candidate.state}'"
+            )
+
+        advisor = self._get_advisor()
+        decision = advisor.review(candidate)
+
+        self._store.update_candidate_state(candidate_id, "rejected")
+        review_id = self._store.insert_review(
+            candidate_id=candidate_id,
+            advisor=advisor.name,
+            recommendation=decision.recommendation,
+            justification=decision.justification,
+            reviewer=reviewer,
+            decision="reject",
+            reason=reason,
+        )
+
+        if self._bus:
+            self._bus.publish(
+                LEARNING_CANDIDATE_REJECTED,
+                {"candidate_id": candidate_id, "type": candidate.suggested_type},
+            )
+
+        return review_id
+
+    def get_reviews(self, candidate_id: int) -> list[dict]:
+        if self._store is None:
+            return []
+        return self._store.get_reviews(candidate_id)
+
+    def get_advisor_recommendation(self, candidate_id: int) -> dict | None:
+        if self._store is None:
+            return None
+        candidate = self._store.get_candidate(candidate_id)
+        if candidate is None:
+            return None
+        advisor = self._get_advisor()
+        decision = advisor.review(candidate)
+        return {
+            "recommendation": decision.recommendation,
+            "justification": decision.justification,
+            "advisor": decision.advisor,
+        }
+
     def get_candidates(
         self, state: CandidateState | None = None, limit: int = 100
     ) -> list[LearningCandidate]:
@@ -187,6 +281,9 @@ class LearningEngine:
     # ------------------------------------------------------------------
     # Internal
     # ------------------------------------------------------------------
+
+    def _get_advisor(self) -> RulesAdvisor:
+        return RulesAdvisor(confidence_threshold=self._confidence_threshold)
 
     def _extract_agent_failures(self, payload: dict) -> list[ObservationRecord]:
         error_msg = str(payload.get("error", "") or payload.get("errors", ["unknown"])[0])
