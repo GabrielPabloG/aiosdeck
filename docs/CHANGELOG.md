@@ -9,6 +9,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Context Layers (v0.9.9)** — formalizes context as explicit layers
+  Global→User→Project→Task→Research→Retrieved with deterministic
+  composition and token economy.
+  - **Layer contracts** — `LayerType` (six layers), `LAYER_PRECEDENCE`
+    (operational ordering `TASK > USER > PROJECT > GLOBAL > RESEARCH >
+    RETRIEVED`), `GUARDRAIL_LAYERS` (`TASK`), `Layer` (type/content/source/
+    guardrail/tokens/trace), and `LayeredContext` with `empty_layers()`
+    fallback factory.
+  - **Assembly** — `assemble_layers` = order → sha256 dedupe (first-by-
+    precedence wins) → truncate within absolute per-layer caps and the
+    agent budget, reusing `_truncate_to_tokens`. Guardrails are immutable:
+    never truncated or dropped.
+  - **ContextAssembler** — collects raw layers (project packet, task
+    description, research summary, retrieved chunks) within
+    `ContextBudget.for_agent(agent)`. Retrieved excludes
+    `_SKILL_SOURCE_TYPES` (skills stay in the SkillAssembler path).
+    Per-layer collection is fail-safe (failure → empty layer).
+  - **Layered prompts** — `PromptBuilder.build(..., layered=...)` composes
+    deterministic sections + an `[Audit]` block; `layered=None` is
+    byte-identical to v0.9.8.
+  - **Wiring** — `_build_context_assembler` in `cli/main.py` injects the
+    assembler into Developer/Planner agents (SkillAssembler pattern); absent
+    assembler keeps the previous prompt.
+  - **CLI** — `aios plan --debug-context` renders the layer tree (text or
+    `--json`) with per-layer source/tokens/guardrail/trace and the audit
+    trail.
+
 - **Intent & Policy (v0.9.8)** — granular security policy enforced at the
   executor and runtime boundaries.
   - **Contracts** — `IntentPolicy` (explicit `actions` + `deny`, frozen,
@@ -51,6 +78,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     permissions per stage) on `aios plan --run`.
 
 ### Changed
+
+- `docs/internals/context-layers.md` — layer model, precedence, budgets, and
+  wiring documented (v0.9.9).
 
 - `docs/internals/security.md` — Policy Engine note updated; **Intent vs
   Capability vs Enforcement** section added (v0.9.8).

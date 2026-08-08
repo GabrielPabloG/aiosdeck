@@ -27,11 +27,13 @@ class DeveloperAgent(BaseAgent):
         runtime,
         builder: PromptBuilder | None = None,
         skills=None,
+        assembler=None,
     ) -> None:
         super().__init__()
         self._runtime = runtime
         self._builder = builder or PromptBuilder()
         self._skills = skills
+        self._assembler = assembler
 
     def execute(self, task, context) -> AgentResult:
         agent_task = coerce_task(task)
@@ -44,7 +46,14 @@ class DeveloperAgent(BaseAgent):
                 task_id=agent_task.task_id,
                 correlation_id=agent_task.correlation_id,
             )
-        prompt = self._builder.build(agent_task, context, skill_contexts=skill_contexts or None)
+        layered = (
+            self._assembler.assemble(agent_task, context, agent=self.name)
+            if self._assembler is not None
+            else None
+        )
+        prompt = self._builder.build(
+            agent_task, context, skill_contexts=skill_contexts or None, layered=layered
+        )
         intent = getattr(context, "intent", None)
         effective = effective_permissions(intent, self.capabilities) if intent else None
         output = self._runtime.execute(

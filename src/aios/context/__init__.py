@@ -3,7 +3,24 @@
 import logging
 from pathlib import Path
 
+from aios.context.assembler import ContextAssembler
+from aios.context.assembly import (
+    DEFAULT_LAYER_CAPS,
+    ContextAssemblyResult,
+    assemble_layers,
+    dedupe_layers,
+    order_layers,
+    truncate_layers,
+)
 from aios.context.collectors import DETECTORS
+from aios.context.layers import (
+    GUARDRAIL_LAYERS,
+    LAYER_PRECEDENCE,
+    Layer,
+    LayeredContext,
+    LayerType,
+    empty_layers,
+)
 from aios.context.packet import (
     ContextPacket,
     DockerInfo,
@@ -11,6 +28,22 @@ from aios.context.packet import (
     RuntimeInfo,
     StructureInfo,
 )
+
+__all__ = [
+    "DEFAULT_LAYER_CAPS",
+    "ContextAssemblyResult",
+    "ContextAssembler",
+    "GUARDRAIL_LAYERS",
+    "LAYER_PRECEDENCE",
+    "Layer",
+    "LayerType",
+    "LayeredContext",
+    "assemble_layers",
+    "dedupe_layers",
+    "empty_layers",
+    "order_layers",
+    "truncate_layers",
+]
 
 logger = logging.getLogger("aios.context")
 

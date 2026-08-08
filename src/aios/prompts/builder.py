@@ -4,6 +4,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from aios.context.layers import LayeredContext
+from aios.prompts.layered import (
+    audit_section,
+    knowledge_section,
+    layers_by_type,
+    project_section,
+    research_section,
+    task_section,
+)
+
 if TYPE_CHECKING:
     from aios.agents import Task
     from aios.context.packet import ContextPacket
@@ -16,6 +26,18 @@ class PromptBuilder:
         task: Task,
         context: ContextPacket,
         skill_contexts: list[SkillContext] | None = None,
+        *,
+        layered: LayeredContext | None = None,
+    ) -> str:
+        if layered is None or layered.is_empty:
+            return self._build_default(task, context, skill_contexts)
+        return self._build_layered(task, context, layered, skill_contexts)
+
+    def _build_default(
+        self,
+        task: Task,
+        context: ContextPacket,
+        skill_contexts: list[SkillContext] | None,
     ) -> str:
         sections = [
             self._task_section(task),
@@ -28,6 +50,28 @@ class PromptBuilder:
             sections.append(self._smart_skills_section(skill_contexts))
         else:
             sections.append(self._skills_section(context))
+        return "\n\n".join(s for s in sections if s)
+
+    def _build_layered(
+        self,
+        task: Task,
+        context: ContextPacket,
+        layered: LayeredContext,
+        skill_contexts: list[SkillContext] | None,
+    ) -> str:
+        by_type = layers_by_type(layered)
+        sections = [
+            task_section(by_type),
+            project_section(by_type),
+            self._memory_section(context),
+            research_section(by_type),
+            knowledge_section(layered),
+        ]
+        if skill_contexts:
+            sections.append(self._smart_skills_section(skill_contexts))
+        else:
+            sections.append(self._skills_section(context))
+        sections.append(audit_section(layered))
         return "\n\n".join(s for s in sections if s)
 
     def _task_section(self, task: Task) -> str:
