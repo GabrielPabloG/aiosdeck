@@ -191,7 +191,8 @@ class TelemetryEngine:
         self._bus.subscribe("agent.execution.*", self._on_execution_event)
         self._bus.subscribe("quality.*", self._on_gate_event)
         self._bus.subscribe("security.*", self._on_security_event)
-        self._subscription_count += 4
+        self._bus.subscribe("runtime.route_selected", self._on_routing_event)
+        self._subscription_count += 5
 
     def _unsubscribe(self) -> None:
         if self._bus is None:
@@ -200,6 +201,7 @@ class TelemetryEngine:
         self._bus.unsubscribe("agent.execution.*", self._on_execution_event)
         self._bus.unsubscribe("quality.*", self._on_gate_event)
         self._bus.unsubscribe("security.*", self._on_security_event)
+        self._bus.unsubscribe("runtime.route_selected", self._on_routing_event)
         self._subscription_count = 0
 
     # ------------------------------------------------------------------
@@ -276,6 +278,66 @@ class TelemetryEngine:
             "timestamp": payload.get("timestamp", _now()),
         }
         self._store.insert_security_decision(record)
+
+    def _on_routing_event(self, event) -> None:
+        if self._store is None:
+            return
+        payload = event.payload if hasattr(event, "payload") else event
+        if not isinstance(payload, dict):
+            return
+        record = {
+            "agent": payload.get("agent", ""),
+            "task_type": payload.get("task_type", ""),
+            "complexity": payload.get("complexity", ""),
+            "provider": payload.get("provider", ""),
+            "model": payload.get("model", ""),
+            "variant": payload.get("variant", ""),
+            "reason": payload.get("reason", ""),
+            "estimated_cost": payload.get("estimated_cost", 0.0),
+            "context_size": payload.get("context_size", 0),
+            "source": payload.get("source", ""),
+            "fallback_used": bool(payload.get("fallback_used")),
+            "fallback_reason": payload.get("fallback_reason", ""),
+            "correlation_id": payload.get("correlation_id")
+            or (getattr(event, "correlation_id", "") or ""),
+            "timestamp": payload.get("timestamp", _now()),
+        }
+        self._store.insert_routing(record)
+
+    def query_routing_stats(
+        self,
+        *,
+        agent: str | None = None,
+        model: str | None = None,
+        date_from: str | None = None,
+        date_to: str | None = None,
+        limit: int = 100,
+    ) -> list[dict]:
+        if self._store is None:
+            return []
+        return self._store.query_routing_stats(
+            agent=agent, model=model, date_from=date_from, date_to=date_to, limit=limit
+        )
+
+    def query_routing_records(
+        self,
+        *,
+        agent: str | None = None,
+        model: str | None = None,
+        date_from: str | None = None,
+        date_to: str | None = None,
+        limit: int = 100,
+    ) -> list[dict]:
+        if self._store is None:
+            return []
+        return self._store.query_routing_records(
+            agent=agent, model=model, date_from=date_from, date_to=date_to, limit=limit
+        )
+
+    def query_route_accuracy(self, *, limit: int = 100) -> list[dict]:
+        if self._store is None:
+            return []
+        return self._store.query_route_accuracy(limit=limit)
 
     # ------------------------------------------------------------------
     # Persistence helpers

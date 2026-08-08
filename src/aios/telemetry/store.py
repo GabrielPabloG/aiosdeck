@@ -151,6 +151,30 @@ CREATE INDEX IF NOT EXISTS idx_tsec_agent ON telemetry_security(agent);
 CREATE INDEX IF NOT EXISTS idx_tsec_allowed ON telemetry_security(allowed);
 CREATE INDEX IF NOT EXISTS idx_tsec_timestamp ON telemetry_security(timestamp);
 CREATE INDEX IF NOT EXISTS idx_tsec_correlation ON telemetry_security(correlation_id);
+
+CREATE TABLE IF NOT EXISTS telemetry_routing (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent TEXT NOT NULL DEFAULT '',
+    task_type TEXT NOT NULL DEFAULT '',
+    complexity TEXT NOT NULL DEFAULT '',
+    provider TEXT NOT NULL DEFAULT '',
+    model TEXT NOT NULL DEFAULT '',
+    variant TEXT NOT NULL DEFAULT '',
+    reason TEXT NOT NULL DEFAULT '',
+    estimated_cost REAL NOT NULL DEFAULT 0,
+    context_size INTEGER NOT NULL DEFAULT 0,
+    source TEXT NOT NULL DEFAULT '',
+    fallback_used INTEGER NOT NULL DEFAULT 0,
+    fallback_reason TEXT NOT NULL DEFAULT '',
+    correlation_id TEXT NOT NULL DEFAULT '',
+    timestamp TEXT NOT NULL DEFAULT '',
+    project_id TEXT NOT NULL DEFAULT ''
+);
+
+CREATE INDEX IF NOT EXISTS idx_trouting_agent ON telemetry_routing(agent);
+CREATE INDEX IF NOT EXISTS idx_trouting_model ON telemetry_routing(model);
+CREATE INDEX IF NOT EXISTS idx_trouting_timestamp ON telemetry_routing(timestamp);
+CREATE INDEX IF NOT EXISTS idx_trouting_correlation ON telemetry_routing(correlation_id);
 """
 
 
@@ -1073,6 +1097,201 @@ class TelemetryStore:
                 "intent_source": row[7],
                 "correlation_id": row[8],
                 "timestamp": row[9],
+            }
+            for row in rows
+        ]
+
+    # ------------------------------------------------------------------
+    # Routing telemetry records
+    # ------------------------------------------------------------------
+
+    def insert_routing(self, record: dict) -> None:
+        if not self._conn:
+            return
+        try:
+            self._conn.execute(
+                """INSERT INTO telemetry_routing
+                   (agent, task_type, complexity, provider, model, variant,
+                    reason, estimated_cost, context_size, source,
+                    fallback_used, fallback_reason, correlation_id,
+                    timestamp, project_id)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    record.get("agent", ""),
+                    record.get("task_type", ""),
+                    record.get("complexity", ""),
+                    record.get("provider", ""),
+                    record.get("model", ""),
+                    record.get("variant", ""),
+                    record.get("reason", ""),
+                    record.get("estimated_cost", 0.0),
+                    record.get("context_size", 0),
+                    record.get("source", ""),
+                    1 if record.get("fallback_used") else 0,
+                    record.get("fallback_reason", ""),
+                    record.get("correlation_id", ""),
+                    record.get("timestamp", _now()),
+                    self._project_id,
+                ),
+            )
+            self._conn.commit()
+        except sqlite3.Error as exc:
+            logger.warning("insert_routing failed: %s", exc)
+
+    def query_routing_stats(  # noqa: PLR0913
+        self,
+        *,
+        agent: str | None = None,
+        model: str | None = None,
+        date_from: str | None = None,
+        date_to: str | None = None,
+        limit: int = 100,
+    ) -> list[dict]:
+        if not self._conn:
+            return []
+
+        conditions = ["project_id = ?"]
+        params: list = [self._project_id]
+
+        if agent:
+            conditions.append("agent = ?")
+            params.append(agent)
+        if model:
+            conditions.append("model = ?")
+            params.append(model)
+        if date_from:
+            conditions.append("timestamp >= ?")
+            params.append(date_from)
+        if date_to:
+            conditions.append("timestamp <= ?")
+            params.append(date_to)
+
+        where = " AND ".join(conditions)
+        try:
+            rows = self._conn.execute(
+                f"""SELECT agent, model, provider,
+                    COUNT(*) as routes,
+                    SUM(CASE WHEN fallback_used = 1 THEN 1 ELSE 0 END) as fallbacks,
+                    ROUND(AVG(estimated_cost), 6) as avg_estimated_cost,
+                    ROUND(AVG(context_size), 0) as avg_context_size
+                FROM telemetry_routing
+                WHERE {where}
+                GROUP BY agent, model
+                ORDER BY routes DESC
+                LIMIT ?""",
+                params + [limit],
+            ).fetchall()
+        except sqlite3.Error as exc:
+            logger.warning("query_routing_stats failed: %s", exc)
+            return []
+
+        return [
+            {
+                "agent": row[0],
+                "model": row[1],
+                "provider": row[2],
+                "routes": row[3],
+                "fallbacks": row[4],
+                "avg_estimated_cost": row[5],
+                "avg_context_size": row[6],
+            }
+            for row in rows
+        ]
+
+    def query_routing_records(  # noqa: PLR0913
+        self,
+        *,
+        agent: str | None = None,
+        model: str | None = None,
+        date_from: str | None = None,
+        date_to: str | None = None,
+        limit: int = 100,
+    ) -> list[dict]:
+        if not self._conn:
+            return []
+
+        conditions = ["project_id = ?"]
+        params: list = [self._project_id]
+
+        if agent:
+            conditions.append("agent = ?")
+            params.append(agent)
+        if model:
+            conditions.append("model = ?")
+            params.append(model)
+        if date_from:
+            conditions.append("timestamp >= ?")
+            params.append(date_from)
+        if date_to:
+            conditions.append("timestamp <= ?")
+            params.append(date_to)
+
+        where = " AND ".join(conditions)
+        try:
+            rows = self._conn.execute(
+                f"""SELECT agent, task_type, complexity, provider, model, variant,
+                    reason, estimated_cost, context_size, source,
+                    fallback_used, fallback_reason, correlation_id, timestamp
+                FROM telemetry_routing
+                WHERE {where}
+                ORDER BY timestamp DESC
+                LIMIT ?""",
+                params + [limit],
+            ).fetchall()
+        except sqlite3.Error as exc:
+            logger.warning("query_routing_records failed: %s", exc)
+            return []
+
+        return [
+            {
+                "agent": row[0],
+                "task_type": row[1],
+                "complexity": row[2],
+                "provider": row[3],
+                "model": row[4],
+                "variant": row[5],
+                "reason": row[6],
+                "estimated_cost": row[7],
+                "context_size": row[8],
+                "source": row[9],
+                "fallback_used": bool(row[10]),
+                "fallback_reason": row[11],
+                "correlation_id": row[12],
+                "timestamp": row[13],
+            }
+            for row in rows
+        ]
+
+    def query_route_accuracy(self, *, limit: int = 100) -> list[dict]:
+        if not self._conn:
+            return []
+        try:
+            rows = self._conn.execute(
+                """SELECT tr.agent, tr.model, tr.estimated_cost,
+                    tc.total_cost as actual_cost, tr.correlation_id, tr.timestamp
+                FROM telemetry_routing tr
+                LEFT JOIN telemetry_executions te
+                    ON tr.correlation_id = te.correlation_id AND tr.model = te.model
+                LEFT JOIN telemetry_costs tc
+                    ON te.execution_id = tc.execution_id
+                WHERE tc.total_cost IS NOT NULL
+                ORDER BY tr.timestamp DESC
+                LIMIT ?""",
+                [limit],
+            ).fetchall()
+        except sqlite3.Error as exc:
+            logger.warning("query_route_accuracy failed: %s", exc)
+            return []
+
+        return [
+            {
+                "agent": row[0],
+                "model": row[1],
+                "estimated_cost": row[2],
+                "actual_cost": row[3],
+                "delta": round(float(row[3] or 0) - float(row[2] or 0), 6),
+                "correlation_id": row[4],
+                "timestamp": row[5],
             }
             for row in rows
         ]

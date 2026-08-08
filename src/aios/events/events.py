@@ -123,7 +123,13 @@ RUNTIME_TOPICS = [
     "runtime.ready",
     "runtime.error",
     "runtime.disconnected",
+    "runtime.route_selected",
 ]
+
+RUNTIME_READY = "runtime.ready"
+RUNTIME_ERROR = "runtime.error"
+RUNTIME_DISCONNECTED = "runtime.disconnected"
+RUNTIME_ROUTE_SELECTED = "runtime.route_selected"
 
 TELEMETRY_TOPICS = [
     "telemetry.usage.captured",
