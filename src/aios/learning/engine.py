@@ -15,6 +15,7 @@ from aios.events.events import (
     LEARNING_CANDIDATE_APPROVED,
     LEARNING_CANDIDATE_CREATED,
     LEARNING_CANDIDATE_REJECTED,
+    LEARNING_INGESTED,
     LEARNING_OBSERVATION_RECORDED,
     Event,
 )
@@ -243,6 +244,96 @@ class LearningEngine:
             )
 
         return review_id
+
+    def ingest(self, candidate_id: int) -> int:
+        """Ingest an approved candidate into memory. Returns new ingest_version."""
+        if self._store is None:
+            raise RuntimeError("Learning store not available")
+
+        candidate = self._store.get_candidate(candidate_id)
+        if candidate is None:
+            raise RuntimeError(f"Candidate {candidate_id} not found")
+        if candidate.state != "approved":
+            raise RuntimeError(
+                f"Candidate {candidate_id} must be approved (current: {candidate.state})"
+            )
+
+        if self._memory is None:
+            raise RuntimeError("Memory engine not available; cannot ingest")
+
+        memory_id = self._write_to_memory(candidate)
+        new_version = candidate.ingest_version + 1
+
+        self._store.update_candidate_state(
+            candidate_id,
+            "ingested",
+            ingest_version=new_version,
+            ingested_memory_id=memory_id or "",
+        )
+        self._store.insert_review(
+            candidate_id=candidate_id,
+            advisor="engine",
+            recommendation="ingest",
+            justification=f"Ingested into memory as {memory_id}",
+            reviewer="engine",
+            decision="ingested",
+            reason=f"version {new_version} → {memory_id}",
+        )
+
+        if self._bus:
+            self._bus.publish(
+                LEARNING_INGESTED,
+                {
+                    "candidate_id": candidate_id,
+                    "memory_id": memory_id,
+                    "type": candidate.suggested_type,
+                },
+            )
+
+        return new_version
+
+    def _write_to_memory(self, candidate: LearningCandidate) -> str | None:
+        if self._memory is None:
+            return None
+
+        content = candidate.content
+        kind = candidate.suggested_type
+        first_line = content.split("\n")[0].strip()[:100]
+        prefix = f"learning:candidate:{candidate.id}"
+
+        memory_id: str | None = None
+        try:
+            if kind == "convention":
+                self._memory.remember_convention(
+                    rule=content, category="learning", source=prefix
+                )
+                memory_id = f"convention:{first_line[:50]}"
+            elif kind == "decision":
+                self._memory.remember_decision(
+                    title=first_line, context=prefix, decision=content
+                )
+                memory_id = f"decision:{first_line[:50]}"
+            elif kind == "pattern":
+                self._memory.remember_pattern(name=first_line, description=content)
+                memory_id = f"pattern:{first_line[:50]}"
+            elif kind == "mistake":
+                self._memory.remember_mistake(
+                    description=content, category="learning", severity=candidate.risk_level
+                )
+                memory_id = f"mistake:{first_line[:50]}"
+            elif kind in ("architecture_note", "dependency-note"):
+                self._memory.remember_decision(
+                    title=first_line, context=prefix, decision=content
+                )
+                memory_id = f"decision:{first_line[:50]}"
+            else:
+                self._memory.remember_pattern(name=first_line, description=content)
+                memory_id = f"pattern:{first_line[:50]}"
+        except Exception as exc:
+            logger.error("Memory write failed for candidate %d: %s", candidate.id, exc)
+            memory_id = f"error:{exc}"
+
+        return memory_id
 
     def get_reviews(self, candidate_id: int) -> list[dict]:
         if self._store is None:
