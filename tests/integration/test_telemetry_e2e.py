@@ -90,9 +90,15 @@ def test_e2e_multiple_executions_aggregated(tmp_path):
     engine.set_event_bus(bus)
     engine.initialize()
 
-    u1 = UsageRecord(input_tokens=100, output_tokens=50, model="gpt-4o", provider="openai", agent="fake")
-    u2 = UsageRecord(input_tokens=200, output_tokens=100, model="gpt-4o", provider="openai", agent="fake")
-    u3 = UsageRecord(input_tokens=300, output_tokens=150, model="gpt-4o", provider="openai", agent="developer")
+    u1 = UsageRecord(
+        input_tokens=100, output_tokens=50, model="gpt-4o", provider="openai", agent="fake"
+    )
+    u2 = UsageRecord(
+        input_tokens=200, output_tokens=100, model="gpt-4o", provider="openai", agent="fake"
+    )
+    u3 = UsageRecord(
+        input_tokens=300, output_tokens=150, model="gpt-4o", provider="openai", agent="developer"
+    )
 
     executor.execute(make_request(_FakeAgent(usage=u1), _task()))
     executor.execute(make_request(_FakeAgent(usage=u2), _task()))

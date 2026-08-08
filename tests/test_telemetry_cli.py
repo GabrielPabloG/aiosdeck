@@ -1,5 +1,6 @@
 """Tests for aios usage CLI command."""
 
+from contextlib import suppress
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -56,16 +57,20 @@ class TestParseFilters:
         assert f["limit"] == 200
 
     def test_unknown_option(self):
-        try:
+        with suppress(SystemExit):
             _parse_filters(["--unknown"])
-        except SystemExit:
-            pass
 
 
 class TestRenderTable:
     def test_render_empty_data(self, capsys):
         data = {
-            "totals": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0, "total_cost": 0, "currency": "USD"},
+            "totals": {
+                "input_tokens": 0,
+                "output_tokens": 0,
+                "total_tokens": 0,
+                "total_cost": 0,
+                "currency": "USD",
+            },
             "by_agent": {},
             "by_model": {},
             "records": [],
@@ -77,11 +82,37 @@ class TestRenderTable:
 
     def test_render_with_data(self, capsys):
         data = {
-            "totals": {"input_tokens": 100, "output_tokens": 50, "total_tokens": 150, "total_cost": 0.0013, "currency": "USD"},
-            "by_agent": {"planner": {"input_tokens": 100, "output_tokens": 50, "total_tokens": 150, "count": 1}},
-            "by_model": {"gpt-4o": {"input_tokens": 100, "output_tokens": 50, "total_tokens": 150, "count": 1}},
+            "totals": {
+                "input_tokens": 100,
+                "output_tokens": 50,
+                "total_tokens": 150,
+                "total_cost": 0.0013,
+                "currency": "USD",
+            },
+            "by_agent": {
+                "planner": {
+                    "input_tokens": 100,
+                    "output_tokens": 50,
+                    "total_tokens": 150,
+                    "count": 1,
+                }
+            },
+            "by_model": {
+                "gpt-4o": {
+                    "input_tokens": 100,
+                    "output_tokens": 50,
+                    "total_tokens": 150,
+                    "count": 1,
+                }
+            },
             "records": [
-                {"execution_id": "exec-1", "input_tokens": 100, "output_tokens": 50, "agent": "planner", "model": "gpt-4o"},
+                {
+                    "execution_id": "exec-1",
+                    "input_tokens": 100,
+                    "output_tokens": 50,
+                    "agent": "planner",
+                    "model": "gpt-4o",
+                },
             ],
             "cost_records": [
                 {"execution_id": "exec-1", "status": "priced", "total_cost": 0.0013},
@@ -96,10 +127,23 @@ class TestRenderTable:
 
     def test_render_unpriced(self, capsys):
         data = {
-            "totals": {"input_tokens": 10, "output_tokens": 5, "total_tokens": 15, "total_cost": 0, "currency": "USD"},
+            "totals": {
+                "input_tokens": 10,
+                "output_tokens": 5,
+                "total_tokens": 15,
+                "total_cost": 0,
+                "currency": "USD",
+            },
             "by_agent": {},
             "by_model": {},
-            "records": [{"execution_id": "exec-1", "input_tokens": 10, "output_tokens": 5, "agent": "test"}],
+            "records": [
+                {
+                    "execution_id": "exec-1",
+                    "input_tokens": 10,
+                    "output_tokens": 5,
+                    "agent": "test",
+                }
+            ],
             "cost_records": [
                 {"execution_id": "exec-1", "status": "unpriced"},
             ],
