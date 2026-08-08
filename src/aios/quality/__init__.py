@@ -23,12 +23,23 @@ from aios.quality.gates import (
     SecurityGate,
     TestGate,
 )
+from aios.quality.policy import (
+    DEFAULT_POLICY,
+    DecisionResult,
+    GateDecision,
+    GateOverride,
+    resolve_decision,
+)
 
 __all__ = [
     "CodeGate",
+    "DEFAULT_POLICY",
+    "DecisionResult",
     "DocumentationGate",
+    "GateDecision",
     "GateFinding",
     "GateInput",
+    "GateOverride",
     "GateResult",
     "GateStatus",
     "QualityGate",
@@ -36,5 +47,6 @@ __all__ = [
     "SecurityGate",
     "Severity",
     "TestGate",
+    "resolve_decision",
     "severity_mapper",
 ]

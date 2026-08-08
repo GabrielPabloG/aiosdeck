@@ -50,3 +50,28 @@ def test_detection_fallback(tmp_path):
     loader = ConfigLoader(project_path=tmp_path)
     config = loader.load()
     assert config.project.name == tmp_path.name
+
+
+def test_quality_policy_from_user_config(tmp_path, monkeypatch):
+    from pathlib import Path
+
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+    config_dir = tmp_path / ".config" / "aiosdeck"
+    config_dir.mkdir(parents=True)
+    (config_dir / "config.yaml").write_text(
+        "quality:\n"
+        "  environment: release\n"
+        "  policy:\n"
+        "    release: [critical, high, medium]\n"
+        "  overrides:\n"
+        "    - gate: code_gate\n"
+        "      environment: dev\n"
+        "      reason: accepted\n"
+    )
+    loader = ConfigLoader(project_path=tmp_path)
+    config = loader.load()
+    assert config.quality.environment == "release"
+    assert config.quality.policy == {"release": ["critical", "high", "medium"]}
+    assert config.quality.overrides == [
+        {"gate": "code_gate", "environment": "dev", "reason": "accepted"}
+    ]
