@@ -6,7 +6,32 @@ import os
 import shutil
 import subprocess
 
+from aios.security.actions import (
+    FILESYSTEM_READ_ACTION,
+    FILESYSTEM_WRITE_ACTION,
+    NETWORK_ACCESS,
+    SHELL_EXECUTE,
+)
+from aios.security.contracts import EffectivePermissions
+
 logger = logging.getLogger("aios.runtime.opencode")
+
+# Bash command policy. opencode's last-match-wins rule means the deny rules must
+# precede the run allowlist so an explicit deny always survives ``--auto``.
+_BASH_RULES: dict[str, str] = {
+    "*": "deny",
+    "git push *": "deny",
+    "git tag *": "deny",
+    "rm -rf *": "deny",
+    "curl *": "deny",
+    "wget *": "deny",
+    "git branch *": "allow",
+    "git commit *": "allow",
+    "grep *": "allow",
+    "ruff *": "allow",
+    "python *": "allow",
+    "pytest *": "allow",
+}
 
 
 class OpenCodeAdapter:
@@ -49,7 +74,13 @@ class OpenCodeAdapter:
             self._resolved_command = "opencode"
             logger.warning("ai-jail not found. Running OpenCode without sandbox.")
 
-    def execute(self, prompt: str, skills: list[str], capabilities: list[str] | None = None) -> str:
+    def execute(
+        self,
+        prompt: str,
+        skills: list[str],
+        capabilities: list[str] | None = None,
+        permissions: EffectivePermissions | None = None,
+    ) -> str:
         args = self._resolved_command.split()
         args.extend(["run", prompt, "--auto"])
 
@@ -57,7 +88,10 @@ class OpenCodeAdapter:
             raise RuntimeError(f"Runtime not available: {self._resolved_command}")
 
         env = os.environ.copy()
-        permissions_json = self._build_permissions(capabilities or [])
+        if permissions is not None:
+            permissions_json = self._build_permissions(permissions)
+        else:
+            permissions_json = self._build_permissions(capabilities or [])
         env["OPENCODE_PERMISSION"] = permissions_json
 
         try:
@@ -80,8 +114,27 @@ class OpenCodeAdapter:
 
         return result.stdout.strip() if result.stdout else ""
 
-    def _build_permissions(self, capabilities: list[str]) -> str:
-        key = tuple(sorted(capabilities))
+    def _build_permissions(
+        self,
+        effective: EffectivePermissions | list[str] | None = None,
+        capabilities: list[str] | None = None,
+    ) -> str:
+        """Build the ``OPENCODE_PERMISSION`` JSON.
+
+        A resolved ``EffectivePermissions`` maps each granular action to the
+        least-privilege tool policy. A list (or nothing) is the legacy coarse
+        capability path, byte-identical to previous output.
+        """
+        if isinstance(effective, EffectivePermissions):
+            return self._build_effective_permissions(effective)
+        if isinstance(effective, frozenset):
+            return self._build_effective_permissions(EffectivePermissions(allowed=effective))
+        return self._build_legacy_permissions(
+            effective if isinstance(effective, list) else capabilities or []
+        )
+
+    def _build_legacy_permissions(self, capabilities: list[str]) -> str:
+        key = ("legacy",) + tuple(sorted(capabilities))
         if key in self._permission_cache:
             return self._permission_cache[key]
 
@@ -92,6 +145,32 @@ class OpenCodeAdapter:
         if "filesystem_write" not in capabilities and "shell" not in capabilities:
             permissions["edit"] = "deny"
             permissions["bash"] = "deny"
+
+        json_str = json.dumps(permissions)
+        self._permission_cache[key] = json_str
+        return json_str
+
+    def _build_effective_permissions(self, effective: EffectivePermissions) -> str:
+        key = ("effective",) + tuple(sorted(effective.allowed))
+        if key in self._permission_cache:
+            return self._permission_cache[key]
+
+        allowed = effective.allowed
+        read = FILESYSTEM_READ_ACTION in allowed
+        write = FILESYSTEM_WRITE_ACTION in allowed
+        shell = SHELL_EXECUTE in allowed
+        network = NETWORK_ACCESS in allowed
+
+        permissions: dict[str, str | dict[str, str]] = {
+            "question": "deny",
+            "read": "allow" if read else "deny",
+            "glob": "allow" if read else "deny",
+            "grep": "allow" if read else "deny",
+            "edit": "allow" if write else "deny",
+            "webfetch": "allow" if network else "deny",
+            "websearch": "allow" if network else "deny",
+        }
+        permissions["bash"] = _BASH_RULES if shell else "deny"
 
         json_str = json.dumps(permissions)
         self._permission_cache[key] = json_str
