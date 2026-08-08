@@ -36,20 +36,21 @@ Workflows are defined declaratively:
 ```python
 @dataclass
 class WorkflowDefinition:
-    name: str                          # "feature", "fix", "review", ...
+    name: str  # "feature", "fix", "review", ...
     description: str
-    stages: list[WorkflowStage]        # Ordered list of stages
-    on_failure: FailureStrategy        # retry, skip, abort
-    required_capabilities: list[str]   # Capabilities needed by this workflow
+    stages: list[WorkflowStage]  # Ordered list of stages
+    on_failure: FailureStrategy  # retry, skip, abort
+    required_capabilities: list[str]  # Capabilities needed by this workflow
+
 
 @dataclass
 class WorkflowStage:
-    name: str                          # "plan", "implement", "review", ...
-    agent: str                         # Agent type to execute
-    task_type: str                     # Type of task to create
-    quality_gates: list[str]           # Gates to run after this stage
-    on_failure: FailureStrategy        # Override workflow-level strategy for this stage
-    depends_on: list[str]              # Previous stage names that must complete first
+    name: str  # "plan", "implement", "review", ...
+    agent: str  # Agent type to execute
+    task_type: str  # Type of task to create
+    quality_gates: list[str]  # Gates to run after this stage
+    on_failure: FailureStrategy  # Override workflow-level strategy for this stage
+    depends_on: list[str]  # Previous stage names that must complete first
 ```
 
 ### Built-in Workflows

@@ -1,6 +1,20 @@
 ---
 name: coding-style
 description: Code conventions, naming, and organization standards for this project.
+triggers:
+  - python
+  - style
+  - linting
+  - formatting
+  - conventions
+  - naming
+  - ruff
+  - code
+scope:
+  - python
+dependencies:
+  - project-dna
+priority: 7
 ---
 
 # Language

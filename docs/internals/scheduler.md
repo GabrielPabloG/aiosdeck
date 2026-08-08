@@ -87,8 +87,8 @@ engine.move_card(card.id, "Review")
 engine.pass_tdd_gate(card.id)
 engine.move_card(card.id, "Done")
 
-engine.list_cards(board.id)   # board state for rendering
-engine.list_boards()          # all sprints for this project
+engine.list_cards(board.id)  # board state for rendering
+engine.list_boards()  # all sprints for this project
 engine.shutdown()
 ```
 

@@ -56,25 +56,25 @@ The output of the Context Engine is a standardized dictionary:
 ```python
 {
     "project": {
-        "name": "my-project",          # from .aios/project.yaml or directory name
+        "name": "my-project",  # from .aios/project.yaml or directory name
         "root": "/path/to/project",
-        "language": "python",          # detected
+        "language": "python",  # detected
     },
     "tools": {
-        "dependency_manager": "uv",    # detected: uv, pip, poetry, npm, cargo
-        "linter": "ruff",             # detected: ruff, eslint, clippy, shellcheck
-        "formatter": "black",         # detected: black, prettier, cargo fmt, shfmt
-        "test_runner": "pytest",      # detected: pytest, vitest, jest, bats, cargo test
+        "dependency_manager": "uv",  # detected: uv, pip, poetry, npm, cargo
+        "linter": "ruff",  # detected: ruff, eslint, clippy, shellcheck
+        "formatter": "black",  # detected: black, prettier, cargo fmt, shfmt
+        "test_runner": "pytest",  # detected: pytest, vitest, jest, bats, cargo test
     },
     "git": {
         "branch": "main",
-        "status": "clean",            # clean, dirty, untracked
+        "status": "clean",  # clean, dirty, untracked
         "remote": "origin",
         "last_commit": "abc1234",
         "last_commit_message": "feat: add user authentication",
     },
     "docker": {
-        "present": true,              # docker-compose.yml or Dockerfile found
+        "present": true,  # docker-compose.yml or Dockerfile found
         "running": false,
         "compose_files": ["docker-compose.yml"],
     },

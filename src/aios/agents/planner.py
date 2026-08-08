@@ -25,7 +25,6 @@ from aios.agents.contracts import (
     STATE_SUCCEEDED,
     TIMEOUT,
     AgentError,
-    AgentTask,
     RetryPolicy,
     coerce_task,
 )
@@ -48,14 +47,26 @@ class PlannerAgent(BaseAgent):
     required_skills = ["project-dna", "coding-style"]
     max_iterations = 3
 
-    def __init__(self, runtime, builder: PromptBuilder | None = None) -> None:
+    def __init__(self, runtime, builder: PromptBuilder | None = None, skills=None) -> None:
         super().__init__()
         self._runtime = runtime
         self._builder = builder or PromptBuilder()
+        self._skills = skills
 
     def execute(self, task, context) -> AgentResult:
         agent_task = coerce_task(task)
-        transcript = [self._build_planning_prompt(agent_task, context)]
+        skill_contexts = []
+        if self._skills is not None:
+            skill_contexts = self._skills.assemble(
+                agent_task.description,
+                context,
+                agent=self.name,
+                task_id=agent_task.task_id,
+                correlation_id=agent_task.correlation_id,
+            )
+        transcript = [
+            self._build_planning_prompt(agent_task, context, skill_contexts=skill_contexts)
+        ]
         last_error = "Model failed to produce a valid plan"
 
         for _ in range(self.max_iterations):
@@ -108,7 +119,7 @@ class PlannerAgent(BaseAgent):
             return None
         return ask_user(match.group(2))
 
-    def _build_planning_prompt(self, task: AgentTask, context) -> str:
+    def _build_planning_prompt(self, task, context, skill_contexts=None) -> str:
         plan_prompt = (
             "## Role: Task Planner\n\n"
             "You are a software architecture planner. "
@@ -129,7 +140,7 @@ class PlannerAgent(BaseAgent):
             "---\n\n"
             "## Project Context\n\n"
         )
-        base_prompt = self._builder.build(task, context)
+        base_prompt = self._builder.build(task, context, skill_contexts=skill_contexts)
         return plan_prompt + base_prompt
 
     def _parse_plan(self, output: str) -> AgentResult:

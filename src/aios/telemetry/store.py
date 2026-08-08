@@ -88,6 +88,28 @@ CREATE TABLE IF NOT EXISTS telemetry_retrieval (
 
 CREATE INDEX IF NOT EXISTS idx_tr_agent ON telemetry_retrieval(agent);
 CREATE INDEX IF NOT EXISTS idx_tr_timestamp ON telemetry_retrieval(timestamp);
+
+CREATE TABLE IF NOT EXISTS telemetry_skills (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    execution_id TEXT DEFAULT '',
+    correlation_id TEXT DEFAULT '',
+    skill_name TEXT NOT NULL,
+    skill_version TEXT DEFAULT '1',
+    intent TEXT DEFAULT '',
+    agent TEXT DEFAULT '',
+    considered INTEGER DEFAULT 0,
+    selected INTEGER DEFAULT 0,
+    used INTEGER DEFAULT 0,
+    relevance_score REAL DEFAULT 0.0,
+    tokens_contributed INTEGER DEFAULT 0,
+    downstream_success INTEGER,
+    timestamp TEXT NOT NULL DEFAULT '',
+    project_id TEXT NOT NULL DEFAULT ''
+);
+
+CREATE INDEX IF NOT EXISTS idx_ts_skill_name ON telemetry_skills(skill_name);
+CREATE INDEX IF NOT EXISTS idx_ts_agent ON telemetry_skills(agent);
+CREATE INDEX IF NOT EXISTS idx_ts_timestamp ON telemetry_skills(timestamp);
 """
 
 
@@ -591,6 +613,103 @@ class TelemetryStore:
                 "retrieval_latency_ms": row[8],
                 "retriever": row[9],
                 "timestamp": row[10],
+            }
+            for row in rows
+        ]
+
+    # ------------------------------------------------------------------
+    # Skill usage records
+    # ------------------------------------------------------------------
+
+    def insert_skill_usage(self, record: dict) -> None:
+        if not self._conn:
+            return
+        try:
+            self._conn.execute(
+                """INSERT INTO telemetry_skills
+                   (execution_id, correlation_id, skill_name, skill_version,
+                    intent, agent, considered, selected, used,
+                    relevance_score, tokens_contributed, downstream_success,
+                    timestamp, project_id)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    record.get("execution_id", ""),
+                    record.get("correlation_id", ""),
+                    record.get("skill_name", ""),
+                    record.get("skill_version", "1"),
+                    record.get("intent", ""),
+                    record.get("agent", ""),
+                    record.get("considered", 0),
+                    record.get("selected", 0),
+                    record.get("used", 0),
+                    record.get("relevance_score", 0.0),
+                    record.get("tokens_contributed", 0),
+                    record.get("downstream_success"),
+                    record.get("timestamp", _now()),
+                    self._project_id,
+                ),
+            )
+            self._conn.commit()
+        except sqlite3.Error as exc:
+            logger.warning("insert_skill_usage failed: %s", exc)
+
+    def query_skill_stats(
+        self,
+        *,
+        skill: str | None = None,
+        agent: str | None = None,
+        date_from: str | None = None,
+        date_to: str | None = None,
+        limit: int = 200,
+    ) -> list[dict]:
+        if not self._conn:
+            return []
+
+        conditions = ["project_id = ?"]
+        params: list = [self._project_id]
+
+        if skill:
+            conditions.append("skill_name = ?")
+            params.append(skill)
+        if agent:
+            conditions.append("agent = ?")
+            params.append(agent)
+        if date_from:
+            conditions.append("timestamp >= ?")
+            params.append(date_from)
+        if date_to:
+            conditions.append("timestamp <= ?")
+            params.append(date_to)
+
+        where = " AND ".join(conditions)
+        try:
+            query = f"""SELECT
+                    skill_name,
+                    COUNT(*) as total_records,
+                    SUM(considered) as total_considered,
+                    SUM(selected) as total_selected,
+                    SUM(used) as total_used,
+                    AVG(CASE WHEN relevance_score > 0 THEN relevance_score END) as avg_relevance,
+                    SUM(tokens_contributed) as total_tokens
+                FROM telemetry_skills
+                WHERE {where}
+                GROUP BY skill_name
+                ORDER BY total_used DESC, total_selected DESC
+                LIMIT ?"""
+            rows = self._conn.execute(query, params + [limit]).fetchall()
+        except sqlite3.Error as exc:
+            logger.warning("query_skill_stats failed: %s", exc)
+            return []
+
+        return [
+            {
+                "skill_name": row[0],
+                "total_records": row[1],
+                "total_considered": row[2],
+                "total_selected": row[3],
+                "total_used": row[4],
+                "avg_relevance": row[5],
+                "total_tokens": row[6],
             }
             for row in rows
         ]

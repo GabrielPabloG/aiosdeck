@@ -34,6 +34,11 @@ from aios.knowledge.cli import (
 )
 from aios.memory.models import ProjectKnowledge
 from aios.research.schema import research_result_from_dict, research_result_to_json
+from aios.skills.cli import (
+    cmd_skills_discover,
+    cmd_skills_inspect,
+    cmd_skills_stats,
+)
 from aios.telemetry.cli import cmd_usage
 
 VERSION_TEXT = f"AiosDeck v{__version__}"
@@ -445,6 +450,7 @@ def _print_help() -> None:
     print("  aios research <q>     Research a question (repo/docs/web)")
     print("  aios usage [opts]     Show token usage and cost telemetry")
     print("  aios knowledge <cmd>   Manage knowledge store (index/search/sources)")
+    print("  aios skills <cmd>     Discover skills and view lifecycle stats")
     print("  aios help             Show this help")
     print()
     print("Commands:")
@@ -735,6 +741,29 @@ COMMANDS: dict[str, Command] = {
                 description="Retrieve relevant knowledge with context selection",
                 aliases=["get"],
                 execute=cmd_knowledge_retrieve,
+            ),
+        },
+    ),
+    "skills": Command(
+        name="skills",
+        description="Discover and inspect intelligent skills",
+        aliases=["sk"],
+        subcommands={
+            "discover": Command(
+                name="discover",
+                description="Discover skills relevant to an intent",
+                aliases=["d"],
+                execute=cmd_skills_discover,
+            ),
+            "inspect": Command(
+                name="inspect",
+                description="Show skill metadata and index status",
+                execute=cmd_skills_inspect,
+            ),
+            "stats": Command(
+                name="stats",
+                description="Show skill usage telemetry",
+                execute=cmd_skills_stats,
             ),
         },
     ),

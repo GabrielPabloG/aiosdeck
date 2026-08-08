@@ -127,7 +127,7 @@ class SecretManager:
             "env": {
                 "OPENAI_API_KEY": self._load("OPENAI_API_KEY"),
                 "GITHUB_TOKEN": self._load("GITHUB_TOKEN"),
-            }
+            },
         }
 ```
 
@@ -140,11 +140,11 @@ Sanitizes prompts before they reach the language model:
 ```python
 class PromptFirewall:
     async def sanitize(self, prompt: str, agent: str) -> str:
-        prompt = self._remove_secrets(prompt)        # Strip detected secrets
-        prompt = self._block_injection(prompt)       # Detect prompt injection patterns
-        prompt = self._enforce_length(prompt, agent) # Truncate to policy max_tokens
-        prompt = self._block_dangerous(prompt)       # Block known dangerous instructions
-        prompt = self._inject_context(prompt, agent) # Add mandatory safety context
+        prompt = self._remove_secrets(prompt)  # Strip detected secrets
+        prompt = self._block_injection(prompt)  # Detect prompt injection patterns
+        prompt = self._enforce_length(prompt, agent)  # Truncate to policy max_tokens
+        prompt = self._block_dangerous(prompt)  # Block known dangerous instructions
+        prompt = self._inject_context(prompt, agent)  # Add mandatory safety context
         return prompt
 ```
 

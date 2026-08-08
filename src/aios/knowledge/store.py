@@ -505,6 +505,16 @@ class SQLiteKnowledgeStore:
         except sqlite3.OperationalError:
             return False
 
+    def upsert_source_metadata(self, source_id: str, metadata: dict) -> None:
+        self._execute(
+            """UPDATE knowledge_sources
+               SET metadata_json = ?
+               WHERE source_id = ? AND project_id = ?""",
+            (json.dumps(metadata or {}, ensure_ascii=False), source_id, self._project_id),
+        )
+        if self._conn:
+            self._conn.commit()
+
     def _ensure_source(self, source_id: str, stype: str, path: str, version: str) -> None:
         existing = self._fetch_one(
             "SELECT 1 FROM knowledge_sources WHERE source_id = ? AND project_id = ?",

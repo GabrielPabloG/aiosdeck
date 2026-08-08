@@ -22,9 +22,9 @@ Every agent implements:
 class Agent(Protocol):
     name: str
     description: str
-    version: str                     # Version when the agent was introduced
-    required_capabilities: list[str] # Minimal capabilities needed
-    required_skills: list[str]       # Skills loaded before every task
+    version: str  # Version when the agent was introduced
+    required_capabilities: list[str]  # Minimal capabilities needed
+    required_skills: list[str]  # Skills loaded before every task
 
     async def execute(self, task: Task, context: ContextPacket) -> AgentResult: ...
     async def health_check(self) -> bool: ...
@@ -71,14 +71,14 @@ Agents are registered with the Scheduler by type:
 
 ```python
 AGENT_REGISTRY = {
-    "developer": DeveloperAgent,      # v0.2
-    "planner": PlannerAgent,          # v0.6
-    "reviewer": ReviewerAgent,        # v0.5
-    "coder": CoderAgent,              # v0.8
-    "tester": TesterAgent,            # v0.6
+    "developer": DeveloperAgent,  # v0.2
+    "planner": PlannerAgent,  # v0.6
+    "reviewer": ReviewerAgent,  # v0.5
+    "coder": CoderAgent,  # v0.8
+    "tester": TesterAgent,  # v0.6
     "documentation": DocumentationAgent,  # v0.6
-    "git": GitAgent,                  # v0.7
-    "researcher": ResearcherAgent,    # v0.8
+    "git": GitAgent,  # v0.7
+    "researcher": ResearcherAgent,  # v0.8
 }
 ```
 
@@ -88,9 +88,9 @@ AGENT_REGISTRY = {
 @dataclass
 class AgentResult:
     success: bool
-    output: str                      # Agent output text
-    errors: list[str]                # Non-empty if success=False
-    duration_ms: float               # Execution wall-clock time
+    output: str  # Agent output text
+    errors: list[str]  # Non-empty if success=False
+    duration_ms: float  # Execution wall-clock time
 ```
 
 The AgentResult is the agent's interpretation of the neutral ExecutionOutcome returned by AgentExecutor. The Executor reports what happened; the agent decides whether it was success.

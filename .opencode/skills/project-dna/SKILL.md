@@ -1,6 +1,18 @@
 ---
 name: project-dna
 description: Project identity, philosophy, architecture, and conventions.
+triggers:
+  - architecture
+  - principles
+  - identity
+  - design
+  - decisions
+  - aiosdeck
+scope:
+  - architecture
+  - python
+dependencies: []
+priority: 10
 ---
 
 # Identity

@@ -32,7 +32,7 @@ class AiosDeckConfig:
     runtime_command: str = "ai-jail opencode"
 
     # LLM
-    default_model: str = "ollama"        # ollama, openai, anthropic, google
+    default_model: str = "ollama"  # ollama, openai, anthropic, google
     ollama_model: str = "llama3"
     ollama_host: str = "http://localhost:11434"
 
@@ -125,12 +125,12 @@ logging:
 ```python
 class ConfigLoader:
     def load(self, project_path: str) -> AiosDeckConfig:
-        config = self._load_defaults()           # Step 1: defaults
-        config = self._apply_env(config)          # Step 2: env vars
+        config = self._load_defaults()  # Step 1: defaults
+        config = self._apply_env(config)  # Step 2: env vars
         config = self._apply_user_config(config)  # Step 3: user file
         config = self._apply_project_manifest(config, project_path)  # Step 4: manifest
         config = self._apply_detection(config, project_path)  # Step 5: detection
-        self._validate(config)                    # Step 6: validate
+        self._validate(config)  # Step 6: validate
         return config
 ```
 

@@ -34,14 +34,14 @@ Out: AgentResult with test report
 {
     "command": "pytest tests/test_auth.py -v",
     "exit_code": 1,
-    "status": "failed",        # passed, failed, error
+    "status": "failed",  # passed, failed, error
     "total": 12,
     "passed": 11,
     "failed": 1,
     "errors": 0,
     "skipped": 0,
     "duration_ms": 4500,
-    "coverage": None,           # Future: coverage percentage
+    "coverage": None,  # Future: coverage percentage
     "failures": [
         {
             "test": "test_oauth2_token_refresh",

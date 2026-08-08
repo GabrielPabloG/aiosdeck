@@ -21,14 +21,29 @@ class DeveloperAgent(BaseAgent):
     required_capabilities = ["filesystem_read", "filesystem_write", "shell"]
     required_skills = ["project-dna", "coding-style"]
 
-    def __init__(self, runtime, builder: PromptBuilder | None = None) -> None:
+    def __init__(
+        self,
+        runtime,
+        builder: PromptBuilder | None = None,
+        skills=None,
+    ) -> None:
         super().__init__()
         self._runtime = runtime
         self._builder = builder or PromptBuilder()
+        self._skills = skills
 
     def execute(self, task, context) -> AgentResult:
         agent_task = coerce_task(task)
-        prompt = self._builder.build(agent_task, context)
+        skill_contexts = []
+        if self._skills is not None:
+            skill_contexts = self._skills.assemble(
+                agent_task.description,
+                context,
+                agent=self.name,
+                task_id=agent_task.task_id,
+                correlation_id=agent_task.correlation_id,
+            )
+        prompt = self._builder.build(agent_task, context, skill_contexts=skill_contexts or None)
         output = self._runtime.execute(prompt, self.required_skills, self.required_capabilities)
         return AgentResult(
             success=True,
