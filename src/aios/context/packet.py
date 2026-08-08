@@ -146,6 +146,7 @@ class ContextPacket:
     structure: StructureInfo = field(default_factory=StructureInfo)
     skills: list[str] = field(default_factory=list)
     memory: ProjectKnowledge | None = field(default=None)
+    research: dict | None = field(default=None)
     timestamp: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 
     def to_dict(self) -> dict[str, Any]:
@@ -185,5 +186,6 @@ class ContextPacket:
             },
             "skills": self.skills,
             "memory": self.memory.to_dict() if self.memory else {},
+            "research": self.research,
             "timestamp": self.timestamp,
         }

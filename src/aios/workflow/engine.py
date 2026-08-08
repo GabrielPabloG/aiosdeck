@@ -6,6 +6,7 @@ business logic: it calls agents and decides when to stop.
 """
 
 import json
+import logging
 import re
 from collections.abc import Callable
 from datetime import UTC, datetime
@@ -15,9 +16,11 @@ from aios.agents.developer import DeveloperAgent
 from aios.agents.documentation import DocumentationAgent
 from aios.agents.git import GitAgent
 from aios.agents.planner import PlannerAgent
+from aios.agents.research import ResearchAgent
 from aios.agents.reviewer import ReviewerAgent
 from aios.agents.tester import TesterAgent
 from aios.core.task import Task
+from aios.research import ResearchTask
 from aios.scheduler import KanbanEngine
 from aios.workflow.models import (
     InMemoryRunIdGenerator,
@@ -31,19 +34,22 @@ from aios.workflow.models import (
 
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
 
-OPTIONAL_AGENTS = ("tester", "documentation", "git")
+logger = logging.getLogger("aios.workflow")
+
+OPTIONAL_AGENTS = ("tester", "documentation", "git", "research")
 
 
 class WorkflowEngine:
     name = "workflow"
 
-    def __init__(  # noqa: PLR0913 - the seven agents are the fixed pipeline contract
+    def __init__(  # noqa: PLR0913 - the agents are the fixed pipeline contract
         self,
         *,
         planner: PlannerAgent,
         scheduler: KanbanEngine,
         developer: DeveloperAgent,
         reviewer: ReviewerAgent,
+        researcher: ResearchAgent | None = None,
         tester: TesterAgent | None = None,
         documentation: DocumentationAgent | None = None,
         git: GitAgent | None = None,
@@ -56,6 +62,7 @@ class WorkflowEngine:
             "scheduler": scheduler,
             "developer": developer,
             "reviewer": reviewer,
+            "research": researcher,
             "tester": tester,
             "documentation": documentation,
             "git": git,
@@ -95,6 +102,11 @@ class WorkflowEngine:
             started_at=datetime.now(UTC).isoformat(),
         )
         agents = self._agents
+
+        # 0. Research — optional front-gate. Only runs when a researcher is
+        # injected; its structured result feeds the planner/developer context.
+        if agents["research"] is not None:
+            self._run_research(ctx, task, context, notify)
 
         # 1. Planner
         plan_result = agents["planner"].execute(task, context)
@@ -237,6 +249,41 @@ class WorkflowEngine:
     def _finish(self, ctx: _WorkflowContext) -> WorkflowResult:
         ctx.finished_at = datetime.now(UTC).isoformat()
         return WorkflowResult.from_context(ctx)
+
+    def _run_research(self, ctx: _WorkflowContext, task: Task, context, notify) -> None:
+        packet = getattr(context, "to_dict", lambda: {})()
+        research_task = ResearchTask(
+            question=task.description,
+            scope="mixed",
+            context_packet=packet,
+        )
+        try:
+            result = self._agents["research"].research(research_task)
+        except Exception as exc:  # noqa: BLE001 - research is advisory, never blocks the pipeline
+            logger.warning("Research front-gate failed: %s", exc)
+            ctx.stages.append(WorkflowStage(name="research", success=False, error=str(exc)))
+            notify(ctx.stages[-1])
+            return
+
+        serialized = result.to_dict()
+        ctx.research_result = serialized
+        try:
+            context.research = serialized
+        except AttributeError:
+            logger.warning("Research result not attached: context has no settable 'research'")
+        ctx.stages.append(
+            WorkflowStage(
+                name="research",
+                success=True,
+                details={
+                    "status": result.status,
+                    "summary_short": result.summary_short,
+                    "sources": len(result.sources),
+                    "findings": len(result.findings),
+                },
+            )
+        )
+        notify(ctx.stages[-1])
 
     @staticmethod
     def _build_branch(run_id: int, goal: str) -> str:

@@ -15,6 +15,7 @@ class PromptBuilder:
             self._task_section(task),
             self._context_section(context),
             self._git_section(context),
+            self._research_section(context),
             self._memory_section(context),
             self._skills_section(context),
         ]
@@ -37,6 +38,15 @@ class PromptBuilder:
         if not context.git.branch:
             return "## Git Status\n- Status: unknown"
         return f"## Git Status\n- Branch: {context.git.branch}\n- Status: {context.git.status}"
+
+    def _research_section(self, context: ContextPacket) -> str:
+        research = getattr(context, "research", None)
+        if not research:
+            return ""
+        summary = research.get("summary_short", "")
+        if not summary:
+            return ""
+        return f"## Research\n{summary}"
 
     def _memory_section(self, context: ContextPacket) -> str:
         if context.memory is None or context.memory.is_empty:
