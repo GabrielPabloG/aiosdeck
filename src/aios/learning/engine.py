@@ -60,9 +60,17 @@ class LearningEngine:
         self._enabled: bool = True
         self._auto_capture: bool = True
         self._error_counts: dict[str, int] = {}
+        self._subscribed: bool = False
 
     def set_event_bus(self, bus) -> None:
         self._bus = bus
+        if (
+            self._auto_capture
+            and bus is not None
+            and self._store is not None
+            and not self._subscribed
+        ):
+            self._subscribe_events()
 
     def initialize(self) -> None:
         try:
@@ -382,7 +390,7 @@ class LearningEngine:
         return self._store.list_observations_by_state("draft")
 
     def _subscribe_events(self) -> None:
-        if self._bus is None:
+        if self._bus is None or self._subscribed:
             return
 
         topics = [
@@ -399,6 +407,8 @@ class LearningEngine:
 
         for topic in topics:
             self._bus.subscribe(topic, handler)
+
+        self._subscribed = True
 
     def _on_event(self, event: Event) -> None:
         self.observe(event.topic, event.payload or {})
