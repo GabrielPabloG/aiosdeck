@@ -7,6 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Knowledge Store (v0.9.4)** — structured, incremental knowledge layer with
+  SQLite persistence and deterministic chunking. Sources: skills,
+  documentation, ADRs, source code, research, memory, and project DNA.
+- **Knowledge Engine** registered in the Kernel (dashboard + `kernel.get_engine`).
+- **Incremental indexing** — sha256 content hash per source; unchanged sources
+  are skipped, changed sources are re-chunked automatically.
+- **Deterministic chunking** — markdown (heading-based + size fallback with
+  overlap) and code (top-level symbol-based). Same input produces same chunk
+  IDs and hashes.
+- **FTS5 search** with LIKE fallback — `knowledge_fts` virtual table.
+- **CLI** — `aios knowledge index`, `aios knowledge search "<query>"`, and
+  `aios knowledge sources` (alias `aios k`).
+- **Audit trail** — `knowledge_index_runs` table tracks every indexing run.
+- Embedding field reserved on `KnowledgeChunk` (optional, not used yet).
+
+### Changed
+
+- Scheduler now writes `TODO.md` (textual backlog with checkboxes + spinner)
+  instead of rendering the Kanban board to stderr during `plan --run`. The
+  Kanban visual display is deprecated; the Kanban Engine remains as internal
+  API for flow enforcement and TDD gate validation.
+
+## [0.9.4] - 2026-08-08
+
+### Added
+
+- **Knowledge Store** — structured, incremental knowledge layer with contracts
+  (`KnowledgeSource`, `KnowledgeDocument`, `KnowledgeChunk`, `KnowledgeQuery`,
+  `KnowledgeResult`), `SQLiteKnowledgeStore` backend, deterministic chunking,
+  FTS5 search, and source discovery for skills, ADRs, documentation, code,
+  research, and project DNA.
+- **Knowledge Engine** — registerable in the Kernel, provides `index()`,
+  `search()`, and `list_sources()`.
+- **CLI** — `aios knowledge index` (incremental indexing by hash),
+  `aios knowledge search "<query>"` (FTS5), and `aios knowledge sources`.
+  Alias: `aios k`.
+- **Hashing policy** — sha256 of normalized content. Same hash = skip; changed
+  hash = re-chunk. Old chunks are removed, new chunks inserted
+  deterministically.
+- **Tests** — 38 tests covering contracts, schema, incremental indexing,
+  project isolation, FTS5 search, index runs, and CLI commands.
+
+## [0.9.3] - 2026-08-08
+
+### Added
+
+- **Telemetry Engine** — observes agent lifecycle/execution events via
+  EventBus and persists execution records, usage (token counts), and cost data
+  into `.aios/memory.db` (tables: `telemetry_executions`, `telemetry_usage`,
+  `telemetry_costs`).
+- **CLI** — `aios usage [--agent X] [--model Y] [--today] [--workflow Z]
+  [--from DATE] [--to DATE] [--limit N] [--json]`.
+
 ### Changed
 
 - Scheduler now writes `TODO.md` (textual backlog with checkboxes + spinner)
@@ -113,7 +168,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`Callable[[ResearchTask], list[ResearchSource]]`), keeping the core
   zero-dependency and local-first.
 
-[Unreleased]: https://github.com/GabrielPabloG/aiosdeck/compare/v0.9.1...main
+[Unreleased]: https://github.com/GabrielPabloG/aiosdeck/compare/v0.9.4...main
+[0.9.4]: https://github.com/GabrielPabloG/aiosdeck/releases/tag/v0.9.4
+[0.9.3]: https://github.com/GabrielPabloG/aiosdeck/releases/tag/v0.9.3
 [0.9.1]: https://github.com/GabrielPabloG/aiosdeck/releases/tag/v0.9.1
 [0.9.0]: https://github.com/GabrielPabloG/aiosdeck/releases/tag/v0.9.0
 
