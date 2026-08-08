@@ -82,10 +82,21 @@ KANBAN_SUBTASK_COMPLETED = "kanban.subtask_completed"
 
 QUALITY_TOPICS = [
     "quality.started",
+    "quality.gate_started",
+    "quality.gate_completed",
+    "quality.gate_blocked",
     "quality.gate_passed",
     "quality.gate_failed",
     "quality.completed",
 ]
+
+QUALITY_STARTED = "quality.started"
+QUALITY_GATE_STARTED = "quality.gate_started"
+QUALITY_GATE_COMPLETED = "quality.gate_completed"
+QUALITY_GATE_BLOCKED = "quality.gate_blocked"
+QUALITY_GATE_PASSED = "quality.gate_passed"
+QUALITY_GATE_FAILED = "quality.gate_failed"
+QUALITY_COMPLETED = "quality.completed"
 
 SECURITY_TOPICS = [
     "security.violation",
