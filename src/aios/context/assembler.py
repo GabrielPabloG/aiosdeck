@@ -53,6 +53,8 @@ class ContextAssembler:
             ("user", self._build_user_layers),
             ("project", lambda: self._build_project_layers(context)),
             ("task", lambda: self._build_task_layers(task)),
+            ("research", lambda: self._build_research_layers(context)),
+            ("retrieved", lambda: self._build_retrieved_layers(task, agent)),
         ):
             layers.extend(self._collect(label, builder))
 
@@ -118,3 +120,50 @@ class ContextAssembler:
                 tokens=len(content.split()),
             )
         ]
+
+    def _build_research_layers(self, context: ContextPacket | None) -> list[Layer]:
+        if context is None:
+            return []
+        research = getattr(context, "research", None)
+        if not research:
+            return []
+        summary = research.get("summary_short", "")
+        if not summary:
+            return []
+        return [
+            Layer(
+                type=LayerType.RESEARCH,
+                content=summary,
+                source="packet.research",
+                tokens=len(summary.split()),
+            )
+        ]
+
+    def _build_retrieved_layers(self, task, agent: str) -> list[Layer]:
+        if self._knowledge is None:
+            return []
+        query = getattr(task, "description", "") or ""
+        from aios.skills.retrieval import _SKILL_SOURCE_TYPES  # noqa: PLC0415
+
+        selection = self._knowledge.retrieve(query=query, agent=agent, limit=20, use_vector=False)
+        layers: list[Layer] = []
+        for scored in selection.chunks:
+            result = scored.result
+            if result.source_type in _SKILL_SOURCE_TYPES:
+                continue
+            trace = {
+                "source_id": result.source_id,
+                "source_path": result.source_path,
+                "score": round(scored.score, 3),
+                "position": result.position,
+            }
+            layers.append(
+                Layer(
+                    type=LayerType.RETRIEVED,
+                    content=result.content,
+                    source="selector",
+                    tokens=result.token_estimate,
+                    trace=trace,
+                )
+            )
+        return layers
