@@ -1,22 +1,24 @@
-# Fire Test Manual — Researcher v0.9.1
+# Fire Test Manual — Model Router v0.9.11
 
-Guia prático para testar a v0.9.1 **"ResearcherAgent de primeira classe"** num
-projeto descartável, sem depender da suíte de testes. Testa o fluxo real ponta
-a ponta: `aios research` (repo/docs/web), semântica de disponibilidade
-(`source_unavailable`/`partial`) e o front-gate opcional no workflow.
+Guia prático para testar a v0.9.11 **"Model Router"** num projeto descartável,
+sem depender da suíte de testes. Testa o fluxo real ponta a ponta: `aios route
+explain` (dry-run da policy, sem agente), roteamento por policy YAML
+(regras por agent/complexity, `cost_cap`, `context_limits`,
+`fallback_providers`) e a telemetria de decisões (`telemetry_routing`).
 
 ## Pré-requisitos
 
 - Python 3.12+ com o pacote instalado (`pip install -e .` no repo)
 - **OpenCode** e **ai-jail** instalados (a `aios doctor` confirma) — apenas
-  para o Passo 8 (`plan --run`)
+  para o Passo 5 (`plan --run` real)
+- **Ollama** com `llama3` puxado — apenas para o Passo 5 (fallback real)
 - Shell no Linux
 
 ## Passo 0 — Instalar a branch
 
 ```bash
 cd <seu-repo-aiosdeck>
-git checkout feature/researcher-first-class
+git checkout feature/model-router
 python -m venv .venv && source .venv/bin/activate
 pip install -e .
 ```
@@ -24,24 +26,11 @@ pip install -e .
 ## Passo 1 — Criar um projeto de teste descartável
 
 ```bash
-mkdir -p /tmp/firetest-research && cd /tmp/firetest-research
+mkdir -p /tmp/firetest-routing && cd /tmp/firetest-routing
 git init -q
 git config user.email "you@test.com" && git config user.name "You"
 touch README.md && git add . && git commit -qm "init"
 aios init
-```
-
-Crie arquivos que o Researcher vai encontrar:
-
-```bash
-mkdir docs
-cat > health.py <<'EOF'
-def health_check():
-    return True
-EOF
-cat > docs/guide.md <<'EOF'
-Auth flow explained in the guide.
-EOF
 ```
 
 ## Passo 2 — Sanidade: dashboard e doctor
@@ -50,142 +39,274 @@ EOF
 aios doctor
 ```
 
-Confira a seção **Workflow Pipeline**: agora existe `research (optional)`.
-Os demais agentes continuam como antes — nenhuma etapa se tornou obrigatória.
+Confira que o `doctor` está saudável. O router **não** aparece como engine no
+dashboard: ele é injetado dentro do `RuntimeEngine` a partir do `RouteConfig`.
 
-## Passo 3 — `aios research` — escopo `repo` (happy path)
+Sem subcomando, `aios route` mostra o usage (sem traceback):
 
 ```bash
-aios research "health check" --scope repo
+aios route
+```
+
+## Passo 3 — `aios route explain` — decisão default (dry-run, sem agente)
+
+O router está **ativo por padrão** (`RouteConfig.enabled = True`). Com a config
+default (sem regras), qualquer entrada cai no fallback determinístico:
+
+```bash
+aios route explain --agent planner
 ```
 
 Esperado:
 
 ```
-status: ok
-summary: Collected 1 source(s), 1 finding(s), confidence 0.70.
-Findings:
-  - [F1] (conf 0.70) def health_check(): ...
-Sources:
-  - code: health.py (file://health.py)
+Provider:       ollama
+Model:          ollama/llama3
+Reason:         heuristic:default
+Estimated cost: $0.000000
+Source:         router
 ```
 
-Sem rede, sem chave de API: a coleta é local e determinística.
+Sem regras e sem override, o modelo é sempre `ollama/llama3` — custo zero e
+determinístico. Isso significa que, em execuções reais, o runtime passa
+`-m ollama/llama3` ao opencode (comportamento novo da v0.9.11; o caminho
+legacy sem `-m` só existe com `AIOS_ROUTING_ENABLED=0`, veja o Passo 4).
 
-## Passo 4 — `aios research` — escopo `docs`
+`--json` é útil para validar o schema:
 
 ```bash
-aios research "auth flow" --scope docs
+aios route explain --agent planner --task-type plan --complexity high --json
 ```
 
-Esperado: `status: ok`, com fontes do tipo `doc` apontando para
-`file://docs/guide.md`.
-
-## Passo 5 — `aios research` — escopo `web` sem fetcher (disponibilidade explícita)
-
-```bash
-aios research "how does fastapi oauth work" --scope web
-```
-
-Esperado:
-
-```
-status: source_unavailable
-summary: Web collection unavailable: configure a fetcher/provider to research external sources.
-confidence: 0.00
-
-Recommendations:
-  - [low] Configure a web source fetcher before requesting web research
-```
-
-Pontos críticos:
-- **Sem findings** — não há claims fabricados ("não encontramos informação" ≠
-  "não conseguimos acessar a web").
-- A recomendação afirma explicitamente que a coleta web está indisponível;
-  nunca parece derivada de uma pesquisa real.
-
-## Passo 6 — `aios research` — escopo `mixed` sem fetcher (degradação graciosa)
-
-```bash
-aios research "health check" --scope mixed
-```
-
-Esperado: `status: partial`, fontes locais presentes (repo/docs), **e** a nota
-de web indisponível nas recomendações. O resultado local não é perdido.
-
-## Passo 7 — `aios research` — JSON e auditoria
-
-```bash
-aios research "health check" --scope repo --json
-aios research "health check" --scope repo --output research-report.json
-```
-
-No `--json`, valide o schema:
+Valide o schema:
 
 ```bash
 python - <<'EOF'
-import json
-d = json.load(open("research-report.json"))
-assert "sources" in d and "findings" in d and "memory_candidates" in d
-source_ids = {s["id"] for s in d["sources"]}
-for f in d["findings"]:
-    assert set(f["evidence_source_ids"]) <= source_ids, "finding sem proveniência!"
-print("schema ok — findings rastreáveis a sources")
+import json, subprocess
+out = subprocess.run(
+    ["aios", "route", "explain", "--agent", "planner", "--json"],
+    capture_output=True, text=True, check=True,
+).stdout
+d = json.loads(out)
+assert set(d) == {"provider", "model", "variant", "reason",
+                  "estimated_cost", "source", "fallback_chain"}
+assert d["model"] == "ollama/llama3"
+print("schema ok — decisão default determinística")
 EOF
 ```
 
-`memory_candidates` aparecem como **advisory** (`kind`, `content`, `confidence`);
-nada é gravado no Memory Engine (confira: `.aios/memory.db` continua sem
-convention/pattern novo).
+## Passo 4 — Policy YAML (regras, cost_cap, fallback)
 
-## Passo 8 — Workflow: front-gate opcional
+Configure o roteamento no config do usuário:
 
 ```bash
-aios plan "add a /health endpoint" --run
+mkdir -p ~/.config/aiosdeck
+cat > ~/.config/aiosdeck/config.yaml <<'EOF'
+routing:
+  enabled: true
+  default_provider: ollama
+  default_model: llama3
+  rules:
+    - agent: documentation
+      complexity: low
+      provider: ollama
+      model: llama3
+    - agent: research
+      complexity: medium
+      provider: anthropic
+      model: claude-haiku
+    - agent: planner
+      complexity: high
+      provider: anthropic
+      model: claude-sonnet
+    - agent: developer
+      complexity: high
+      provider: anthropic
+      model: claude-sonnet
+  context_limits:
+    planner: 8000
+    developer: 16000
+  cost_cap: 5.0
+  fallback_providers:
+    - provider: ollama
+      model: llama3
+EOF
 ```
 
-Esperado: pipeline roda normalmente — `Plano de Execução`, `[✓] <subtask>`,
-`N/N tasks completed`, branch `feature/add-health-endpoint-1` e commit `feat: ...`.
-
-O estágio `research` roda antes do planner **somente porque o Researcher está
-injetado** no kernel. Ele é advisory: um resultado de pesquisa alimenta o
-contexto do planner/developer via `ContextPacket.research`, mas nunca bloqueia
-o pipeline. Como a CLI não renderiza o estágio `research` (apenas planner e
-developer aparecem no progresso), a verificação fina está na suíte automatizada:
+Agora `aios route explain` reflete a policy (sem executar agente nenhum):
 
 ```bash
-pytest tests/test_workflow.py::test_workflow_research_front_gate_feeds_planner -q
-pytest tests/test_workflow.py::test_workflow_optional_agents_skipped -q
+aios route explain --agent planner --task-type plan --complexity high
 ```
 
-Sem Researcher (agente ausente), o pipeline é idêntico ao v0.9.0 — o front-gate
-não cria branch alternativo nem dependência obrigatória.
+Esperado:
+
+```
+Provider:       anthropic
+Model:          anthropic/claude-sonnet
+Variant:        high
+Reason:         policy:0
+Estimated cost: $...
+Source:         router
+Fallback chain:
+  - ollama/llama3
+```
+
+Pontos críticos:
+- `reason: policy:0` — a decisão é rastreável à regra exata (não mágica).
+- `fallback_chain` — contém `ollama/llama3` vindo de `fallback_providers`.
+- `documentation + low` → `ollama/llama3` (local, custo zero):
+
+```bash
+aios route explain --agent documentation --task-type documentation --complexity low
+```
+
+- `context_limits` — `planner` acima de 8000 tokens não bate na regra e cai na
+  default:
+
+```bash
+aios route explain --agent planner --complexity high --context-size 12000
+```
+
+Esperado: `Reason: heuristic:default` (a regra de planner foi descartada).
+
+**Desligar o router** restaura o caminho legacy (sem `-m` no opencode):
+
+```bash
+AIOS_ROUTING_ENABLED=0 aios route explain --agent planner --json
+```
+
+## Passo 5 — Execução real com fallback (requer opencode + ollama)
+
+Com a policy do Passo 4, o planner tentaria `anthropic/claude-sonnet`. Para
+testar o fallback sem chave de API, aponte uma regra para um modelo que falha:
+
+```bash
+cat > ~/.config/aiosdeck/config.yaml <<'EOF'
+routing:
+  enabled: true
+  default_provider: ollama
+  default_model: llama3
+  rules:
+    - agent: developer
+      complexity: medium
+      provider: anthropic
+      model: claude-opus
+  fallback_providers:
+    - provider: ollama
+      model: llama3
+EOF
+```
+
+Rode uma execução real:
+
+```bash
+aios plan "add a health endpoint" --run
+```
+
+Esperado: o pipeline completa — o runtime tenta `anthropic/claude-opus` (falha
+sem chave → `unavailable`), registra o fallback e cai no `ollama/llama3`.
+A saída do workflow normal não é bloqueada pela falha do modelo primário.
+
+Confira a decisão e o fallback na telemetria (Passo 6).
+
+## Passo 6 — `aios route stats` e `--records`
+
+Depois de pelo menos uma execução real, as decisões aparecem em
+`telemetry_routing`:
+
+```bash
+aios route stats
+```
+
+Esperado — grupos por `agent`/`model` com contagem de rotas, fallbacks, custo
+médio e contexto médio:
+
+```
+Routing stats (N groups):
+  developer   ollama/llama3            routes=1    fallbacks=1 ...
+```
+
+Linhas individuais mostram a decisão + fallback:
+
+```bash
+aios route stats --records
+```
+
+Esperado: `[FALLBACK]` no registro cujo modelo primário falhou:
+
+```
+[<timestamp>] developer     ollama/llama3                   $0.000000 (policy:0) [FALLBACK]
+```
+
+Filtros e JSON:
+
+```bash
+aios route stats --agent developer --json
+aios route stats --model ollama/llama3 --limit 50
+```
+
+Conferir direto no store:
+
+```bash
+sqlite3 .aios/memory.db "SELECT agent, model, reason, fallback_used FROM telemetry_routing;"
+```
+
+## Passo 7 — `aios route stats --accuracy`
+
+Compara o custo estimado do routing com o custo real de `telemetry_costs`
+(JOIN por `correlation_id` + `model`):
+
+```bash
+aios route stats --accuracy
+```
+
+Esperado: `est=$... act=$...` quando ambos existem; caso contrário a query
+retorna **vazio** (sem erro) — backward-compatible antes do v0.9.11 não há
+linhas de routing.
+
+## Passo 8 — Override auditável
+
+`model=` explícito é um contrato interno do `RuntimeEngine.execute` —
+`source="override"`, `reason="explicit_override"`, pula o router. Não há flag
+CLI dedicada: agentes **nunca** escolhem modelo fixo (passam contexto:
+`agent`/`task_type`/`complexity`/`context_size`). O override é coberto pela
+suíte:
+
+```bash
+pytest tests/test_routing_integration.py::TestRuntimeEngineRoutingIntegration::test_explicit_model_override_skips_router -q
+```
 
 ## Passo 9 — Caminhos de erro
 
 ```bash
-aios research                    # sem pergunta → Usage + exit 1
-aios research "x" --scope nope   # --scope inválido → Error + exit 1
-aios research "x" --bogus        # opção desconhecida → Error + exit 1
-aios research "" --scope web     # pergunta vazia → Usage + exit 1
+aios route                          # sem subcomando → Usage + exit 1
+aios route bogus                    # subcomando desconhecido → Error + exit 1
+aios route explain --bogus          # opção desconhecida → Error + exit 1
 ```
 
 Nenhum traceback Python escapa.
 
-## Verificação da arquitetura (o que a v0.9.1 muda)
+## Verificação da arquitetura (o que a v0.9.11 muda)
 
-- `ResearchAgent.required_capabilities == ["filesystem_read"]` — **sem**
-  `internet`. Rede é capability contextual de um fetcher injetado, não do agente.
-- `grep -rn "internet" src/aios/agents/research.py` não deve retornar nada.
-- Cada `Finding` cita `evidence_source_ids` existentes (proveniência); a
-  validação de schema falha se apontar para fonte inexistente.
-- `web` sem fetcher → `source_unavailable` com **zero** findings; `mixed` →
-  `partial`.
-- `memory_candidates` são advisory; nada persiste no Memory Engine.
-- O front-gate é opcional e o workflow linear permanece o mesmo.
+- `RouteConfig` no schema (`src/aios/config/schema.py`) com `enabled`,
+  `default_provider/model/variant`, `rules`, `cost_cap`, `context_limits`,
+  `fallback_providers`; env `AIOS_ROUTING_ENABLED` / `AIOS_ROUTING_COST_CAP`.
+- Agentes passam **contexto**, nunca `model=` fixo
+  (`grep -n "model=" src/aios/agents/` não deve achar chamada com modelo hardcoded).
+- Decisões determinísticas: heurística de preço fixa, `reason` rastreável
+  (`policy:N` | `heuristic:default` | `explicit_override`).
+- Fallback com prevenção de loop: se todos os modelos da chain falharem →
+  `RouteFallbackExhausted` (nunca repete infinitamente).
+- Tabela `telemetry_routing` aditiva (adicionada via `CREATE TABLE IF NOT EXISTS`);
+  sem dados de routing o comportamento é idêntico ao anterior.
+- `runtime.route_selected` → `telemetry_routing`; `route_accuracy` JOIN só é
+  computada quando `telemetry_costs` existe.
 
 ## Limpeza
 
 ```bash
-rm -rf /tmp/firetest-research
+rm -rf /tmp/firetest-routing
+# opcional: restaurar config do usuário
+rm ~/.config/aiosdeck/config.yaml
 ```
