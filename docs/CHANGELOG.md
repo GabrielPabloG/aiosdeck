@@ -9,6 +9,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Quality Pipeline / Gates (v0.9.7)** — automated gates enforced by the
+  workflow between agent stages.
+  - **Gate contracts** — `GateStatus`, `Severity` (canonical
+    `low|medium|high|critical`), `GateInput`, `GateFinding`, `GateResult`
+    (structured, never loose text, audit-safe `to_dict()`), and the
+    `QualityGate` protocol.
+  - **Concrete gates** — `CodeGate` (ruff check + format --check),
+    `TestGate` (wraps the TesterAgent report; `failed == 0 → passed`),
+    `SecurityGate` (deterministic `scan_secrets`/`scan_unsafe` + severity
+    mapper), `DocumentationGate` (CHANGELOG/TODO skeleton), and
+    `ReleaseGate` (skeleton, skipped). All local, deterministic, no network
+    or LLM.
+  - **Policy engine** — `resolve_decision()`: `critical`/`high` always
+    block, `medium` blocks in release / warns in dev, `low` warns, no policy
+    → fail-safe default, unknown environment → block, explicit auditable
+    overrides (gate + environment).
+  - **Workflow integration** — gates run as `WorkflowStage`s in the order
+    `developer* → code_gate → reviewer → security_gate → tester → test_gate →
+    documentation → documentation_gate → git` (`release_gate` last in
+    release). Fail-fast on block, annotated advance on skip/warn/override.
+    Opt-in via `quality_config`; without it the pipeline is unchanged.
+  - **Event bridge** — `quality.started` / `quality.gate_started` /
+    `quality.gate_completed` / `quality.gate_blocked` / `quality.completed`
+    with a canonical payload (gate, status, duration_ms, findings per
+    severity, blocked, overridden, reason) and `correlation_id = run_id`.
+    Emitted only while gates are active.
+  - **Gate telemetry** — additive `telemetry_gates` table (findings per
+    severity, block decision, overridden, correlation_id, project_id) with
+    `query_gate_stats` / `query_gate_records`.
+  - **CLI** — `aios plan <intent> --run` renders a PASS/FAIL/SKIP gate trail
+    (with warn/override annotations); `--json` emits full structured
+    findings; new `aios quality stats [--gate|--status|--limit|--records|
+    --json]` read-side.
+  - **Config** — `QualityConfig` extended with `environment`, `policy`, and
+    `overrides`, loadable from the user config YAML.
+
+### Changed
+
+- `docs/internals/quality-pipeline.md` status moved from **Proposed** to
+  **Implemented** with the gate policy and canonical event contract
+  documented.
+
 - **Intelligent Skills / Living Skills (v0.9.6)** — skills evolve from static
   files into measurable, retrievable-by-intent knowledge assets with lifecycle
   telemetry.

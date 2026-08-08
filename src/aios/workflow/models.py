@@ -63,6 +63,7 @@ class _WorkflowContext:
     errors: list[str] = field(default_factory=list)
     completed_count: int = 0
     subtask_count: int = 0
+    quality_active: bool = False
     metadata: dict[str, Any] = field(default_factory=dict)
     finished_at: str | None = None
 

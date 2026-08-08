@@ -53,7 +53,13 @@ def _subtask(task_id: str, description: str) -> dict:
     }
 
 
-def _build_kernel(tmp_path, subtasks: list[dict], dev_results: list[AgentResult]):
+def _build_kernel(
+    tmp_path,
+    subtasks: list[dict],
+    dev_results: list[AgentResult],
+    quality_config=None,
+    quality_gates=None,
+):
     planner = PlannerAgent(runtime=None)
     developer = DeveloperAgent(runtime=None)
     plan = {"goal": INTENT, "subtasks": subtasks, "risks": [], "unknowns": []}
@@ -74,6 +80,8 @@ def _build_kernel(tmp_path, subtasks: list[dict], dev_results: list[AgentResult]
         git=None,
         project_path=tmp_path,
         executor=executor,
+        quality_config=quality_config,
+        quality_gates=quality_gates,
     )
 
     kernel = Kernel(project_path=str(tmp_path))
@@ -200,3 +208,26 @@ def test_e2e_plan_run_blocks_card_on_failure(tmp_path):
 
     topics = {event.topic for event in received}
     assert KANBAN_CARD_BLOCKED in topics
+
+
+def test_e2e_plan_run_renders_gate_trail(tmp_path):
+    from aios.config.schema import QualityConfig
+    from tests.integration.quality_helpers import FakeGate, GATE_ORDER, passed
+
+    subtasks = [_subtask("1", "Add login")]
+    gates = {name: FakeGate(passed()) for name in GATE_ORDER}
+    kernel = _build_kernel(
+        tmp_path,
+        subtasks,
+        [_exec_success("Add login")],
+        quality_config=QualityConfig(),
+        quality_gates=gates,
+    )
+
+    stderr = io.StringIO()
+    received, output = _run_plan(kernel, stderr)
+    kernel.shutdown()
+
+    assert "Quality Gates:" in output
+    assert "[PASS] code_gate" in output
+    assert "[PASS] security_gate" in output

@@ -1,6 +1,15 @@
 import json
 import subprocess
 
+from aios.cli.commands import (
+    _gate_label,
+    _gates_json,
+    _render_gate_trail,
+    _run_result_to_json,
+)
+from aios.core.run_result import RunResult, StageSummary
+from aios.quality.contracts import GateFinding, Severity
+
 
 def test_help():
     result = subprocess.run(["aios", "--help"], capture_output=True, text=True, check=False)
@@ -252,3 +261,119 @@ def test_research_output_file(tmp_path):
     assert out.exists()
     data = json.loads(out.read_text(encoding="utf-8"))
     assert data["status"] == "source_unavailable"
+
+
+# ---------------------------------------------------------------------------
+# Quality gate trail rendering (plan --run)
+# ---------------------------------------------------------------------------
+
+
+def _stage(name, status="success", details=None, reason=None) -> StageSummary:
+    return StageSummary(name=name, status=status, reason=reason, details=details or {})
+
+
+def _gate_details(status, findings=None, policy=None, skipped=False) -> dict:
+    details = {"gate": {"status": status, "reason": "r", "findings": findings or []}}
+    if skipped:
+        details["skipped"] = True
+    if policy:
+        details["policy"] = policy
+    return details
+
+
+def test_gate_label_passed():
+    label, detail = _gate_label(_stage("code_gate", details=_gate_details("passed")))
+    assert label == "PASS"
+    assert detail == ""
+
+
+def test_gate_label_failed_block():
+    stage = _stage(
+        "code_gate",
+        status="failed",
+        reason="blocking severity: high",
+        details=_gate_details("failed", policy={"decision": "block"}),
+    )
+    label, detail = _gate_label(stage)
+    assert label == "FAIL"
+    assert "blocking severity: high" in detail
+
+
+def test_gate_label_skipped():
+    label, detail = _gate_label(
+        _stage("security_gate", status="skipped", details=_gate_details("skipped", skipped=True))
+    )
+    assert label == "SKIP"
+    assert detail == "(skipped)"
+
+
+def test_gate_label_warn():
+    stage = _stage(
+        "code_gate",
+        status="success",
+        details=_gate_details("failed", policy={"decision": "warn"}),
+    )
+    label, detail = _gate_label(stage)
+    assert label == "PASS"
+    assert "(warn)" in detail
+
+
+def test_gate_label_override():
+    stage = _stage(
+        "code_gate",
+        status="success",
+        details=_gate_details(
+            "failed",
+            policy={"decision": "block", "overridden": True, "override_reason": "manual ok"},
+        ),
+    )
+    label, detail = _gate_label(stage)
+    assert label == "PASS"
+    assert "override: manual ok" in detail
+
+
+def test_gates_json_complete_findings():
+    finding = GateFinding(
+        id="F1", title="unused import", severity=Severity.HIGH, category="lint"
+    ).to_dict()
+    stage = _stage(
+        "code_gate",
+        status="failed",
+        reason="blocking severity: high",
+        details=_gate_details("failed", findings=[finding], policy={"decision": "block"}),
+    )
+    result = RunResult(success=False, stages=(_stage("developer:1"), stage), errors=("x",))
+    gates = _gates_json(result)
+    assert list(gates) == ["code_gate"]
+    assert gates["code_gate"]["status"] == "failed"
+    assert gates["code_gate"]["findings"] == [finding]
+    assert gates["code_gate"]["policy"] == {"decision": "block"}
+
+
+def test_run_result_to_json_shape():
+    result = RunResult(success=True, stages=(), errors=())
+    assert _run_result_to_json(result) == {"success": True, "errors": [], "gates": {}}
+
+
+def test_render_gate_trail_human(capsys):
+    stages = (
+        _stage("code_gate", details=_gate_details("passed")),
+        _stage("security_gate", status="skipped", details=_gate_details("skipped", skipped=True)),
+        _stage(
+            "documentation_gate",
+            status="failed",
+            reason="blocking severity: high",
+            details=_gate_details("failed", policy={"decision": "block"}),
+        ),
+    )
+    _render_gate_trail(RunResult(success=False, stages=stages, errors=()))
+    out = capsys.readouterr().err
+    assert "Quality Gates:" in out
+    assert "[PASS] code_gate" in out
+    assert "[SKIP] security_gate" in out
+    assert "[FAIL] documentation_gate" in out
+
+
+def test_render_gate_trail_empty_when_no_gates(capsys):
+    _render_gate_trail(RunResult(success=True, stages=(_stage("planner"),), errors=()))
+    assert capsys.readouterr().err == ""

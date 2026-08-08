@@ -33,6 +33,9 @@ class SecurityConfig:
 class QualityConfig:
     enabled: bool = True
     auto_detect: bool = True
+    environment: str = "dev"
+    policy: dict[str, list[str]] = field(default_factory=dict)
+    overrides: list[dict] = field(default_factory=list)
 
 
 @dataclass

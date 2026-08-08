@@ -5,9 +5,11 @@ Documentation → Git(commit) through public APIs only. The engine holds no
 business logic: it calls agents and decides when to stop.
 """
 
+import asyncio
 import json
 import logging
 import re
+import time
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
@@ -22,7 +24,30 @@ from aios.agents.planner import PlannerAgent
 from aios.agents.research import ResearchAgent
 from aios.agents.reviewer import ReviewerAgent
 from aios.agents.tester import TesterAgent
+from aios.config.schema import QualityConfig
 from aios.core.task import Task
+from aios.events.events import (
+    QUALITY_COMPLETED,
+    QUALITY_GATE_BLOCKED,
+    QUALITY_GATE_COMPLETED,
+    QUALITY_GATE_STARTED,
+    QUALITY_STARTED,
+)
+from aios.quality.contracts import (
+    GateInput,
+    GateResult,
+    GateStatus,
+    QualityGate,
+    Severity,
+)
+from aios.quality.gates import (
+    CodeGate,
+    DocumentationGate,
+    ReleaseGate,
+    SecurityGate,
+    TestGate,
+)
+from aios.quality.policy import DecisionResult, resolve_decision
 from aios.scheduler import KanbanEngine
 from aios.workflow.models import (
     InMemoryRunIdGenerator,
@@ -39,6 +64,19 @@ _SLUG_RE = re.compile(r"[^a-z0-9]+")
 logger = logging.getLogger("aios.workflow")
 
 OPTIONAL_AGENTS = ("tester", "documentation", "git", "research")
+
+
+def _findings_counts(result: GateResult) -> dict[str, int]:
+    counts = {"low": 0, "medium": 0, "high": 0, "critical": 0}
+    for finding in result.findings:
+        label = (
+            finding.severity.value
+            if isinstance(finding.severity, Severity)
+            else str(finding.severity)
+        )
+        if label in counts:
+            counts[label] += 1
+    return counts
 
 
 class WorkflowEngine:
@@ -59,6 +97,8 @@ class WorkflowEngine:
         project_path: Path | None = None,
         commit_factory: Callable[[_WorkflowContext], str] | None = None,
         run_ids: RunIdGenerator | None = None,
+        quality_config: QualityConfig | None = None,
+        quality_gates: dict[str, QualityGate] | None = None,
     ) -> None:
         agents = {
             "planner": planner,
@@ -79,6 +119,13 @@ class WorkflowEngine:
         self._commit_factory = commit_factory or (lambda ctx: f"feat: {ctx.goal}")
         self._run_ids = run_ids or InMemoryRunIdGenerator()
         self._executor = executor
+        self._quality_config = quality_config
+        self._quality_gates = quality_gates
+        self._bus = None
+
+    def set_event_bus(self, bus) -> None:
+        """Wire the event bus late (the Kernel builds it during startup)."""
+        self._bus = bus
 
     def initialize(self) -> None:
         """No setup required."""
@@ -92,7 +139,7 @@ class WorkflowEngine:
             optional=self._optional_agents,
         )
 
-    def execute(  # noqa: PLR0912, PLR0915 - linear pipeline with per-stage handling
+    def execute(  # noqa: PLR0911, PLR0912, PLR0915 - linear pipeline with per-stage handling
         self,
         task: Task,
         context,
@@ -106,6 +153,11 @@ class WorkflowEngine:
             started_at=datetime.now(UTC).isoformat(),
         )
         agents = self._agents
+        gates = self._gates()
+        ctx.quality_active = bool(gates)
+        if gates:
+            environment = self._quality_config.environment if self._quality_config else "dev"
+            self._publish_quality(ctx, QUALITY_STARTED, {"environment": environment})
 
         # 0. Research — optional front-gate. Only runs when a researcher is
         # injected; its structured result feeds the planner/developer context.
@@ -198,6 +250,16 @@ class WorkflowEngine:
             )
             notify(ctx.stages[-1])
 
+        # 4b. Code gate — lint/format must pass before review
+        if gates and not self._run_gate(
+            ctx,
+            gates,
+            "code_gate",
+            GateInput(project_path=self._project_path),
+            notify,
+        ):
+            return self._finish(ctx)
+
         # 5. Reviewer
         review_result = self._run_agent(
             agents["reviewer"],
@@ -210,6 +272,16 @@ class WorkflowEngine:
         ctx.review_report = json.loads(review_result.output) if review_result.output else {}
         ctx.stages.append(WorkflowStage(name="reviewer", success=review_result.success))
         notify(ctx.stages[-1])
+
+        # 5b. Security gate — deterministic secret/unsafe scan
+        if gates and not self._run_gate(
+            ctx,
+            gates,
+            "security_gate",
+            GateInput(project_path=self._project_path),
+            notify,
+        ):
+            return self._finish(ctx)
 
         # 6. Tester
         if agents["tester"] is not None:
@@ -232,6 +304,16 @@ class WorkflowEngine:
         notify(ctx.stages[-1])
         if failed > 0:
             ctx.errors.append(f"Tester: {failed} test(s) failed")
+            return self._finish(ctx)
+
+        # 6b. Test gate — green iff failed == 0
+        if gates and not self._run_gate(
+            ctx,
+            gates,
+            "test_gate",
+            GateInput(test_report=ctx.test_report),
+            notify,
+        ):
             return self._finish(ctx)
 
         # 7. Documentation
@@ -257,6 +339,31 @@ class WorkflowEngine:
                 WorkflowStage(name="documentation", success=True, details={"skipped": True})
             )
         notify(ctx.stages[-1])
+
+        # 7b. Documentation gate — changelog/todo reflect the change
+        if gates and not self._run_gate(
+            ctx,
+            gates,
+            "documentation_gate",
+            GateInput(project_path=self._project_path),
+            notify,
+        ):
+            return self._finish(ctx)
+
+        # 7c. Release gate — skeleton, only meaningful at release time
+        if (
+            gates
+            and self._quality_config is not None
+            and self._quality_config.environment == "release"
+            and not self._run_gate(
+                ctx,
+                gates,
+                "release_gate",
+                GateInput(project_path=self._project_path),
+                notify,
+            )
+        ):
+            return self._finish(ctx)
 
         # 8. Git — stage and commit (push is never called)
         if agents["git"] is not None:
@@ -323,9 +430,118 @@ class WorkflowEngine:
             return operation["stderr"].strip()
         return result.errors[0] if result.errors else None
 
+    # ------------------------------------------------------------------
+    # Quality gates
+    # ------------------------------------------------------------------
+
+    def _quality_active(self) -> bool:
+        config = self._quality_config
+        return config is not None and config.enabled
+
+    def _gates(self) -> dict[str, QualityGate]:
+        if not self._quality_active():
+            return {}
+        if self._quality_gates is not None:
+            return self._quality_gates
+        return {
+            "code_gate": CodeGate(),
+            "security_gate": SecurityGate(),
+            "test_gate": TestGate(),
+            "documentation_gate": DocumentationGate(),
+            "release_gate": ReleaseGate(),
+        }
+
+    def _run_gate(
+        self,
+        ctx: _WorkflowContext,
+        gates: dict[str, QualityGate],
+        name: str,
+        gate_input: GateInput,
+        notify: Callable[[WorkflowStage], None],
+    ) -> bool:
+        """Run one gate and apply the policy. Returns False to stop the run."""
+        gate = gates.get(name)
+        if gate is None:
+            stage = WorkflowStage(
+                name=name, success=True, details={"skipped": True, "reason": "gate not configured"}
+            )
+            ctx.stages.append(stage)
+            notify(stage)
+            return True
+        self._publish_quality(ctx, QUALITY_GATE_STARTED, {"gate": name})
+        started = time.monotonic()
+        try:
+            result = asyncio.run(gate.run(gate_input))
+        except Exception as exc:  # noqa: BLE001 - a crashed gate must not crash the workflow
+            result = GateResult(status=GateStatus.ERROR, reason=f"gate crashed: {exc}")
+        duration_ms = (time.monotonic() - started) * 1000
+
+        details: dict = {"gate": result.to_dict()}
+        policy = self._resolve_gate(name, result) if result.status is GateStatus.FAILED else None
+
+        blocked = False
+        overridden = False
+        reason = result.reason
+        if result.status is GateStatus.ERROR:
+            blocked = True
+            reason = reason or "gate error (fail-safe block)"
+        elif result.status is GateStatus.FAILED:
+            details["policy"] = policy.to_dict()
+            blocked = policy.blocks()
+            overridden = policy.overridden
+            reason = policy.reason if blocked else f"{result.reason}; {policy.reason}"
+        elif result.status is GateStatus.SKIPPED:
+            details["skipped"] = True
+
+        payload = {
+            "gate": name,
+            "status": result.status.value,
+            "duration_ms": duration_ms,
+            "findings": _findings_counts(result),
+            "blocked": blocked,
+            "overridden": overridden,
+            "reason": reason,
+        }
+        topic = QUALITY_GATE_BLOCKED if blocked else QUALITY_GATE_COMPLETED
+        self._publish_quality(ctx, topic, payload)
+
+        if blocked:
+            stage = WorkflowStage(name=name, success=False, details=details, error=reason)
+            ctx.stages.append(stage)
+            notify(stage)
+            ctx.errors.append(f"{name}: blocked by policy - {reason}")
+            return False
+        stage = WorkflowStage(name=name, success=True, details=details)
+        ctx.stages.append(stage)
+        notify(stage)
+        return True
+
+    def _resolve_gate(self, name: str, result: GateResult) -> DecisionResult:
+        config = self._quality_config
+        return resolve_decision(
+            [finding.severity for finding in result.findings],
+            gate=name,
+            environment=config.environment if config else "dev",
+            policy=config.policy if config else None,
+            overrides=config.overrides if config else None,
+        )
+
     def _finish(self, ctx: _WorkflowContext) -> WorkflowResult:
         ctx.finished_at = datetime.now(UTC).isoformat()
+        if ctx.quality_active:
+            self._publish_quality(
+                ctx,
+                QUALITY_COMPLETED,
+                {"success": not ctx.errors, "errors": list(ctx.errors)},
+            )
         return WorkflowResult.from_context(ctx)
+
+    def _publish_quality(self, ctx: _WorkflowContext, topic: str, payload: dict) -> None:
+        if self._bus is None:
+            return
+        event_payload = dict(payload)
+        event_payload["correlation_id"] = str(ctx.run_id)
+        self._bus.publish(topic, event_payload, correlation_id=event_payload["correlation_id"])
 
     def _run_research(self, ctx: _WorkflowContext, task: Task, context, notify) -> None:
         result = self._run_agent(

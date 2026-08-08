@@ -24,6 +24,13 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger("aios.telemetry")
 
+_GATE_TOPIC_STATUS = {
+    "quality.gate_passed": "passed",
+    "quality.gate_failed": "failed",
+    "quality.gate_blocked": "blocked",
+    "quality.gate_completed": "completed",
+}
+
 
 class TelemetryEngine:
     name = "telemetry"
@@ -95,6 +102,44 @@ class TelemetryEngine:
             limit=limit,
         )
 
+    def query_gate_stats(
+        self,
+        *,
+        gate: str | None = None,
+        status: str | None = None,
+        date_from: str | None = None,
+        date_to: str | None = None,
+        limit: int = 100,
+    ) -> list[dict]:
+        if self._store is None:
+            return []
+        return self._store.query_gate_stats(
+            gate=gate,
+            status=status,
+            date_from=date_from,
+            date_to=date_to,
+            limit=limit,
+        )
+
+    def query_gate_records(
+        self,
+        *,
+        gate: str | None = None,
+        status: str | None = None,
+        date_from: str | None = None,
+        date_to: str | None = None,
+        limit: int = 100,
+    ) -> list[dict]:
+        if self._store is None:
+            return []
+        return self._store.query_gate_records(
+            gate=gate,
+            status=status,
+            date_from=date_from,
+            date_to=date_to,
+            limit=limit,
+        )
+
     # ------------------------------------------------------------------
     # EventBus subscriptions
     # ------------------------------------------------------------------
@@ -104,13 +149,15 @@ class TelemetryEngine:
             return
         self._bus.subscribe("agent.lifecycle.changed", self._on_lifecycle_event)
         self._bus.subscribe("agent.execution.*", self._on_execution_event)
-        self._subscription_count += 2
+        self._bus.subscribe("quality.*", self._on_gate_event)
+        self._subscription_count += 3
 
     def _unsubscribe(self) -> None:
         if self._bus is None:
             return
         self._bus.unsubscribe("agent.lifecycle.changed", self._on_lifecycle_event)
         self._bus.unsubscribe("agent.execution.*", self._on_execution_event)
+        self._bus.unsubscribe("quality.*", self._on_gate_event)
         self._subscription_count = 0
 
     # ------------------------------------------------------------------
@@ -136,6 +183,37 @@ class TelemetryEngine:
             ):
                 self._persist_usage(usage, payload)
                 self._persist_cost(usage, payload)
+
+    def _on_gate_event(self, event) -> None:
+        if self._store is None:
+            return
+        payload = event.payload if hasattr(event, "payload") else event
+        if not isinstance(payload, dict):
+            return
+        topic = event.topic if hasattr(event, "topic") else ""
+        status = payload.get("status") or _GATE_TOPIC_STATUS.get(topic)
+        if status is None:
+            return
+        findings = payload.get("findings")
+        if not isinstance(findings, dict):
+            findings = {}
+        record = {
+            "gate": payload.get("gate", ""),
+            "status": str(status),
+            "correlation_id": payload.get("correlation_id")
+            or (getattr(event, "correlation_id", "") or ""),
+            "duration_ms": payload.get("duration_ms"),
+            "findings_low": int(findings.get("low", payload.get("findings_low", 0)) or 0),
+            "findings_medium": int(findings.get("medium", payload.get("findings_medium", 0)) or 0),
+            "findings_high": int(findings.get("high", payload.get("findings_high", 0)) or 0),
+            "findings_critical": int(
+                findings.get("critical", payload.get("findings_critical", 0)) or 0
+            ),
+            "blocked": bool(payload.get("blocked")),
+            "overridden": bool(payload.get("overridden")),
+            "timestamp": payload.get("timestamp", _now()),
+        }
+        self._store.insert_gate_record(record)
 
     # ------------------------------------------------------------------
     # Persistence helpers

@@ -90,6 +90,13 @@ class ConfigLoader:
                 "enabled": "security.enabled",
                 "policies_dir": "security.policies_dir",
             },
+            "quality": {
+                "enabled": "quality.enabled",
+                "auto_detect": "quality.auto_detect",
+                "environment": "quality.environment",
+                "policy": "quality.policy",
+                "overrides": "quality.overrides",
+            },
             "logging": {"level": "logging.level", "audit_path": "logging.audit_path"},
             "project": {"name": "project.name", "directory": "project.directory"},
         }

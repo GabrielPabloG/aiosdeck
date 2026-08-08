@@ -110,6 +110,27 @@ CREATE TABLE IF NOT EXISTS telemetry_skills (
 CREATE INDEX IF NOT EXISTS idx_ts_skill_name ON telemetry_skills(skill_name);
 CREATE INDEX IF NOT EXISTS idx_ts_agent ON telemetry_skills(agent);
 CREATE INDEX IF NOT EXISTS idx_ts_timestamp ON telemetry_skills(timestamp);
+
+CREATE TABLE IF NOT EXISTS telemetry_gates (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    gate TEXT NOT NULL,
+    status TEXT NOT NULL,
+    correlation_id TEXT NOT NULL DEFAULT '',
+    duration_ms REAL,
+    findings_low INTEGER NOT NULL DEFAULT 0,
+    findings_medium INTEGER NOT NULL DEFAULT 0,
+    findings_high INTEGER NOT NULL DEFAULT 0,
+    findings_critical INTEGER NOT NULL DEFAULT 0,
+    blocked INTEGER NOT NULL DEFAULT 0,
+    overridden INTEGER NOT NULL DEFAULT 0,
+    timestamp TEXT NOT NULL DEFAULT '',
+    project_id TEXT NOT NULL DEFAULT ''
+);
+
+CREATE INDEX IF NOT EXISTS idx_tg_gate ON telemetry_gates(gate);
+CREATE INDEX IF NOT EXISTS idx_tg_status ON telemetry_gates(status);
+CREATE INDEX IF NOT EXISTS idx_tg_timestamp ON telemetry_gates(timestamp);
+CREATE INDEX IF NOT EXISTS idx_tg_correlation ON telemetry_gates(correlation_id);
 """
 
 
@@ -710,6 +731,175 @@ class TelemetryStore:
                 "total_used": row[4],
                 "avg_relevance": row[5],
                 "total_tokens": row[6],
+            }
+            for row in rows
+        ]
+
+    # ------------------------------------------------------------------
+    # Gate telemetry records
+    # ------------------------------------------------------------------
+
+    def insert_gate_record(self, record: dict) -> None:
+        if not self._conn:
+            return
+        try:
+            self._conn.execute(
+                """INSERT INTO telemetry_gates
+                   (gate, status, correlation_id, duration_ms,
+                    findings_low, findings_medium, findings_high, findings_critical,
+                    blocked, overridden, timestamp, project_id)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    record.get("gate", ""),
+                    record.get("status", ""),
+                    record.get("correlation_id", ""),
+                    record.get("duration_ms"),
+                    record.get("findings_low", 0),
+                    record.get("findings_medium", 0),
+                    record.get("findings_high", 0),
+                    record.get("findings_critical", 0),
+                    1 if record.get("blocked") else 0,
+                    1 if record.get("overridden") else 0,
+                    record.get("timestamp", _now()),
+                    self._project_id,
+                ),
+            )
+            self._conn.commit()
+        except sqlite3.Error as exc:
+            logger.warning("insert_gate_record failed: %s", exc)
+
+    def query_gate_stats(  # noqa: PLR0913
+        self,
+        *,
+        gate: str | None = None,
+        status: str | None = None,
+        date_from: str | None = None,
+        date_to: str | None = None,
+        limit: int = 100,
+    ) -> list[dict]:
+        if not self._conn:
+            return []
+
+        conditions = ["project_id = ?"]
+        params: list = [self._project_id]
+
+        if gate:
+            conditions.append("gate = ?")
+            params.append(gate)
+        if status:
+            conditions.append("status = ?")
+            params.append(status)
+        if date_from:
+            conditions.append("timestamp >= ?")
+            params.append(date_from)
+        if date_to:
+            conditions.append("timestamp <= ?")
+            params.append(date_to)
+
+        where = " AND ".join(conditions)
+        try:
+            rows = self._conn.execute(
+                f"""SELECT gate,
+                    COUNT(*) as runs,
+                    COALESCE(SUM(CASE WHEN status = 'passed' THEN 1 ELSE 0 END), 0) as passed,
+                    COALESCE(SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END), 0) as failed,
+                    COALESCE(SUM(CASE WHEN status = 'skipped' THEN 1 ELSE 0 END), 0) as skipped,
+                    COALESCE(SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END), 0) as errored,
+                    COALESCE(SUM(blocked), 0) as blocked,
+                    COALESCE(SUM(overridden), 0) as overridden,
+                    AVG(duration_ms) as avg_duration_ms,
+                    COALESCE(SUM(findings_low), 0) as findings_low,
+                    COALESCE(SUM(findings_medium), 0) as findings_medium,
+                    COALESCE(SUM(findings_high), 0) as findings_high,
+                    COALESCE(SUM(findings_critical), 0) as findings_critical
+                FROM telemetry_gates
+                WHERE {where}
+                GROUP BY gate
+                ORDER BY runs DESC
+                LIMIT ?""",
+                params + [limit],
+            ).fetchall()
+        except sqlite3.Error as exc:
+            logger.warning("query_gate_stats failed: %s", exc)
+            return []
+
+        return [
+            {
+                "gate": row[0],
+                "runs": row[1],
+                "passed": row[2],
+                "failed": row[3],
+                "skipped": row[4],
+                "errored": row[5],
+                "blocked": row[6],
+                "overridden": row[7],
+                "avg_duration_ms": row[8],
+                "findings_low": row[9],
+                "findings_medium": row[10],
+                "findings_high": row[11],
+                "findings_critical": row[12],
+            }
+            for row in rows
+        ]
+
+    def query_gate_records(  # noqa: PLR0913
+        self,
+        *,
+        gate: str | None = None,
+        status: str | None = None,
+        date_from: str | None = None,
+        date_to: str | None = None,
+        limit: int = 100,
+    ) -> list[dict]:
+        if not self._conn:
+            return []
+
+        conditions = ["project_id = ?"]
+        params: list = [self._project_id]
+
+        if gate:
+            conditions.append("gate = ?")
+            params.append(gate)
+        if status:
+            conditions.append("status = ?")
+            params.append(status)
+        if date_from:
+            conditions.append("timestamp >= ?")
+            params.append(date_from)
+        if date_to:
+            conditions.append("timestamp <= ?")
+            params.append(date_to)
+
+        where = " AND ".join(conditions)
+        try:
+            rows = self._conn.execute(
+                f"""SELECT id, gate, status, correlation_id, duration_ms,
+                    findings_low, findings_medium, findings_high, findings_critical,
+                    blocked, overridden, timestamp
+                FROM telemetry_gates
+                WHERE {where}
+                ORDER BY timestamp DESC
+                LIMIT ?""",
+                params + [limit],
+            ).fetchall()
+        except sqlite3.Error as exc:
+            logger.warning("query_gate_records failed: %s", exc)
+            return []
+
+        return [
+            {
+                "id": row[0],
+                "gate": row[1],
+                "status": row[2],
+                "correlation_id": row[3],
+                "duration_ms": row[4],
+                "findings_low": row[5],
+                "findings_medium": row[6],
+                "findings_high": row[7],
+                "findings_critical": row[8],
+                "blocked": row[9],
+                "overridden": row[10],
+                "timestamp": row[11],
             }
             for row in rows
         ]
