@@ -17,7 +17,7 @@ from aios.agents.reviewer import ReviewerAgent
 from aios.agents.tester import TesterAgent
 from aios.cli.commands import COMMANDS, _error, _print_command_help, _print_help
 from aios.config import ConfigEngine
-from aios.context import ContextEngine
+from aios.context import ContextAssembler, ContextEngine
 from aios.core import Kernel
 from aios.events import EventsEngine
 from aios.integrations.projdesk import (
@@ -29,6 +29,7 @@ from aios.integrations.projdesk import (
 from aios.knowledge import KnowledgeEngine
 from aios.memory import MemoryEngine
 from aios.retrieval.providers import OllamaEmbeddingProvider
+from aios.retrieval.selector import ContextBudget
 from aios.runtime import RuntimeEngine
 from aios.scheduler import KanbanEngine
 from aios.security import SecurityEngine
@@ -173,6 +174,15 @@ def _build_skill_assembler(project_path: Path, kernel: Kernel):
     return SkillAssembler()
 
 
+def _build_context_assembler(project_path: Path, kernel: Kernel):
+    try:
+        knowledge = kernel.get_engine("knowledge")
+        return ContextAssembler(knowledge=knowledge, budget=ContextBudget())
+    except Exception:
+        pass
+    return ContextAssembler(knowledge=None)
+
+
 def _create_kernel(project_path: Path) -> Kernel:
     global _active_kernel  # noqa: PLW0603
     kernel = Kernel(project_path=str(project_path))
@@ -198,8 +208,9 @@ def _create_kernel(project_path: Path) -> Kernel:
     kernel.register(runtime)
 
     assembler = _build_skill_assembler(project_path, kernel)
-    developer = DeveloperAgent(runtime, skills=assembler)
-    planner = PlannerAgent(runtime, skills=assembler)
+    context_assembler = _build_context_assembler(project_path, kernel)
+    developer = DeveloperAgent(runtime, skills=assembler, assembler=context_assembler)
+    planner = PlannerAgent(runtime, skills=assembler, assembler=context_assembler)
     reviewer = ReviewerAgent()
     research_agent = ResearchAgent()
     kernel.register(developer)

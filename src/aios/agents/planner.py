@@ -48,11 +48,14 @@ class PlannerAgent(BaseAgent):
     required_skills = ["project-dna", "coding-style"]
     max_iterations = 3
 
-    def __init__(self, runtime, builder: PromptBuilder | None = None, skills=None) -> None:
+    def __init__(
+        self, runtime, builder: PromptBuilder | None = None, skills=None, assembler=None
+    ) -> None:
         super().__init__()
         self._runtime = runtime
         self._builder = builder or PromptBuilder()
         self._skills = skills
+        self._assembler = assembler
 
     def execute(self, task, context) -> AgentResult:
         agent_task = coerce_task(task)
@@ -65,8 +68,15 @@ class PlannerAgent(BaseAgent):
                 task_id=agent_task.task_id,
                 correlation_id=agent_task.correlation_id,
             )
+        layered = (
+            self._assembler.assemble(agent_task, context, agent=self.name)
+            if self._assembler is not None
+            else None
+        )
         transcript = [
-            self._build_planning_prompt(agent_task, context, skill_contexts=skill_contexts)
+            self._build_planning_prompt(
+                agent_task, context, skill_contexts=skill_contexts, layered=layered
+            )
         ]
         last_error = "Model failed to produce a valid plan"
 
@@ -123,7 +133,7 @@ class PlannerAgent(BaseAgent):
             return None
         return ask_user(match.group(2))
 
-    def _build_planning_prompt(self, task, context, skill_contexts=None) -> str:
+    def _build_planning_prompt(self, task, context, skill_contexts=None, layered=None) -> str:
         plan_prompt = (
             "## Role: Task Planner\n\n"
             "You are a software architecture planner. "
@@ -144,7 +154,9 @@ class PlannerAgent(BaseAgent):
             "---\n\n"
             "## Project Context\n\n"
         )
-        base_prompt = self._builder.build(task, context, skill_contexts=skill_contexts)
+        base_prompt = self._builder.build(
+            task, context, skill_contexts=skill_contexts, layered=layered
+        )
         return plan_prompt + base_prompt
 
     def _parse_plan(self, output: str) -> AgentResult:

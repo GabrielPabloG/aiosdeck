@@ -322,8 +322,9 @@ def _print_research_text(result) -> None:
 def _cmd_plan(raw_args: list[str], project_path: Path, kernel_factory: Callable) -> None:
     run_mode = "--run" in (raw_args or [])
     as_json = "--json" in (raw_args or [])
+    debug_context = "--debug-context" in (raw_args or [])
 
-    clean_args = [a for a in (raw_args or []) if a not in ("--run", "--json")]
+    clean_args = [a for a in (raw_args or []) if a not in ("--run", "--json", "--debug-context")]
     intent = " ".join(clean_args) if clean_args else None
     if not intent:
         print("Usage: aios plan <intent>", file=sys.stderr)
@@ -336,6 +337,9 @@ def _cmd_plan(raw_args: list[str], project_path: Path, kernel_factory: Callable)
     context = kernel.get_context()
     task = Task(description=intent, task_type="plan")
     mode = "plan-run" if run_mode else "plan"
+
+    if debug_context:
+        _render_debug_context(kernel, task, context, agent="planner", as_json=as_json)
 
     with ProgressSpinner("Running workflow" if run_mode else "Planning"):
         result = kernel.run(
@@ -360,6 +364,20 @@ def _cmd_plan(raw_args: list[str], project_path: Path, kernel_factory: Callable)
         for err in result.errors:
             print(f"Error: {err}", file=sys.stderr)
         sys.exit(1)
+
+
+def _render_debug_context(kernel, task, context, *, agent: str, as_json: bool) -> None:
+    from aios.context.assembler import ContextAssembler  # noqa: PLC0415
+    from aios.context.cli import render_layer_tree  # noqa: PLC0415
+
+    try:
+        knowledge = kernel.get_engine("knowledge")
+        assembler = ContextAssembler(knowledge=knowledge)
+        assembly = assembler.assemble(task, context, agent=agent)
+    except Exception:
+        return
+    print(f"[Context Layers · {agent}]")
+    print(render_layer_tree(assembly, as_json=as_json))
 
 
 def _run_result_to_json(result: RunResult) -> dict:
