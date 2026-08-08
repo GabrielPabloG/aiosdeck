@@ -29,6 +29,7 @@ from aios.security.contracts import (
     IntentPolicy,
     SecurityDecision,
 )
+from aios.security.resolver import decide, effective_permissions
 
 logger = logging.getLogger("aios.security")
 
@@ -51,6 +52,8 @@ __all__ = [
     "SHELL_EXECUTE",
     "SecurityDecision",
     "SecurityEngine",
+    "decide",
+    "effective_permissions",
     "expand",
 ]
 
