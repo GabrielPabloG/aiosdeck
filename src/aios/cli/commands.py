@@ -36,6 +36,7 @@ from aios.learning.cli import _cmd_learning
 from aios.memory.models import ProjectKnowledge
 from aios.quality.cli import cmd_quality_stats
 from aios.research.schema import research_result_from_dict, research_result_to_json
+from aios.routing.cli import _cmd_route
 from aios.security.cli import (
     _render_intent_summary,
     cmd_policy_show,
@@ -544,6 +545,7 @@ def _print_help() -> None:
     print("  aios knowledge <cmd>   Manage knowledge store (index/search/sources)")
     print("  aios skills <cmd>     Discover skills and view lifecycle stats")
     print("  aios learning <cmd>   Manage learning governance (candidates, approval)")
+    print("  aios route <cmd>      Explain or inspect model routing decisions")
     print("  aios help             Show this help")
     print()
     print("Commands:")
@@ -872,6 +874,24 @@ COMMANDS: dict[str, Command] = {
                 execute=cmd_knowledge_retrieve,
             ),
         },
+    ),
+    "route": Command(
+        name="route",
+        description="Explain and inspect model routing decisions",
+        aliases=["rt"],
+        subcommands={
+            "explain": Command(
+                name="explain",
+                description="Explain which model would be chosen for a given input",
+                aliases=["e"],
+            ),
+            "stats": Command(
+                name="stats",
+                description="Show routing telemetry stats, records, or accuracy",
+                aliases=["s"],
+            ),
+        },
+        execute=_cmd_route,
     ),
     "skills": Command(
         name="skills",
