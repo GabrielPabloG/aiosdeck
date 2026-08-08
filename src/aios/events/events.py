@@ -103,7 +103,14 @@ SECURITY_TOPICS = [
     "security.approval_requested",
     "security.approval_granted",
     "security.approval_denied",
+    "security.intent.applied",
+    "security.check.passed",
+    "security.check.denied",
 ]
+
+SECURITY_INTENT_APPLIED = "security.intent.applied"
+SECURITY_CHECK_PASSED = "security.check.passed"
+SECURITY_CHECK_DENIED = "security.check.denied"
 
 WORKFLOW_TOPICS = [
     "workflow.started",

@@ -11,6 +11,7 @@ from aios.agents.base import BaseAgent
 from aios.agents.contracts import STATE_SUCCEEDED, coerce_task
 from aios.agents.models import AgentResult
 from aios.prompts import PromptBuilder
+from aios.security.resolver import effective_permissions
 
 logger = logging.getLogger("aios.agent.developer")
 
@@ -44,7 +45,11 @@ class DeveloperAgent(BaseAgent):
                 correlation_id=agent_task.correlation_id,
             )
         prompt = self._builder.build(agent_task, context, skill_contexts=skill_contexts or None)
-        output = self._runtime.execute(prompt, self.required_skills, self.required_capabilities)
+        intent = getattr(context, "intent", None)
+        effective = effective_permissions(intent, self.capabilities) if intent else None
+        output = self._runtime.execute(
+            prompt, self.required_skills, self.required_capabilities, permissions=effective
+        )
         return AgentResult(
             success=True,
             output=output,

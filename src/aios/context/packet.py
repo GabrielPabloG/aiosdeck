@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from aios.memory.models import ProjectKnowledge
+    from aios.security.contracts import IntentPolicy
 
 
 @dataclass
@@ -147,6 +148,7 @@ class ContextPacket:
     skills: list[str] = field(default_factory=list)
     memory: ProjectKnowledge | None = field(default=None)
     research: dict | None = field(default=None)
+    intent: IntentPolicy | None = field(default=None)
     timestamp: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 
     def to_dict(self) -> dict[str, Any]:

@@ -49,6 +49,8 @@ from aios.quality.gates import (
 )
 from aios.quality.policy import DecisionResult, resolve_decision
 from aios.scheduler import KanbanEngine
+from aios.security.actions import WORKFLOW_INTENT
+from aios.security.resolver import effective_permissions
 from aios.workflow.models import (
     InMemoryRunIdGenerator,
     RunIdGenerator,
@@ -64,6 +66,15 @@ _SLUG_RE = re.compile(r"[^a-z0-9]+")
 logger = logging.getLogger("aios.workflow")
 
 OPTIONAL_AGENTS = ("tester", "documentation", "git", "research")
+
+_STAGE_AGENT = {
+    "planner": "planner",
+    "reviewer": "reviewer",
+    "tester": "tester",
+    "documentation": "documentation",
+    "git": "git",
+    "research": "research",
+}
 
 
 def _findings_counts(result: GateResult) -> dict[str, int]:
@@ -152,6 +163,8 @@ class WorkflowEngine:
             goal=task.description,
             started_at=datetime.now(UTC).isoformat(),
         )
+        self._apply_workflow_intent(context)
+        ctx.intent = getattr(context, "intent", None) if context is not None else None
         agents = self._agents
         gates = self._gates()
         ctx.quality_active = bool(gates)
@@ -399,7 +412,8 @@ class WorkflowEngine:
 
     def _run_agent(self, agent, task: AgentTask, context=None) -> AgentResult:
         """Execute one agent through the single AgentExecutor boundary."""
-        outcome = self._executor.execute(make_request(agent, task, context))
+        intent = getattr(context, "intent", None) if context is not None else None
+        outcome = self._executor.execute(make_request(agent, task, context, intent=intent))
         if outcome.result is not None:
             return outcome.result
         error = outcome.error
@@ -413,6 +427,40 @@ class WorkflowEngine:
             task_id=task.task_id,
             correlation_id=task.correlation_id,
         )
+
+    @staticmethod
+    def _apply_workflow_intent(context) -> None:
+        """Set the workflow intent on the shared context, respecting an override."""
+        if context is None or getattr(context, "intent", None) is not None:
+            return
+        try:
+            context.intent = WORKFLOW_INTENT
+        except AttributeError:
+            logger.warning("Workflow intent not attached: context has no settable 'intent'")
+
+    def _enrich_stage_effective(self, ctx: _WorkflowContext) -> None:
+        """Expose the effective permissions and intent on each agent stage."""
+        if ctx.intent is None:
+            return
+        for stage in ctx.stages:
+            agent_name = _STAGE_AGENT.get(stage.name)
+            if stage.name.startswith("developer:"):
+                agent_name = "developer"
+            if agent_name is None:
+                continue
+            agent = self._agents.get(agent_name)
+            if agent is None:
+                continue
+            effective = effective_permissions(ctx.intent, agent.capabilities)
+            if not effective:
+                continue
+            details = dict(stage.details)
+            details["effective"] = sorted(effective)
+            details.setdefault(
+                "intent",
+                {"name": ctx.intent.name or "", "source": ctx.intent.source or ""},
+            )
+            stage.details = details
 
     @staticmethod
     def _git_operation(result: AgentResult) -> dict | None:
@@ -528,6 +576,7 @@ class WorkflowEngine:
 
     def _finish(self, ctx: _WorkflowContext) -> WorkflowResult:
         ctx.finished_at = datetime.now(UTC).isoformat()
+        self._enrich_stage_effective(ctx)
         if ctx.quality_active:
             self._publish_quality(
                 ctx,

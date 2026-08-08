@@ -30,6 +30,7 @@ from aios.agents.contracts import (
 )
 from aios.agents.models import AgentResult
 from aios.prompts import PromptBuilder
+from aios.security.resolver import effective_permissions
 from aios.tools import ask_user
 
 logger = logging.getLogger("aios.agent.planner")
@@ -70,10 +71,13 @@ class PlannerAgent(BaseAgent):
         last_error = "Model failed to produce a valid plan"
 
         for _ in range(self.max_iterations):
+            intent = getattr(context, "intent", None)
+            effective = effective_permissions(intent, self.capabilities) if intent else None
             output = self._runtime.execute(
                 self._build_transcript_prompt(transcript),
                 self.required_skills,
                 self.required_capabilities,
+                permissions=effective,
             )
 
             tool_result = self._exec_tool_call(output)

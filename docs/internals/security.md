@@ -38,7 +38,11 @@ Firewall        Gates            Logger
 
 Evaluates whether an agent is authorized to perform an action. Policies are YAML files:
 
-> **Note:** The current implementation only requires the presence of `agent_capabilities.yaml`. The complete policy schema below describes the planned Policy Engine and is not fully implemented yet.
+> **Note:** The complete policy schema below describes the intended policy
+> file format. The runtime enforcement model (v0.9.8) is implemented in code:
+> `IntentPolicy` (explicit action vocabulary) + coarse agent capabilities +
+> a deterministic expansion table + the `effective_permissions` resolver.
+> See **Intent vs Capability vs Enforcement** below.
 
 ```yaml
 # aios/policies/agent_capabilities.yaml
@@ -256,6 +260,61 @@ Permissions are derived from each agent's `required_capabilities`:
 - **DeveloperAgent** (`filesystem_write`, `shell`): full access except `question: deny`
 
 This is enforced in `runtime/opencode.py` via `_build_permissions(capabilities)` and injected through the subprocess environment. Permissions are cached by capabilities set.
+
+### Intent vs Capability vs Enforcement (v0.9.8)
+
+**Status**: Implemented (v0.9.8)
+
+Security is layered: an **intent** is what a run asks for, **capabilities**
+are what an agent may do, and **enforcement** is where the two intersect and
+are translated into runtime rules. All three live in `aios/security`:
+
+| Layer | What | Where |
+|-------|------|-------|
+| Intent | Explicit granular action vocabulary of a run (`actions`, explicit `deny`) | `security/contracts.py` (`IntentPolicy`) |
+| Capability | Coarse, per-agent grants (unchanged, 7 agents, YAML/compliance intact) | `agents/contracts.py` (`AgentCapabilities`) |
+| Expansion | Additive, deterministic map of coarse capability → granular actions | `security/actions.py` (`CAPABILITY_ACTIONS`, `expand`) |
+| Resolution | `effective = (intent.actions - intent.deny) ∩ expand(capabilities)` | `security/resolver.py` (`effective_permissions`, `decide`) |
+| Enforcement | Run-gate at the executor boundary; opt-in per run | `agents/executor.py` |
+| Runtime | Least-privilege `OPENCODE_PERMISSION` derived from effective permissions | `runtime/opencode.py` |
+| Audit | `security.*` events → `telemetry_security` table (queryable allow/deny) | `agents/executor.py`, `telemetry/` |
+
+Frozen semantics:
+
+- **deny = absence (intersection).** An action must survive the intent
+  (present in `actions`, absent from `deny`) AND be granted by the agent's
+  coarse capability. Any absence in either layer denies.
+- **Explicit deny wins.** `intent.deny` removes actions even when they are in
+  `intent.actions` and granted by the capability.
+- **Fail-safe.** An action not mapped in `CAPABILITY_ACTIONS` is never granted;
+  an empty effective set is a structured `PERMISSION_DENIED` — never a silent
+  fallback.
+- **An intent can never elevate capabilities.** `develop` under a
+  `filesystem_read`-only agent resolves to exactly `{filesystem.read}`.
+- **Destructive actions are never implicit.** `filesystem.delete`, `git.push`,
+  `git.tag`, `network.access`, and `release.publish` only enter through an
+  explicit intent override. `release` has no default intent.
+- **Safe defaults (pinned by tests).** `plan` → `{filesystem.read, ask_user}`,
+  `review`/`research` → `{filesystem.read}`, `develop` →
+  `{filesystem.read, filesystem.write, shell.execute, git.branch, git.commit}`,
+  `test` → `{filesystem.read, shell.execute}`. The workflow runtime intent is
+  the `develop` defaults plus `ask_user` (the planner's reasoning loop).
+- **Opt-in.** No intent on a run means byte-identical behavior and no
+  `security.*` events.
+
+Runtime mapping (least privilege): `question` always denied; `read`/`glob`/
+`grep` require `filesystem.read`; `edit` requires `filesystem.write`; `bash`
+requires `shell.execute` and, when granted, carries an explicit deny set
+(`git push`, `git tag`, `rm -rf`, `curl`, `wget`) plus an allowlist of run
+commands (`git branch`, `git commit`, `grep`, `ruff`, `python`, `pytest`) —
+opencode's last-match-wins rule keeps the denies in effect under `--auto`.
+The `GitAgent` is deterministic via subprocess and never passes through
+opencode; its `push`/`tag` are prevented at the intent level, which never
+grants them.
+
+The audit trail is a query, not a raw log: `aios policy show` renders the
+policy, `aios security stats` renders the allow/deny trail from
+`telemetry_security`.
 
 ## Implementation Notes
 
