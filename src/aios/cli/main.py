@@ -29,6 +29,7 @@ from aios.memory import MemoryEngine
 from aios.runtime import RuntimeEngine
 from aios.scheduler import KanbanEngine
 from aios.security import SecurityEngine
+from aios.telemetry import TelemetryEngine
 from aios.workflow import WorkflowEngine
 
 VERSION_TEXT = f"AiosDeck v{__version__}"
@@ -158,6 +159,7 @@ def _create_kernel(project_path: Path) -> Kernel:
     kernel.register(KanbanEngine(project_path=project_path))
     events = EventsEngine()
     kernel.register(events)
+    kernel.register(TelemetryEngine(project_path=project_path))
     security = SecurityEngine(project_path=project_path)
     kernel.register(security)
     executor = AgentExecutor(capabilities_enforcer=security._enforcer)

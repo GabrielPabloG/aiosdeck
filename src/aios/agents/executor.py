@@ -97,6 +97,7 @@ class AgentExecutor:
     def execute(self, request: ExecutionRequest) -> ExecutionOutcome:  # noqa: PLR0911, PLR0915
         self._cancelled = False
         self._sequence = 0
+        execution_id = str(uuid.uuid4())
         lifecycle = AgentLifecycle()
         attempt = 1
         retried = False
@@ -107,7 +108,7 @@ class AgentExecutor:
 
         # Initialization event — not a state transition. Guarantees every
         # execution emits a complete, deterministic sequence starting at 1.
-        self._publish_lifecycle(request, STATE_CREATED, STATE_CREATED)
+        self._publish_lifecycle(execution_id, request, STATE_CREATED, STATE_CREATED)
 
         # 1. Validate the task
         validation_errors = validate_agent_task(request.task)
@@ -118,9 +119,9 @@ class AgentExecutor:
                 transient=False,
             )
             lifecycle.transition(STATE_FAILED)
-            self._publish_lifecycle(request, STATE_CREATED, STATE_FAILED)
+            self._publish_lifecycle(execution_id, request, STATE_CREATED, STATE_FAILED)
             self._publish_execution(
-                request, AGENT_EXECUTION_FAILED, STATE_FAILED, 0.0, attempt, error
+                execution_id, request, AGENT_EXECUTION_FAILED, STATE_FAILED, 0.0, attempt, error
             )
             return ExecutionOutcome(status=STATE_FAILED, error=error, attempts=attempt)
 
@@ -131,30 +132,31 @@ class AgentExecutor:
             except PermissionError as exc:
                 error = AgentError(code=PERMISSION_DENIED, message=str(exc), transient=False)
                 lifecycle.transition(STATE_FAILED)
-                self._publish_lifecycle(request, STATE_CREATED, STATE_FAILED)
+                self._publish_lifecycle(execution_id, request, STATE_CREATED, STATE_FAILED)
                 self._publish_execution(
-                    request, AGENT_EXECUTION_FAILED, STATE_FAILED, 0.0, attempt, error
+                    execution_id, request, AGENT_EXECUTION_FAILED, STATE_FAILED, 0.0, attempt, error
                 )
                 return ExecutionOutcome(status=STATE_FAILED, error=error, attempts=attempt)
 
         # 3. validated
         lifecycle.transition(STATE_VALIDATED)
-        self._publish_lifecycle(request, STATE_CREATED, STATE_VALIDATED)
+        self._publish_lifecycle(execution_id, request, STATE_CREATED, STATE_VALIDATED)
 
         # 4. queued — accepted by the system, not yet consuming execution
         lifecycle.transition(STATE_QUEUED)
-        self._publish_lifecycle(request, STATE_VALIDATED, STATE_QUEUED)
+        self._publish_lifecycle(execution_id, request, STATE_VALIDATED, STATE_QUEUED)
 
         # 5. running
         lifecycle.transition(STATE_RUNNING)
-        self._publish_lifecycle(request, STATE_QUEUED, STATE_RUNNING)
+        self._publish_lifecycle(execution_id, request, STATE_QUEUED, STATE_RUNNING)
 
         # 6. Attempt loop
         while True:
             if self._cancelled:
                 lifecycle.transition(STATE_CANCELLED)
-                self._publish_lifecycle(request, STATE_RUNNING, STATE_CANCELLED)
+                self._publish_lifecycle(execution_id, request, STATE_RUNNING, STATE_CANCELLED)
                 self._publish_execution(
+                    execution_id,
                     request,
                     AGENT_EXECUTION_CANCELLED,
                     STATE_CANCELLED,
@@ -166,7 +168,8 @@ class AgentExecutor:
                 )
 
             self._publish_execution(
-                request, AGENT_EXECUTION_STARTED, STATE_RUNNING, self._elapsed(started), attempt
+                execution_id, request, AGENT_EXECUTION_STARTED, STATE_RUNNING,
+                self._elapsed(started), attempt,
             )
             try:
                 result = self._invoke(request, timeout)
@@ -175,11 +178,13 @@ class AgentExecutor:
                 result.agent = request.agent.name
                 result.task_id = request.task.task_id
                 result.correlation_id = request.correlation_id or request.task.correlation_id
+                usage_dict = result.usage.to_dict() if result.usage else None
                 if result.success:
                     lifecycle.transition(STATE_SUCCEEDED)
-                    self._publish_lifecycle(request, STATE_RUNNING, STATE_SUCCEEDED)
+                    self._publish_lifecycle(execution_id, request, STATE_RUNNING, STATE_SUCCEEDED)
                     self._publish_execution(
-                        request, AGENT_EXECUTION_COMPLETED, STATE_SUCCEEDED, duration, attempt
+                        execution_id, request, AGENT_EXECUTION_COMPLETED, STATE_SUCCEEDED,
+                        duration, attempt, usage=usage_dict,
                     )
                     return ExecutionOutcome(
                         status=STATE_SUCCEEDED,
@@ -194,9 +199,10 @@ class AgentExecutor:
                     transient=False,
                 )
                 lifecycle.transition(STATE_FAILED)
-                self._publish_lifecycle(request, STATE_RUNNING, STATE_FAILED)
+                self._publish_lifecycle(execution_id, request, STATE_RUNNING, STATE_FAILED)
                 self._publish_execution(
-                    request, AGENT_EXECUTION_FAILED, STATE_FAILED, duration, attempt, error
+                    execution_id, request, AGENT_EXECUTION_FAILED, STATE_FAILED,
+                    duration, attempt, error,
                 )
                 return ExecutionOutcome(
                     status=STATE_FAILED,
@@ -216,17 +222,19 @@ class AgentExecutor:
                 if self._should_retry(error, retry_policy, attempt, max_attempts):
                     retried = True
                     self._publish_execution(
-                        request, AGENT_EXECUTION_RETRIED, STATE_RUNNING, duration, attempt, error
+                        execution_id, request, AGENT_EXECUTION_RETRIED, STATE_RUNNING,
+                        duration, attempt, error,
                     )
                     attempt += 1
                     lifecycle.transition(STATE_RUNNING)
-                    self._publish_lifecycle(request, STATE_RUNNING, STATE_RUNNING)
+                    self._publish_lifecycle(execution_id, request, STATE_RUNNING, STATE_RUNNING)
                     time.sleep(self._backoff(retry_policy, attempt))
                     continue
                 lifecycle.transition(STATE_TIMED_OUT)
-                self._publish_lifecycle(request, STATE_RUNNING, STATE_TIMED_OUT)
+                self._publish_lifecycle(execution_id, request, STATE_RUNNING, STATE_TIMED_OUT)
                 self._publish_execution(
-                    request, AGENT_EXECUTION_TIMED_OUT, STATE_TIMED_OUT, duration, attempt, error
+                    execution_id, request, AGENT_EXECUTION_TIMED_OUT, STATE_TIMED_OUT,
+                    duration, attempt, error,
                 )
                 return ExecutionOutcome(
                     status=STATE_TIMED_OUT,
@@ -241,17 +249,19 @@ class AgentExecutor:
                 if self._should_retry(error, retry_policy, attempt, max_attempts):
                     retried = True
                     self._publish_execution(
-                        request, AGENT_EXECUTION_RETRIED, STATE_RUNNING, duration, attempt, error
+                        execution_id, request, AGENT_EXECUTION_RETRIED, STATE_RUNNING,
+                        duration, attempt, error,
                     )
                     attempt += 1
                     lifecycle.transition(STATE_RUNNING)
-                    self._publish_lifecycle(request, STATE_RUNNING, STATE_RUNNING)
+                    self._publish_lifecycle(execution_id, request, STATE_RUNNING, STATE_RUNNING)
                     time.sleep(self._backoff(retry_policy, attempt))
                     continue
                 lifecycle.transition(STATE_FAILED)
-                self._publish_lifecycle(request, STATE_RUNNING, STATE_FAILED)
+                self._publish_lifecycle(execution_id, request, STATE_RUNNING, STATE_FAILED)
                 self._publish_execution(
-                    request, AGENT_EXECUTION_FAILED, STATE_FAILED, duration, attempt, error
+                    execution_id, request, AGENT_EXECUTION_FAILED, STATE_FAILED,
+                    duration, attempt, error,
                 )
                 return ExecutionOutcome(
                     status=STATE_FAILED,
@@ -300,9 +310,10 @@ class AgentExecutor:
     def _elapsed(started: float) -> float:
         return (time.monotonic() - started) * 1000
 
-    def _event_identity(self, request: ExecutionRequest) -> dict:
+    def _event_identity(self, request: ExecutionRequest, execution_id: str) -> dict:
         return {
             "event_id": str(uuid.uuid4()),
+            "execution_id": execution_id,
             "agent": request.agent.name,
             "task_id": request.task.task_id,
             "correlation_id": request.correlation_id or request.task.correlation_id,
@@ -312,6 +323,7 @@ class AgentExecutor:
 
     def _publish_lifecycle(
         self,
+        execution_id: str,
         request: ExecutionRequest,
         previous_state: str,
         current_state: str,
@@ -319,7 +331,7 @@ class AgentExecutor:
         if self._bus is None:
             return
         self._sequence += 1
-        identity = self._event_identity(request)
+        identity = self._event_identity(request, execution_id)
         event = AgentLifecycleEvent(
             **identity,
             status=current_state,
@@ -336,17 +348,19 @@ class AgentExecutor:
 
     def _publish_execution(  # noqa: PLR0913, PLR0917 - payload fields are the event contract
         self,
+        execution_id: str,
         request: ExecutionRequest,
         topic: str,
         status: str,
         duration_ms: float | None,
         attempt: int,
         error: AgentError | None = None,
+        usage: dict | None = None,
     ) -> None:
         if self._bus is None:
             return
         self._sequence += 1
-        identity = self._event_identity(request)
+        identity = self._event_identity(request, execution_id)
         event = AgentExecutionEvent(
             **identity,
             status=status,
@@ -354,6 +368,7 @@ class AgentExecutor:
             error_code=error.code if error else None,
             attempt=attempt,
             message=error.message if error else "",
+            usage=usage,
         )
         self._bus.publish(topic, event.to_dict(), correlation_id=identity["correlation_id"])
         if request.on_progress is not None:

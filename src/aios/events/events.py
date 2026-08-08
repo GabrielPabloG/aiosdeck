@@ -107,6 +107,11 @@ RUNTIME_TOPICS = [
     "runtime.disconnected",
 ]
 
+TELEMETRY_TOPICS = [
+    "telemetry.usage.captured",
+    "telemetry.cost.calculated",
+]
+
 ALL_TOPICS = (
     SYSTEM_TOPICS
     + SESSION_TOPICS
@@ -120,4 +125,5 @@ ALL_TOPICS = (
     + SECURITY_TOPICS
     + WORKFLOW_TOPICS
     + RUNTIME_TOPICS
+    + TELEMETRY_TOPICS
 )

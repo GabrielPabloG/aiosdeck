@@ -30,6 +30,7 @@ INIT_ORDER = [
     "planner",
     "workflow",
     "events",
+    "telemetry",
     "security",
 ]
 
@@ -222,11 +223,14 @@ class Kernel:
     def _wire_event_bus(self) -> None:
         events = self._engines.get("events")
         scheduler = self._engines.get("scheduler")
+        telemetry = self._engines.get("telemetry")
         if events is not None and events.bus is not None:
             if scheduler is not None:
                 scheduler.set_event_bus(events.bus)
             if self._executor is not None:
                 self._executor.set_event_bus(events.bus)
+            if telemetry is not None:
+                telemetry.set_event_bus(events.bus)
 
     def _enrich_context_with_memory(self) -> None:
         memory = self._engines.get("memory")

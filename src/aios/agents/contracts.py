@@ -225,6 +225,7 @@ class AgentExecutionEvent:
     """
 
     event_id: str = ""
+    execution_id: str = ""
     agent: str = ""
     task_id: str = ""
     correlation_id: str = ""
@@ -235,10 +236,12 @@ class AgentExecutionEvent:
     error_code: str | None = None
     attempt: int = 1
     message: str = ""
+    usage: dict | None = None
 
     def to_dict(self) -> dict:
         return {
             "event_id": self.event_id,
+            "execution_id": self.execution_id,
             "agent": self.agent,
             "task_id": self.task_id,
             "correlation_id": self.correlation_id,
@@ -249,6 +252,7 @@ class AgentExecutionEvent:
             "error_code": self.error_code,
             "attempt": self.attempt,
             "message": self.message,
+            "usage": self.usage,
         }
 
 
@@ -262,6 +266,7 @@ class AgentLifecycleEvent:
     """
 
     event_id: str = ""
+    execution_id: str = ""
     agent: str = ""
     task_id: str = ""
     correlation_id: str = ""
@@ -274,6 +279,7 @@ class AgentLifecycleEvent:
     def to_dict(self) -> dict:
         return {
             "event_id": self.event_id,
+            "execution_id": self.execution_id,
             "agent": self.agent,
             "task_id": self.task_id,
             "correlation_id": self.correlation_id,

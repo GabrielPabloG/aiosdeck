@@ -28,6 +28,7 @@ from aios.core.run_result import RunResult, StageSummary
 from aios.core.task import Task
 from aios.memory.models import ProjectKnowledge
 from aios.research.schema import research_result_from_dict, research_result_to_json
+from aios.telemetry.cli import cmd_usage
 
 VERSION_TEXT = f"AiosDeck v{__version__}"
 
@@ -436,6 +437,7 @@ def _print_help() -> None:
     print("  aios plan <intent>    Decompose goal into subtasks")
     print("  aios review [target]  Review code/architecture/conventions (read-only)")
     print("  aios research <q>     Research a question (repo/docs/web)")
+    print("  aios usage [opts]     Show token usage and cost telemetry")
     print("  aios help             Show this help")
     print()
     print("Commands:")
@@ -692,6 +694,11 @@ COMMANDS: dict[str, Command] = {
         name="help",
         description="Show help",
         execute=_cmd_help,
+    ),
+    "usage": Command(
+        name="usage",
+        description="Show token usage and cost telemetry",
+        execute=cmd_usage,
     ),
     "exit": Command(
         name="exit",

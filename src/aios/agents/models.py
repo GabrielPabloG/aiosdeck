@@ -7,8 +7,10 @@ standardized ``AgentError``). ``AgentResult`` is the canonical output that
 every ``agent.execute(task, context)`` returns.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from aios.agents.contracts import (
     STATE_CREATED,
@@ -17,6 +19,9 @@ from aios.agents.contracts import (
     AgentTask,
     RetryPolicy,
 )
+
+if TYPE_CHECKING:
+    from aios.usage.models import UsageRecord
 
 
 @dataclass
@@ -62,3 +67,4 @@ class AgentResult:
     agent: str = ""
     task_id: str = ""
     correlation_id: str = ""
+    usage: UsageRecord | None = None
