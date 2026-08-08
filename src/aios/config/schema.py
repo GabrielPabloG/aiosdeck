@@ -60,6 +60,18 @@ class LearningConfig:
 
 
 @dataclass
+class RouteConfig:
+    enabled: bool = True
+    default_provider: str = "ollama"
+    default_model: str = "llama3"
+    default_variant: str = ""
+    rules: list[dict] = field(default_factory=list)
+    cost_cap: float = 0.0
+    context_limits: dict[str, int] = field(default_factory=dict)
+    fallback_providers: list[dict] = field(default_factory=list)
+
+
+@dataclass
 class ProjectConfig:
     name: str = ""
     directory: str = "~/projects"
@@ -77,5 +89,6 @@ class AiosDeckConfig:
     ui: UIConfig = field(default_factory=UIConfig)
     project: ProjectConfig = field(default_factory=ProjectConfig)
     learning: LearningConfig = field(default_factory=LearningConfig)
+    routing: RouteConfig = field(default_factory=RouteConfig)
 
     _sources: dict[str, str] = field(default_factory=dict, repr=False)

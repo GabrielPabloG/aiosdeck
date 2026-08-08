@@ -58,6 +58,8 @@ class ConfigLoader:
             "AIOS_LEARNING_ENABLED": "learning.enabled",
             "AIOS_PROJECT_NAME": "project.name",
             "AIOS_PROJECTS_DIR": "project.directory",
+            "AIOS_ROUTING_ENABLED": "routing.enabled",
+            "AIOS_ROUTING_COST_CAP": "routing.cost_cap",
         }
         for env_var, field_path in env_map.items():
             value = os.environ.get(env_var)
@@ -106,6 +108,16 @@ class ConfigLoader:
                 "min_evidence": "learning.min_evidence",
                 "recurrence_threshold": "learning.recurrence_threshold",
                 "policy": "learning.policy",
+            },
+            "routing": {
+                "enabled": "routing.enabled",
+                "default_provider": "routing.default_provider",
+                "default_model": "routing.default_model",
+                "default_variant": "routing.default_variant",
+                "rules": "routing.rules",
+                "cost_cap": "routing.cost_cap",
+                "context_limits": "routing.context_limits",
+                "fallback_providers": "routing.fallback_providers",
             },
             "project": {"name": "project.name", "directory": "project.directory"},
         }
@@ -172,4 +184,6 @@ class ConfigLoader:
     def _coerce(value: str, field_path: str) -> Any:
         if field_path.endswith(".enabled"):
             return value.lower() in ("true", "1", "yes")
+        if field_path.endswith(".cost_cap"):
+            return float(value)
         return value
