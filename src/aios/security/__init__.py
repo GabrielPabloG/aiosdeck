@@ -8,8 +8,21 @@ import logging
 from pathlib import Path
 
 from aios.security.capabilities import CapabilityEnforcer
+from aios.security.contracts import (
+    EffectivePermissions,
+    IntentPolicy,
+    SecurityDecision,
+)
 
 logger = logging.getLogger("aios.security")
+
+__all__ = [
+    "CapabilityEnforcer",
+    "EffectivePermissions",
+    "IntentPolicy",
+    "SecurityDecision",
+    "SecurityEngine",
+]
 
 
 class SecurityEngine:
