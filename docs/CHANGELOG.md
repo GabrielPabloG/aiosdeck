@@ -9,6 +9,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Model Router (v0.9.11)** — separates model decision from agent execution.
+  Policy rules (and, later, telemetry data) pick the model; agents only describe
+  what they are doing.
+  - **Contracts** — `RouteInput` (agent/task_type/complexity/context_size/
+    model_override) and `RouteDecision` (provider/model/variant/reason/
+    estimated_cost/fallback_chain/source); `ModelRouter` protocol with
+    `route(input) -> RouteDecision`.
+  - **Policy engine** — `RuleBasedRouter` matching on `agent` + `complexity`
+    with `context_limits`, `cost_cap` (re-routes to the cheapest fitting
+    fallback or errors), `fallback_providers`, and deterministic `reason`
+    (`policy:<index>` | `heuristic:default` | `explicit_override`).
+  - **Override** — explicit `model=` in `RuntimeEngine.execute` skips the
+    router and is audited (`source="override"`); agents never hardcode models.
+  - **Runtime integration** — `execute(..., agent, task_type, complexity,
+    context_size, model="")`; `OpenCodeAdapter` inserts `-m`/`--variant` before
+    `--auto`; fallback loop over the chain with typed `RouteFallbackExhausted`
+    (never loops). Byte-identical to v0.9.10 when routing is unconfigured.
+  - **Ranker** — pluggable `ModelRanker` protocol; `HeuristicRanker` default
+    (deterministic), `TelemetryRanker` contract ready as fast-follow.
+  - **Telemetry** — `runtime.route_selected` event + `telemetry_routing` table
+    (agent, provider, model, reason, estimated_cost, context_size,
+    fallback_used/reason, correlation_id); `query_routing_stats/records` and
+    `route_accuracy` (estimated vs actual cost when both are available).
+  - **Config** — `RouteConfig` with `enabled`, `default_provider/model/variant`,
+    `rules`, `cost_cap`, `context_limits`, `fallback_providers`; env
+    `AIOS_ROUTING_ENABLED`/`AIOS_ROUTING_COST_CAP` + YAML section `routing:`.
+  - **CLI** — `aios route explain --agent A [--task-type] [--complexity]
+    [--context-size] [--json]`, `aios route stats [--agent] [--model]
+    [--limit] [--records] [--json]`, `aios route stats --accuracy`.
+
 - **Learning Governance (v0.9.10)** — event-driven observation capture,
   deterministic advisor, and approval-gated ingestion into project memory.
   - **Contracts** — `ObservationRecord`, `LearningCandidate`,
