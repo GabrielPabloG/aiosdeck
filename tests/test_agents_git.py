@@ -26,7 +26,7 @@ def test_stage(tmp_path):
     repo = _init_repo(tmp_path)
     (repo / "file.txt").write_text("hello\n", encoding="utf-8")
 
-    result = _git(repo).stage()
+    result = _git(repo)._stage()
 
     assert result.executed is True
     assert result.returncode == 0
@@ -45,8 +45,8 @@ def test_commit(tmp_path):
     (repo / "file.txt").write_text("hello\n", encoding="utf-8")
     agent = _git(repo)
 
-    agent.stage()
-    result = agent.commit("Initial commit")
+    agent._stage()
+    result = agent._commit("Initial commit")
 
     assert result.executed is True
     assert result.returncode == 0
@@ -65,9 +65,9 @@ def test_create_tag(tmp_path):
     (repo / "file.txt").write_text("hello\n", encoding="utf-8")
     agent = _git(repo)
 
-    agent.stage()
-    agent.commit("Initial commit")
-    result = agent.create_tag("v0.1.0")
+    agent._stage()
+    agent._commit("Initial commit")
+    result = agent._create_tag("v0.1.0")
 
     assert result.executed is True
     assert result.returncode == 0
@@ -86,9 +86,9 @@ def test_create_branch(tmp_path):
     (repo / "file.txt").write_text("hello\n", encoding="utf-8")
     agent = _git(repo)
 
-    agent.stage()
-    agent.commit("Initial commit")
-    result = agent.create_branch("feature/add-health-endpoint-1")
+    agent._stage()
+    agent._commit("Initial commit")
+    result = agent._create_branch("feature/add-health-endpoint-1")
 
     assert result.executed is True
     assert result.returncode == 0
@@ -103,7 +103,7 @@ def test_create_branch(tmp_path):
 
 
 def test_push_requires_approval(tmp_path):
-    result = GitAgent(repository=tmp_path).push(approved=False)
+    result = GitAgent(repository=tmp_path)._push(approved=False)
 
     assert result.executed is False
     assert result.command == ["git", "push"]

@@ -48,7 +48,7 @@ def test_happy_path_fetcher_traceability():
     def fetcher(task):
         return [_source("s1", "https://example.com/1"), _source("s2", "https://example.com/2")]
 
-    result = ResearchAgent(fetcher=fetcher).research(_task())
+    result = ResearchAgent(fetcher=fetcher)._research(_task())
     assert isinstance(result, ResearchResult)
     assert result.status == "ok"
     source_ids = {s.id for s in result.sources}
@@ -60,7 +60,7 @@ def test_happy_path_fetcher_traceability():
 
 
 def test_web_without_fetcher_source_unavailable():
-    result = ResearchAgent().research(_task(scope="web"))
+    result = ResearchAgent()._research(_task(scope="web"))
     assert result.status == "source_unavailable"
     assert result.sources == []
     assert result.findings == []
@@ -78,7 +78,7 @@ def test_mixed_without_fetcher_partial(tmp_path):
     (repo / "auth.py").write_text("def authenticate():\n    return True\n", encoding="utf-8")
     task = _task(scope="mixed", context_packet={"project": {"root": str(repo)}})
 
-    result = ResearchAgent().research(task)
+    result = ResearchAgent()._research(task)
     assert result.status == "partial"
     assert result.sources
     assert all(s.url.startswith("file://") for s in result.sources)
@@ -98,7 +98,7 @@ def test_repo_scope_local_collection(tmp_path):
         context_packet={"project": {"root": str(repo)}},
     )
 
-    result = ResearchAgent().research(task)
+    result = ResearchAgent()._research(task)
     assert result.status == "ok"
     assert result.sources
     assert result.sources[0].type == "code"
@@ -117,7 +117,7 @@ def test_docs_scope_collects_docs_type(tmp_path):
         context_packet={"project": {"root": str(repo)}},
     )
 
-    result = ResearchAgent().research(task)
+    result = ResearchAgent()._research(task)
     assert result.status == "ok"
     assert result.sources
     assert all(s.type == "doc" for s in result.sources)
@@ -131,7 +131,7 @@ def test_dedupe_sources_by_url():
             _source("s3", "https://example.com/b"),
         ]
 
-    result = ResearchAgent(fetcher=fetcher).research(_task())
+    result = ResearchAgent(fetcher=fetcher)._research(_task())
     unique = {s.url for s in result.sources}
     assert len(result.sources) == len(unique)
     assert unique == {"https://example.com/a", "https://example.com/b"}
@@ -155,7 +155,7 @@ def test_memory_candidates_consistent_via_synthesizer():
     def fetcher(task):
         return [_source("s1", "https://example.com/1", trust=0.9, tags=["pattern"])]
 
-    result = ResearchAgent(fetcher=fetcher, synthesizer=synthesizer).research(_task())
+    result = ResearchAgent(fetcher=fetcher, synthesizer=synthesizer)._research(_task())
     assert len(result.memory_candidates) == 1
     candidate = result.memory_candidates[0]
     assert candidate.kind == "pattern"
@@ -168,7 +168,7 @@ def test_heuristic_memory_candidates_from_tagged_sources():
     def fetcher(task):
         return [_source("s1", "https://example.com/1", trust=0.9, tags=["convention"])]
 
-    result = ResearchAgent(fetcher=fetcher).research(_task())
+    result = ResearchAgent(fetcher=fetcher)._research(_task())
     kinds = [c.kind for c in result.memory_candidates]
     assert "convention" in kinds
 
@@ -182,7 +182,7 @@ def test_invalid_synthesis_raises_research_error():
 
     agent = ResearchAgent(fetcher=fetcher, synthesizer=synthesizer)
     with pytest.raises(ResearchError):
-        agent.research(_task())
+        agent._research(_task())
 
 
 def test_execute_adapter_returns_agent_result(tmp_path):

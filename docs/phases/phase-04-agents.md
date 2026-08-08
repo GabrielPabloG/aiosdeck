@@ -36,14 +36,16 @@ class Agent(Protocol):
 
 ```
 1. Agent registered with Scheduler
-2. Event: agent.started (when first task assigned)
+2. Event: agent.lifecycle.changed (created → created initialization)
 3. Agent prepares execution: builds prompt via PromptBuilder
-4. Agent creates ExecutionRequest(invoke=...) and delegates to AgentExecutor
-5. AgentExecutor publishes agent.execution.started, invokes Runtime
-6. AgentExecutor publishes agent.execution.finished or agent.execution.failed
+4. AgentExecutor validates/capability-checks the task
+5. AgentExecutor drives the lifecycle: created → validated → queued → running,
+   publishing agent.lifecycle.changed on every transition, then invokes the Runtime
+6. AgentExecutor publishes agent.execution.started (per attempt) and, on completion,
+   agent.execution.completed | agent.execution.failed | agent.execution.timed_out |
+   agent.execution.retried
 7. Agent interprets ExecutionOutcome → AgentResult (decides success/failure)
-8. Event: agent.completed (success) or agent.errored (failure)
-9. Agent returns to idle
+8. Agent returns to idle
 ```
 
 ### Event Contract (All Agents)
@@ -53,11 +55,15 @@ Every agent:
 **Consumes**:
 - `task.created` (relevant type)
 
-**Emits**:
-- `agent.started` (on task start)
-- `agent.completed` (on success)
-- `agent.errored` (on failure)
-- `agent.skill_loaded` (optional, for debugging)
+**Emits** (via the AgentExecutor only):
+- `agent.lifecycle.changed` (every state transition)
+- `agent.execution.started` (on attempt start)
+- `agent.execution.progress` (optional)
+- `agent.execution.completed` (on success)
+- `agent.execution.failed` (on failure)
+- `agent.execution.timed_out` (on timeout)
+- `agent.execution.retried` (on retry)
+- `agent.execution.cancelled` (on cancellation)
 
 ### Agent Registry
 
@@ -162,7 +168,7 @@ The Developer agent is the only agent that violates "one agent, one job." It exi
 - [ ] Each agent must implement: name, version, required_capabilities, required_skills, execute, health_check
 - [ ] Agent execution must log: task ID, duration, files changed, success/failure
 - [ ] Skill loading must happen before task execution, not during
-- [ ] Agent errors must emit `agent.errored`, not crash the Scheduler
+- [ ] Agent errors must emit `agent.execution.failed`, not crash the Scheduler
 - [ ] Test: agent registry contains all defined agents
 - [ ] Test: agent execute with mock runtime returns AgentResult
 - [ ] Test: agent with missing capability → Security Manager denies during execution

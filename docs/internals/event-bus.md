@@ -50,13 +50,14 @@ task
 └── task.retrying
 
 agent
-├── agent.started
-├── agent.completed
-├── agent.errored
-├── agent.skill_loaded
+├── agent.lifecycle.changed
 ├── agent.execution.started
-├── agent.execution.finished
-└── agent.execution.failed
+├── agent.execution.progress
+├── agent.execution.completed
+├── agent.execution.failed
+├── agent.execution.timed_out
+├── agent.execution.retried
+└── agent.execution.cancelled
 
 quality
 ├── quality.started

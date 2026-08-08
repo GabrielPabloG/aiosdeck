@@ -25,7 +25,7 @@ def test_tester_capabilities():
 
 
 def test_tester_dry_run(tmp_path):
-    report = _agent().run(_project(tmp_path), dry_run=True)
+    report = _agent()._run(_project(tmp_path), dry_run=True)
     assert report["dry_run"] is True
     assert report["status"] == "ok"
     assert report["collected"] == 1
@@ -35,7 +35,7 @@ def test_tester_dry_run(tmp_path):
 
 
 def test_tester_runs_tests(tmp_path):
-    report = _agent().run(_project(tmp_path), dry_run=False)
+    report = _agent()._run(_project(tmp_path), dry_run=False)
     assert report["dry_run"] is False
     assert report["status"] == "ok"
     assert report["returncode"] == 0
@@ -46,7 +46,7 @@ def test_tester_runs_tests(tmp_path):
 
 
 def test_tester_missing_target_returns_error(tmp_path):
-    report = _agent().run(tmp_path / "missing", dry_run=True)
+    report = _agent()._run(tmp_path / "missing", dry_run=True)
     assert report["status"] == "error"
     assert report["returncode"] is None
     assert report["errors"]

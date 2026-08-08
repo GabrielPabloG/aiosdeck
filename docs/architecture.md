@@ -80,7 +80,7 @@ The architecture follows a **hub-and-spoke** model: the Kernel is the hub, dispa
 | **Security Manager** | Enforces zero-trust policies, manages capabilities, filters prompts, logs audits. | Interceptor | v0.1 (skeleton), v0.6 (full) |
 | **Quality Pipeline** | Executes automated checks (format, lint, tests, security, AI review, docs). | Consumer + Producer | v0.6 |
 | **Runtime Adapter** | Abstracts execution environment. Enforces headless tool permissions via OPENCODE_PERMISSION. | Consumer | v0.1 |
-| **AgentExecutor** | Generic execution guardrail. Wraps agent operations with Event Bus, logging, timeout, retry. | Consumer + Producer | v0.5 |
+| **AgentExecutor** | Single execution boundary. Validates the AgentTask, enforces capabilities, drives the lifecycle, applies timeout/retry/cancellation centrally, and publishes the `agent.*` lifecycle events. Invokes `agent.execute()` — agents are executor-free. | Consumer + Producer | v0.5 (v0.9.2 hardening) |
 | **Agents** | Specialized workers. Each receives a task and produces a result via the Runtime. | Consumer + Producer | v0.2+ |
 | **Workflow Engine** | Orchestrates complex pipelines across multiple agents and gates. | Consumer + Producer | v0.7 |
 
@@ -98,13 +98,14 @@ Kernel ──► dispatcher ──► topics:
                             ├── task.created
                             ├── task.completed
                             ├── task.failed
-                            ├── agent.started
-                             ├── agent.completed
-                             ├── agent.errored
-                             ├── agent.skill_loaded
+                             ├── agent.lifecycle.changed
                              ├── agent.execution.started
-                             ├── agent.execution.finished
+                             ├── agent.execution.progress
+                             ├── agent.execution.completed
                              ├── agent.execution.failed
+                             ├── agent.execution.timed_out
+                             ├── agent.execution.retried
+                             ├── agent.execution.cancelled
                              ├── quality.passed
                             ├── quality.failed
                             ├── security.violation
@@ -274,6 +275,46 @@ The workflow engine owns the orchestration and skips optional stages — tester,
 documentation, git — gracefully when the corresponding agent is absent. The
 legacy direct-execution path (`AIOS_USE_WORKFLOW_ENGINE`) has been removed:
 the workflow is the single source of the pipeline.
+
+### Execution Boundary (v0.9.2)
+
+The **AgentExecutor is the single execution boundary**. It orchestrates every
+agent run and invokes `agent.execute(task, context)` — the agent's contract
+method. Agents are executor-free: they never hold or call the executor, so
+recursion is structurally impossible.
+
+```
+Kernel / Workflow / CLI
+        │
+        ▼
+    AgentExecutor           ← the only entry to agent execution
+        │
+   ┌────┼───────┬───────────┐
+ validate  capability  lifecycle/timeout/retry/events
+        │
+        ▼
+  agent.execute(task, context)   ← contract method (pure domain)
+        │
+        ▼
+  agent._run()/_review()/...     ← internal implementation / runtime adapter
+```
+
+Lifecycle: `created → validated → queued → running → succeeded | failed | timed_out | cancelled`
+(running → running is a retry). Every transition emits `agent.lifecycle.changed`;
+execution observability emits `agent.execution.*`. The `created → created`
+event is the initialization event, not a transition — it guarantees every
+execution has a complete, deterministic sequence.
+
+Invariants enforced by the architecture test suite:
+
+1. `Agent → AgentExecutor`: impossible (no agent module imports the executor).
+2. `Workflow/CLI → rich domain APIs`: forbidden — they route via `execute()` /
+   `Kernel.run_agent()`.
+3. `Runtime → outside the adapter`: forbidden — the runtime is reached only
+   through the runtime adapter, inside `agent.execute()`.
+4. `agent.lifecycle.*` / `agent.execution.*` events: only `AgentExecutor`
+   publishes them.
+5. The legacy `agent.execution.finished` vocabulary is removed.
 
 ### Division of Responsibility Across Ecosystem
 

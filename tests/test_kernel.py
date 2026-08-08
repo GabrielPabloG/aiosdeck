@@ -1,7 +1,9 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+from aios.agents.contracts import AgentCapabilities, AgentMetadata, AgentTask
 from aios.agents.developer import DeveloperAgent
+from aios.agents.executor import AgentExecutor
 from aios.agents.models import AgentResult
 from aios.config import ConfigEngine
 from aios.context import ContextEngine
@@ -18,9 +20,18 @@ def _make_plan_result(success: bool = True, output: str = '{"subtasks": []}') ->
     return AgentResult(success=success, output=output, errors=[] if success else ["boom"])
 
 
-def _register_planner(kernel: Kernel) -> MagicMock:
+def _register_planner(kernel: Kernel, result=None, exc: Exception | None = None) -> MagicMock:
     planner = SimpleNamespace(name="planner")
-    planner.execute = MagicMock(return_value=_make_plan_result())
+    planner.metadata = AgentMetadata(name="planner")
+    planner.capabilities = AgentCapabilities.from_list(["filesystem_read"])
+
+    def _execute(task, context):
+        if exc is not None:
+            raise exc
+        return result if result is not None else _make_plan_result()
+
+    planner.execute = MagicMock(side_effect=_execute)
+    kernel.set_executor(AgentExecutor())
     kernel.register(planner)
     return planner
 
@@ -128,7 +139,10 @@ class TestKernelRun:
 
         result = kernel.run(task, None, mode="plan")
 
-        planner.execute.assert_called_once_with(task, None)
+        planner.execute.assert_called_once()
+        arg_task = planner.execute.call_args[0][0]
+        assert isinstance(arg_task, AgentTask)
+        assert arg_task.description == "add login"
         assert isinstance(result, RunResult)
         assert result.success is True
         assert result.output == '{"subtasks": []}'
@@ -155,9 +169,7 @@ class TestKernelRun:
 
     def test_plan_mode_planner_failure(self):
         kernel = Kernel()
-        planner = SimpleNamespace(name="planner")
-        planner.execute = MagicMock(return_value=_make_plan_result(success=False))
-        kernel.register(planner)
+        _register_planner(kernel, result=_make_plan_result(success=False))
 
         result = kernel.run(Task(description="x"), None, mode="plan")
 
@@ -179,9 +191,7 @@ class TestKernelRun:
 
     def test_plan_mode_planner_exception_is_friendly(self):
         kernel = Kernel()
-        planner = SimpleNamespace(name="planner")
-        planner.execute = MagicMock(side_effect=RuntimeError("llm timeout"))
-        kernel.register(planner)
+        _register_planner(kernel, exc=RuntimeError("llm timeout"))
 
         result = kernel.run(Task(description="x"), None, mode="plan")
 

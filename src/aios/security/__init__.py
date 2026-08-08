@@ -7,6 +7,8 @@ and initializes the audit logger. Full enforcement is implemented in v0.6.
 import logging
 from pathlib import Path
 
+from aios.security.capabilities import CapabilityEnforcer
+
 logger = logging.getLogger("aios.security")
 
 
@@ -17,6 +19,7 @@ class SecurityEngine:
         self._project_path = project_path or Path.cwd()
         self._policies_loaded = False
         self._audit_path: Path | None = None
+        self._enforcer = CapabilityEnforcer()
 
     def initialize(self) -> None:
         self._load_policies()
@@ -27,6 +30,11 @@ class SecurityEngine:
 
     def shutdown(self) -> None:
         pass
+
+    def validate_agent_capabilities(self, agent) -> bool:
+        """Validate an agent's declared capabilities against the canonical policy."""
+        self._enforcer.validate(agent)
+        return True
 
     def _load_policies(self) -> None:
         policies_dir = self._project_path / "aios" / "policies"

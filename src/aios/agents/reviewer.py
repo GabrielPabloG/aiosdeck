@@ -12,6 +12,12 @@ import os
 from pathlib import Path
 
 from aios.agents.base import BaseAgent
+from aios.agents.contracts import (
+    RUNTIME_ERROR,
+    STATE_FAILED,
+    AgentError,
+    coerce_task,
+)
 from aios.agents.detectors import (
     build_summary,
     compute_stats,
@@ -21,10 +27,7 @@ from aios.agents.detectors import (
     scan_todos,
     scan_unsafe,
 )
-from aios.agents.executor import AgentExecutor
 from aios.agents.models import AgentResult
-from aios.core.task import Task
-from aios.prompts import PromptBuilder
 
 logger = logging.getLogger("aios.agent.reviewer")
 
@@ -51,22 +54,15 @@ _ARCH_SUGGESTIONS = {
 
 class ReviewerAgent(BaseAgent):
     name = "reviewer"
+    timeout = 60.0
     required_capabilities = ["filesystem_read"]
     required_skills = ["project-dna", "coding-style"]
 
-    def __init__(
-        self,
-        runtime=None,
-        builder: PromptBuilder | None = None,
-        executor: AgentExecutor | None = None,
-        level: str | None = None,
-    ) -> None:
-        self._runtime = runtime
-        self._builder = builder or PromptBuilder()
-        self._executor = executor or AgentExecutor()
+    def __init__(self, level: str | None = None) -> None:
+        super().__init__()
         self._default_level = level if level in VALID_LEVELS else DEFAULT_LEVEL
 
-    def review(
+    def _review(
         self,
         target: str | Path,
         level: str | None = None,
@@ -100,16 +96,40 @@ class ReviewerAgent(BaseAgent):
             items.extend(self._scan_package_structure(target_path, base))
         return self._report(items)
 
-    def execute(self, task: Task, context) -> AgentResult:
-        """Internal generic adapter used by AgentExecutor — delegates to review().
+    def execute(self, task, context) -> AgentResult:
+        """Contract method — target/level are derived from the AgentTask params.
 
-        Not part of the public API. Target and level are derived from the task;
-        call ``review()`` directly for explicit control.
+        ``_review()`` remains the deterministic internal implementation.
         """
-        level = task.task_type if task.task_type in VALID_LEVELS else self._default_level
-        target = task.files[0] if task.files else Path.cwd()
-        report = self.review(target, level)
-        return AgentResult(success=True, output=json.dumps(report, indent=2))
+        agent_task = coerce_task(task)
+        if agent_task.params.get("target"):
+            target: str | Path = agent_task.params["target"]
+        elif agent_task.files:
+            target = agent_task.files[0]
+        else:
+            target = Path.cwd()
+        level = agent_task.params.get("level")
+        if level not in VALID_LEVELS:
+            level = agent_task.task_type if agent_task.task_type in VALID_LEVELS else None
+        report = self._review(target, level, agent_task.params.get("options"))
+        if "target not found" in report["summary"]:
+            return AgentResult(
+                success=False,
+                errors=[report["summary"]],
+                error=AgentError(code=RUNTIME_ERROR, message=report["summary"]),
+                error_code=RUNTIME_ERROR,
+                status=STATE_FAILED,
+                agent=self.name,
+                task_id=agent_task.task_id,
+                correlation_id=agent_task.correlation_id,
+            )
+        return AgentResult(
+            success=True,
+            output=json.dumps(report, indent=2),
+            agent=self.name,
+            task_id=agent_task.task_id,
+            correlation_id=agent_task.correlation_id,
+        )
 
     def _discover_python_files(self, target: Path) -> list[Path]:
         files: list[Path] = []
