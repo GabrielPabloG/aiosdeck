@@ -82,16 +82,24 @@ class TestInsertExecution:
         store_a.open()
         store_b.open()
 
-        store_a.insert_execution({
-            "execution_id": "exec-a", "event_id": "evt-a",
-            "agent": "planner", "status": "succeeded",
-            "timestamp": "2026-01-01T00:00:00Z",
-        })
-        store_b.insert_execution({
-            "execution_id": "exec-b", "event_id": "evt-b",
-            "agent": "developer", "status": "succeeded",
-            "timestamp": "2026-01-01T00:00:00Z",
-        })
+        store_a.insert_execution(
+            {
+                "execution_id": "exec-a",
+                "event_id": "evt-a",
+                "agent": "planner",
+                "status": "succeeded",
+                "timestamp": "2026-01-01T00:00:00Z",
+            }
+        )
+        store_b.insert_execution(
+            {
+                "execution_id": "exec-b",
+                "event_id": "evt-b",
+                "agent": "developer",
+                "status": "succeeded",
+                "timestamp": "2026-01-01T00:00:00Z",
+            }
+        )
 
         assert len(store_a.query_executions()) == 1
         assert len(store_b.query_executions()) == 1
@@ -136,14 +144,24 @@ class TestInsertUsage:
         store = TelemetryStore(db, "project-1")
         store.open()
 
-        store.insert_usage({
-            "execution_id": "exec-a", "agent": "planner", "model": "gpt-4o",
-            "input_tokens": 10, "timestamp": "2026-01-01T00:00:00Z",
-        })
-        store.insert_usage({
-            "execution_id": "exec-b", "agent": "developer", "model": "claude",
-            "input_tokens": 20, "timestamp": "2026-01-01T00:00:00Z",
-        })
+        store.insert_usage(
+            {
+                "execution_id": "exec-a",
+                "agent": "planner",
+                "model": "gpt-4o",
+                "input_tokens": 10,
+                "timestamp": "2026-01-01T00:00:00Z",
+            }
+        )
+        store.insert_usage(
+            {
+                "execution_id": "exec-b",
+                "agent": "developer",
+                "model": "claude",
+                "input_tokens": 20,
+                "timestamp": "2026-01-01T00:00:00Z",
+            }
+        )
 
         rows_gpt = store.query_usage(model="gpt-4o")
         assert len(rows_gpt) == 1
@@ -157,14 +175,22 @@ class TestInsertUsage:
         store = TelemetryStore(db, "project-1")
         store.open()
 
-        store.insert_usage({
-            "execution_id": "exec-1", "agent": "planner",
-            "input_tokens": 10, "timestamp": "2026-01-01T10:00:00Z",
-        })
-        store.insert_usage({
-            "execution_id": "exec-2", "agent": "developer",
-            "input_tokens": 20, "timestamp": "2026-01-02T10:00:00Z",
-        })
+        store.insert_usage(
+            {
+                "execution_id": "exec-1",
+                "agent": "planner",
+                "input_tokens": 10,
+                "timestamp": "2026-01-01T10:00:00Z",
+            }
+        )
+        store.insert_usage(
+            {
+                "execution_id": "exec-2",
+                "agent": "developer",
+                "input_tokens": 20,
+                "timestamp": "2026-01-02T10:00:00Z",
+            }
+        )
 
         rows = store.query_usage(date_from="2026-01-02T00:00:00Z")
         assert len(rows) == 1
@@ -204,26 +230,44 @@ class TestAggregateUsage:
         store = TelemetryStore(db, "project-1")
         store.open()
 
-        store.insert_usage({
-            "execution_id": "exec-1", "agent": "planner", "model": "gpt-4o",
-            "input_tokens": 100, "output_tokens": 50,
-            "timestamp": "2026-01-01T00:00:00Z",
-        })
-        store.insert_usage({
-            "execution_id": "exec-2", "agent": "developer", "model": "gpt-4o",
-            "input_tokens": 200, "output_tokens": 100,
-            "timestamp": "2026-01-01T00:00:00Z",
-        })
-        store.insert_cost({
-            "execution_id": "exec-1", "pricing_version": "v1",
-            "total_cost": 0.001, "status": "priced",
-            "calculated_at": "2026-01-01T00:00:00Z",
-        })
-        store.insert_cost({
-            "execution_id": "exec-2", "pricing_version": "v1",
-            "total_cost": 0.002, "status": "priced",
-            "calculated_at": "2026-01-01T00:00:00Z",
-        })
+        store.insert_usage(
+            {
+                "execution_id": "exec-1",
+                "agent": "planner",
+                "model": "gpt-4o",
+                "input_tokens": 100,
+                "output_tokens": 50,
+                "timestamp": "2026-01-01T00:00:00Z",
+            }
+        )
+        store.insert_usage(
+            {
+                "execution_id": "exec-2",
+                "agent": "developer",
+                "model": "gpt-4o",
+                "input_tokens": 200,
+                "output_tokens": 100,
+                "timestamp": "2026-01-01T00:00:00Z",
+            }
+        )
+        store.insert_cost(
+            {
+                "execution_id": "exec-1",
+                "pricing_version": "v1",
+                "total_cost": 0.001,
+                "status": "priced",
+                "calculated_at": "2026-01-01T00:00:00Z",
+            }
+        )
+        store.insert_cost(
+            {
+                "execution_id": "exec-2",
+                "pricing_version": "v1",
+                "total_cost": 0.002,
+                "status": "priced",
+                "calculated_at": "2026-01-01T00:00:00Z",
+            }
+        )
 
         agg = store.aggregate_usage()
         assert agg["totals"]["input_tokens"] == 300

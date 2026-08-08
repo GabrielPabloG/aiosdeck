@@ -11,14 +11,16 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
-SENSITIVE_KEYS = frozenset({
-    "prompt",
-    "messages",
-    "authorization",
-    "api_key",
-    "token",
-    "secret",
-})
+SENSITIVE_KEYS = frozenset(
+    {
+        "prompt",
+        "messages",
+        "authorization",
+        "api_key",
+        "token",
+        "secret",
+    }
+)
 SENSITIVE_SUBSTRINGS = frozenset({"key", "secret", "token", "auth"})
 
 

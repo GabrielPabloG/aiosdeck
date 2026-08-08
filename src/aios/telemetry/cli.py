@@ -106,19 +106,13 @@ def _render_table(data: dict) -> None:
         print(render_section("By Agent"))
         for agent_name in sorted(by_agent):
             a = by_agent[agent_name]
-            print(
-                f"  {agent_name:<20} "
-                f"{a['input_tokens']:,} in / {a['output_tokens']:,} out"
-            )
+            print(f"  {agent_name:<20} {a['input_tokens']:,} in / {a['output_tokens']:,} out")
 
     if by_model:
         print(render_section("By Model"))
         for model_name in sorted(by_model):
             m = by_model[model_name]
-            print(
-                f"  {model_name:<20} "
-                f"{m['input_tokens']:,} in / {m['output_tokens']:,} out"
-            )
+            print(f"  {model_name:<20} {m['input_tokens']:,} in / {m['output_tokens']:,} out")
 
     priced = [c for c in cost_records if c.get("status") == "priced"]
     unpriced = [c for c in cost_records if c.get("status") == "unpriced"]

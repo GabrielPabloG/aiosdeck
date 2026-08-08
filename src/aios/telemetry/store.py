@@ -439,12 +439,20 @@ class TelemetryStore:
         date_to: str | None = None,
     ) -> dict:
         usage_rows = self.query_usage(
-            agent=agent, model=model, workflow_id=workflow_id,
-            date_from=date_from, date_to=date_to, limit=10000,
+            agent=agent,
+            model=model,
+            workflow_id=workflow_id,
+            date_from=date_from,
+            date_to=date_to,
+            limit=10000,
         )
         cost_rows = self.query_costs(
-            agent=agent, model=model, workflow_id=workflow_id,
-            date_from=date_from, date_to=date_to, limit=10000,
+            agent=agent,
+            model=model,
+            workflow_id=workflow_id,
+            date_from=date_from,
+            date_to=date_to,
+            limit=10000,
         )
 
         total_input = sum(r["input_tokens"] or 0 for r in usage_rows)

@@ -92,9 +92,13 @@ class TelemetryEngine:
         payload = event.payload if hasattr(event, "payload") else event
         if isinstance(payload, dict) and payload.get("status") == "succeeded":
             usage = payload.get("usage")
-            if usage and isinstance(usage, dict) and any(
-                usage.get(k) is not None
-                for k in ("input_tokens", "output_tokens", "total_tokens")
+            if (
+                usage
+                and isinstance(usage, dict)
+                and any(
+                    usage.get(k) is not None
+                    for k in ("input_tokens", "output_tokens", "total_tokens")
+                )
             ):
                 self._persist_usage(usage, payload)
                 self._persist_cost(usage, payload)

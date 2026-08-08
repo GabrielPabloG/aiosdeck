@@ -1,6 +1,5 @@
 """End-to-end tests for telemetry pipeline: executor → events → store → query."""
 
-
 from aios.agents.contracts import (
     AgentCapabilities,
     AgentMetadata,

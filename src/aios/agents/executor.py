@@ -168,8 +168,12 @@ class AgentExecutor:
                 )
 
             self._publish_execution(
-                execution_id, request, AGENT_EXECUTION_STARTED, STATE_RUNNING,
-                self._elapsed(started), attempt,
+                execution_id,
+                request,
+                AGENT_EXECUTION_STARTED,
+                STATE_RUNNING,
+                self._elapsed(started),
+                attempt,
             )
             try:
                 result = self._invoke(request, timeout)
@@ -183,8 +187,13 @@ class AgentExecutor:
                     lifecycle.transition(STATE_SUCCEEDED)
                     self._publish_lifecycle(execution_id, request, STATE_RUNNING, STATE_SUCCEEDED)
                     self._publish_execution(
-                        execution_id, request, AGENT_EXECUTION_COMPLETED, STATE_SUCCEEDED,
-                        duration, attempt, usage=usage_dict,
+                        execution_id,
+                        request,
+                        AGENT_EXECUTION_COMPLETED,
+                        STATE_SUCCEEDED,
+                        duration,
+                        attempt,
+                        usage=usage_dict,
                     )
                     return ExecutionOutcome(
                         status=STATE_SUCCEEDED,
@@ -201,8 +210,13 @@ class AgentExecutor:
                 lifecycle.transition(STATE_FAILED)
                 self._publish_lifecycle(execution_id, request, STATE_RUNNING, STATE_FAILED)
                 self._publish_execution(
-                    execution_id, request, AGENT_EXECUTION_FAILED, STATE_FAILED,
-                    duration, attempt, error,
+                    execution_id,
+                    request,
+                    AGENT_EXECUTION_FAILED,
+                    STATE_FAILED,
+                    duration,
+                    attempt,
+                    error,
                 )
                 return ExecutionOutcome(
                     status=STATE_FAILED,
@@ -222,8 +236,13 @@ class AgentExecutor:
                 if self._should_retry(error, retry_policy, attempt, max_attempts):
                     retried = True
                     self._publish_execution(
-                        execution_id, request, AGENT_EXECUTION_RETRIED, STATE_RUNNING,
-                        duration, attempt, error,
+                        execution_id,
+                        request,
+                        AGENT_EXECUTION_RETRIED,
+                        STATE_RUNNING,
+                        duration,
+                        attempt,
+                        error,
                     )
                     attempt += 1
                     lifecycle.transition(STATE_RUNNING)
@@ -233,8 +252,13 @@ class AgentExecutor:
                 lifecycle.transition(STATE_TIMED_OUT)
                 self._publish_lifecycle(execution_id, request, STATE_RUNNING, STATE_TIMED_OUT)
                 self._publish_execution(
-                    execution_id, request, AGENT_EXECUTION_TIMED_OUT, STATE_TIMED_OUT,
-                    duration, attempt, error,
+                    execution_id,
+                    request,
+                    AGENT_EXECUTION_TIMED_OUT,
+                    STATE_TIMED_OUT,
+                    duration,
+                    attempt,
+                    error,
                 )
                 return ExecutionOutcome(
                     status=STATE_TIMED_OUT,
@@ -249,8 +273,13 @@ class AgentExecutor:
                 if self._should_retry(error, retry_policy, attempt, max_attempts):
                     retried = True
                     self._publish_execution(
-                        execution_id, request, AGENT_EXECUTION_RETRIED, STATE_RUNNING,
-                        duration, attempt, error,
+                        execution_id,
+                        request,
+                        AGENT_EXECUTION_RETRIED,
+                        STATE_RUNNING,
+                        duration,
+                        attempt,
+                        error,
                     )
                     attempt += 1
                     lifecycle.transition(STATE_RUNNING)
@@ -260,8 +289,13 @@ class AgentExecutor:
                 lifecycle.transition(STATE_FAILED)
                 self._publish_lifecycle(execution_id, request, STATE_RUNNING, STATE_FAILED)
                 self._publish_execution(
-                    execution_id, request, AGENT_EXECUTION_FAILED, STATE_FAILED,
-                    duration, attempt, error,
+                    execution_id,
+                    request,
+                    AGENT_EXECUTION_FAILED,
+                    STATE_FAILED,
+                    duration,
+                    attempt,
+                    error,
                 )
                 return ExecutionOutcome(
                     status=STATE_FAILED,

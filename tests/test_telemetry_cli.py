@@ -45,12 +45,17 @@ class TestParseFilters:
         assert f["limit"] == 50
 
     def test_combined_filters(self):
-        f = _parse_filters([
-            "--agent", "planner",
-            "--model", "gpt-4o",
-            "--json",
-            "--limit", "200",
-        ])
+        f = _parse_filters(
+            [
+                "--agent",
+                "planner",
+                "--model",
+                "gpt-4o",
+                "--json",
+                "--limit",
+                "200",
+            ]
+        )
         assert f["agent"] == "planner"
         assert f["model"] == "gpt-4o"
         assert f["json"] is True
