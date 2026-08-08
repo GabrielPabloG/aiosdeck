@@ -68,6 +68,7 @@ index_document(doc):
 | `knowledge_sources` | Source registry: source_id (PK with project_id), type, path, hash, version, status. |
 | `knowledge_documents` | Document versions: document_id (PK), source_id, title, path, hash, indexed_at. |
 | `knowledge_chunks` | Chunk content: chunk_id (PK), source_id, document_id, content, content_hash, position, token_estimate. |
+| `knowledge_embeddings` | Chunk embeddings: chunk_id (PK w/ project_id), provider, model, vector_dim, vector_blob (JSON), embedding_hash, created_at. |
 | `knowledge_index_runs` | Audit trail: run_id (PK), sources_scanned, sources_skipped, sources_reindexed, chunks_created, chunks_deleted, status. |
 | `knowledge_fts` | FTS5 virtual table for full-text search. Fallback: LIKE on content. |
 
@@ -98,6 +99,12 @@ aios k                            # Alias for knowledge
 
 ### Future
 
-- Embedding field on chunks is reserved. A future re-embed hook (`_reindex_embeddings`) is prepared.
-- Semantic search via vector DB is a post-v1.0 concern.
+- Hybrid retrieval ranked by combined keyword+vector score is defined but
+  behind a feature flag pending evaluation.
 - `memory` source type is supported in contracts but not auto-discovered — reserved for indexing `.aios/memory.db` knowledge tables.
+
+### Retrieval
+
+Knowledge Engine now supports context-aware retrieval with per-agent token
+budgets via `engine.retrieve(query, agent=..., use_vector=...)` — see
+[Retrieval Flow & Token Budget](retrieval.md).

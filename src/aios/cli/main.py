@@ -1,6 +1,7 @@
 """CLI entry point for the aios command."""
 
 import argparse
+import os
 import signal
 import sys
 from pathlib import Path
@@ -27,6 +28,7 @@ from aios.integrations.projdesk import (
 )
 from aios.knowledge import KnowledgeEngine
 from aios.memory import MemoryEngine
+from aios.retrieval.providers import OllamaEmbeddingProvider
 from aios.runtime import RuntimeEngine
 from aios.scheduler import KanbanEngine
 from aios.security import SecurityEngine
@@ -161,7 +163,12 @@ def _create_kernel(project_path: Path) -> Kernel:
     events = EventsEngine()
     kernel.register(events)
     kernel.register(TelemetryEngine(project_path=project_path))
-    kernel.register(KnowledgeEngine(project_path=project_path))
+    embedding_host = os.environ.get("AIOS_OLLAMA_HOST", "http://localhost:11434")
+    embedding_model = os.environ.get("AIOS_EMBEDDING_MODEL", "nomic-embed-text")
+    embedding_provider = OllamaEmbeddingProvider(model=embedding_model, host=embedding_host)
+    kernel.register(
+        KnowledgeEngine(project_path=project_path, embedding_provider=embedding_provider)
+    )
     security = SecurityEngine(project_path=project_path)
     kernel.register(security)
     executor = AgentExecutor(capabilities_enforcer=security._enforcer)

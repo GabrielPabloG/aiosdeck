@@ -90,6 +90,22 @@ CREATE INDEX IF NOT EXISTS idx_kc_source ON knowledge_chunks(source_id);
 CREATE INDEX IF NOT EXISTS idx_kc_document ON knowledge_chunks(document_id);
 CREATE INDEX IF NOT EXISTS idx_kc_project ON knowledge_chunks(project_id);
 CREATE INDEX IF NOT EXISTS idx_kir_project ON knowledge_index_runs(project_id);
+
+CREATE TABLE IF NOT EXISTS knowledge_embeddings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    chunk_id TEXT NOT NULL,
+    provider TEXT NOT NULL DEFAULT '',
+    model TEXT NOT NULL DEFAULT '',
+    vector_dim INTEGER NOT NULL DEFAULT 0,
+    vector_blob TEXT NOT NULL DEFAULT '[]',
+    embedding_hash TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT '',
+    project_id TEXT NOT NULL,
+    UNIQUE(chunk_id, project_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_ke_chunk ON knowledge_embeddings(chunk_id);
+CREATE INDEX IF NOT EXISTS idx_ke_project ON knowledge_embeddings(project_id);
 """
 
 FTS_SCHEMA = """
@@ -398,6 +414,87 @@ class SQLiteKnowledgeStore:
         }
 
     # ------------------------------------------------------------------
+    # Embeddings
+    # ------------------------------------------------------------------
+
+    def save_embedding(  # noqa: PLR0913, PLR0917
+        self,
+        chunk_id: str,
+        provider: str,
+        model: str,
+        vector_dim: int,
+        vector_blob: str,
+        embedding_hash: str,
+    ) -> None:
+        self._execute(
+            """INSERT OR REPLACE INTO knowledge_embeddings
+               (chunk_id, provider, model, vector_dim, vector_blob, embedding_hash,
+                created_at, project_id)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                chunk_id,
+                provider,
+                model,
+                vector_dim,
+                vector_blob,
+                embedding_hash,
+                _now(),
+                self._project_id,
+            ),
+        )
+        if self._conn:
+            self._conn.commit()
+
+    def get_embeddings_by_chunk_ids(self, chunk_ids: list[str]) -> list[dict]:
+        if not chunk_ids:
+            return []
+        placeholders = ", ".join("?" * len(chunk_ids))
+        rows = self._fetch_all(
+            f"""SELECT chunk_id, provider, model, vector_dim, vector_blob, embedding_hash
+                FROM knowledge_embeddings
+                WHERE chunk_id IN ({placeholders}) AND project_id = ?
+                ORDER BY chunk_id""",
+            tuple(chunk_ids) + (self._project_id,),
+        )
+        return [
+            {
+                "chunk_id": row[0],
+                "provider": row[1],
+                "model": row[2],
+                "vector_dim": row[3],
+                "vector_blob": row[4],
+                "embedding_hash": row[5],
+            }
+            for row in rows
+        ]
+
+    def find_unembedded_chunk_ids(self, chunk_ids: list[str]) -> list[str]:
+        if not chunk_ids:
+            return []
+        placeholders = ", ".join("?" * len(chunk_ids))
+        embedded = set(
+            row[0]
+            for row in self._fetch_all(
+                f"""SELECT chunk_id FROM knowledge_embeddings
+                    WHERE chunk_id IN ({placeholders}) AND project_id = ?""",
+                tuple(chunk_ids) + (self._project_id,),
+            )
+        )
+        return [cid for cid in chunk_ids if cid not in embedded]
+
+    def delete_embeddings_for_source(self, source_id: str) -> None:
+        self._execute(
+            """DELETE FROM knowledge_embeddings
+               WHERE chunk_id IN (
+                   SELECT chunk_id FROM knowledge_chunks
+                   WHERE source_id = ? AND project_id = ?
+               )""",
+            (source_id, self._project_id),
+        )
+        if self._conn:
+            self._conn.commit()
+
+    # ------------------------------------------------------------------
     # Internals
     # ------------------------------------------------------------------
 
@@ -492,6 +589,7 @@ class SQLiteKnowledgeStore:
             source_path = source[1] if source else ""
             results.append(
                 KnowledgeResult(
+                    chunk_id=row[0],
                     source_id=row[1],
                     source_type=source_type,
                     source_path=source_path,
@@ -511,6 +609,7 @@ class SQLiteKnowledgeStore:
                 "DELETE FROM knowledge_fts WHERE source_id = ?",
                 (source_id,),
             )
+        self.delete_embeddings_for_source(source_id)
         self._execute(
             "DELETE FROM knowledge_chunks WHERE source_id = ? AND project_id = ?",
             (source_id, self._project_id),

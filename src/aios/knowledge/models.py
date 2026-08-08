@@ -111,6 +111,7 @@ class KnowledgeQuery:
 
 @dataclass
 class KnowledgeResult:
+    chunk_id: str = ""
     source_id: str = ""
     source_type: str = ""
     source_path: str = ""
@@ -123,6 +124,7 @@ class KnowledgeResult:
 
     def to_dict(self) -> dict:
         return {
+            "chunk_id": self.chunk_id,
             "source_id": self.source_id,
             "source_type": self.source_type,
             "source_path": self.source_path,

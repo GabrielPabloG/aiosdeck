@@ -28,6 +28,7 @@ from aios.core.run_result import RunResult, StageSummary
 from aios.core.task import Task
 from aios.knowledge.cli import (
     cmd_knowledge_index,
+    cmd_knowledge_retrieve,
     cmd_knowledge_search,
     cmd_knowledge_sources,
 )
@@ -728,6 +729,12 @@ COMMANDS: dict[str, Command] = {
                 description="List indexed knowledge sources",
                 aliases=["ls"],
                 execute=cmd_knowledge_sources,
+            ),
+            "retrieve": Command(
+                name="retrieve",
+                description="Retrieve relevant knowledge with context selection",
+                aliases=["get"],
+                execute=cmd_knowledge_retrieve,
             ),
         },
     ),

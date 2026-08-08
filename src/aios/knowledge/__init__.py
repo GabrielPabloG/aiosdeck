@@ -9,6 +9,7 @@ from aios.knowledge.models import (
     KnowledgeResult,
     KnowledgeSource,
 )
+from aios.retrieval.selector import SelectionResult
 
 __all__ = [
     "IndexSummary",
@@ -18,4 +19,5 @@ __all__ = [
     "KnowledgeQuery",
     "KnowledgeResult",
     "KnowledgeSource",
+    "SelectionResult",
 ]
