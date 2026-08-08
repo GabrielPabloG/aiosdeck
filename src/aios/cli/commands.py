@@ -26,13 +26,13 @@ from aios.core.console import (
 )
 from aios.core.run_result import RunResult, StageSummary
 from aios.core.task import Task
-from aios.memory.models import ProjectKnowledge
-from aios.research.schema import research_result_from_dict, research_result_to_json
 from aios.knowledge.cli import (
     cmd_knowledge_index,
     cmd_knowledge_search,
     cmd_knowledge_sources,
 )
+from aios.memory.models import ProjectKnowledge
+from aios.research.schema import research_result_from_dict, research_result_to_json
 from aios.telemetry.cli import cmd_usage
 
 VERSION_TEXT = f"AiosDeck v{__version__}"

@@ -25,11 +25,11 @@ from aios.integrations.projdesk import (
     ProjectAmbiguous,
     ProjectNotFound,
 )
+from aios.knowledge import KnowledgeEngine
 from aios.memory import MemoryEngine
 from aios.runtime import RuntimeEngine
 from aios.scheduler import KanbanEngine
 from aios.security import SecurityEngine
-from aios.knowledge import KnowledgeEngine
 from aios.telemetry import TelemetryEngine
 from aios.workflow import WorkflowEngine
 
