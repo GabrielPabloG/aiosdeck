@@ -21,6 +21,7 @@ from aios.security.actions import (
     NETWORK_ACCESS,
     RELEASE_PUBLISH,
     SHELL_EXECUTE,
+    WORKFLOW_INTENT,
     expand,
 )
 from aios.security.capabilities import CapabilityEnforcer
@@ -52,6 +53,7 @@ __all__ = [
     "SHELL_EXECUTE",
     "SecurityDecision",
     "SecurityEngine",
+    "WORKFLOW_INTENT",
     "decide",
     "effective_permissions",
     "expand",

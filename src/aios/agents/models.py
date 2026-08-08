@@ -21,6 +21,7 @@ from aios.agents.contracts import (
 )
 
 if TYPE_CHECKING:
+    from aios.security.contracts import IntentPolicy
     from aios.usage.models import UsageRecord
 
 
@@ -35,6 +36,7 @@ class ExecutionRequest:
     retry_policy: RetryPolicy | None = None
     correlation_id: str = ""
     on_progress: Any | None = None
+    intent: IntentPolicy | None = None
 
 
 @dataclass(kw_only=True)

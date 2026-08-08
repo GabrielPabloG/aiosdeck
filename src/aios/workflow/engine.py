@@ -49,6 +49,7 @@ from aios.quality.gates import (
 )
 from aios.quality.policy import DecisionResult, resolve_decision
 from aios.scheduler import KanbanEngine
+from aios.security.actions import WORKFLOW_INTENT
 from aios.workflow.models import (
     InMemoryRunIdGenerator,
     RunIdGenerator,
@@ -152,6 +153,7 @@ class WorkflowEngine:
             goal=task.description,
             started_at=datetime.now(UTC).isoformat(),
         )
+        self._apply_workflow_intent(context)
         agents = self._agents
         gates = self._gates()
         ctx.quality_active = bool(gates)
@@ -399,7 +401,8 @@ class WorkflowEngine:
 
     def _run_agent(self, agent, task: AgentTask, context=None) -> AgentResult:
         """Execute one agent through the single AgentExecutor boundary."""
-        outcome = self._executor.execute(make_request(agent, task, context))
+        intent = getattr(context, "intent", None) if context is not None else None
+        outcome = self._executor.execute(make_request(agent, task, context, intent=intent))
         if outcome.result is not None:
             return outcome.result
         error = outcome.error
@@ -413,6 +416,16 @@ class WorkflowEngine:
             task_id=task.task_id,
             correlation_id=task.correlation_id,
         )
+
+    @staticmethod
+    def _apply_workflow_intent(context) -> None:
+        """Set the workflow intent on the shared context, respecting an override."""
+        if context is None or getattr(context, "intent", None) is not None:
+            return
+        try:
+            context.intent = WORKFLOW_INTENT
+        except AttributeError:
+            logger.warning("Workflow intent not attached: context has no settable 'intent'")
 
     @staticmethod
     def _git_operation(result: AgentResult) -> dict | None:

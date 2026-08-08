@@ -21,6 +21,7 @@ The Executor does not know about prompts, LLMs, or runtimes. It only
 orchestrates the execution of an Agent.
 """
 
+import logging
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
@@ -55,6 +56,9 @@ from aios.events.events import (
     AGENT_EXECUTION_TIMED_OUT,
     AGENT_LIFECYCLE_CHANGED,
 )
+from aios.security.actions import expand
+
+logger = logging.getLogger("aios.agent.executor")
 
 
 def make_request(  # noqa: PLR0913 - the request is the full run contract
@@ -66,6 +70,7 @@ def make_request(  # noqa: PLR0913 - the request is the full run contract
     retry_policy=None,
     correlation_id="",
     on_progress=None,
+    intent=None,
 ) -> ExecutionRequest:
     """Build an ExecutionRequest for a single agent run."""
     return ExecutionRequest(
@@ -76,6 +81,7 @@ def make_request(  # noqa: PLR0913 - the request is the full run contract
         retry_policy=retry_policy,
         correlation_id=correlation_id,
         on_progress=on_progress,
+        intent=intent,
     )
 
 
@@ -137,6 +143,28 @@ class AgentExecutor:
                     execution_id, request, AGENT_EXECUTION_FAILED, STATE_FAILED, 0.0, attempt, error
                 )
                 return ExecutionOutcome(status=STATE_FAILED, error=error, attempts=attempt)
+
+        # 2.5 Enforce intent (opt-in) — no intent means previous behavior.
+        if request.intent is not None:
+            granted = expand(request.agent.capabilities)
+            effective = (request.intent.actions - request.intent.deny) & granted
+            if not effective:
+                violations = sorted(granted)
+                error = AgentError(
+                    code=PERMISSION_DENIED,
+                    message=(
+                        f"intent '{request.intent.name or 'unknown'}' grants no action for "
+                        f"agent '{request.agent.name}'; denied: {violations}"
+                    ),
+                    transient=False,
+                )
+                lifecycle.transition(STATE_FAILED)
+                self._publish_lifecycle(execution_id, request, STATE_CREATED, STATE_FAILED)
+                self._publish_execution(
+                    execution_id, request, AGENT_EXECUTION_FAILED, STATE_FAILED, 0.0, attempt, error
+                )
+                return ExecutionOutcome(status=STATE_FAILED, error=error, attempts=attempt)
+            self._attach_intent(request)
 
         # 3. validated
         lifecycle.transition(STATE_VALIDATED)
@@ -321,6 +349,16 @@ class AgentExecutor:
             raise
         finally:
             pool.shutdown(wait=False, cancel_futures=True)
+
+    @staticmethod
+    def _attach_intent(request: ExecutionRequest) -> None:
+        """Expose the run's intent to the agent through the context."""
+        if request.context is None:
+            return
+        try:
+            request.context.intent = request.intent
+        except AttributeError:
+            logger.warning("Intent not attached: context has no settable 'intent'")
 
     @staticmethod
     def _resolve_timeout(request: ExecutionRequest) -> float | None:

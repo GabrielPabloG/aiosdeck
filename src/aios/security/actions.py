@@ -102,3 +102,12 @@ DEFAULT_INTENTS: dict[str, IntentPolicy] = {
         actions=frozenset({FILESYSTEM_READ_ACTION, SHELL_EXECUTE}),
     ),
 }
+
+# Runtime intent for the workflow pipeline: the develop defaults plus
+# ``ask_user`` (the planner's reasoning loop needs it). Agent capabilities stay
+# coarse and bound the effective set per agent, so this can never elevate.
+WORKFLOW_INTENT = IntentPolicy(
+    name=DEFAULT_INTENTS["develop"].name,
+    source=DEFAULT_INTENTS["develop"].source,
+    actions=DEFAULT_INTENTS["develop"].actions | frozenset({ASK_USER_ACTION}),
+)
