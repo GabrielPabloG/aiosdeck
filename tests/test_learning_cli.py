@@ -202,9 +202,7 @@ class TestLearningReject:
         assert store is not None
         from aios.learning.models import LearningCandidate
 
-        cid = store.insert_candidate(
-            LearningCandidate(content="test", dedupe_hash="cli-r2")
-        )
+        cid = store.insert_candidate(LearningCandidate(content="test", dedupe_hash="cli-r2"))
         with pytest.raises(SystemExit) as exc:
             cmd_learning_reject([str(cid)], Path("/tmp/test-cli"), factory)
         assert exc.value.code == 1

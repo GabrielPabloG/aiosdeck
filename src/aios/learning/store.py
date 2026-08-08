@@ -294,8 +294,7 @@ class LearningStore:
         params.append(candidate_id)
         params.append(self._project_id)
         self._execute(
-            f"UPDATE learning_candidates SET {', '.join(fields)} "
-            f"WHERE id=? AND project_id=?",
+            f"UPDATE learning_candidates SET {', '.join(fields)} WHERE id=? AND project_id=?",
             tuple(params),
         )
         if self._conn:

@@ -80,28 +80,21 @@ def default_review_logic(
     if risk in _NEEDS_HUMAN_RISKS or kind in _NEEDS_HUMAN_TYPES:
         return ReviewDecision(
             recommendation="needs_human",
-            justification=(
-                f"confidence={confidence:.2f}; "
-                f"risk={risk}; type={kind} → needs_human"
-            ),
+            justification=(f"confidence={confidence:.2f}; risk={risk}; type={kind} → needs_human"),
             advisor="rules-advisor",
         )
 
     if confidence >= confidence_threshold:
         return ReviewDecision(
             recommendation="approve",
-            justification=(
-                f"confidence={confidence:.2f}; "
-                f"risk={risk}; type={kind} → approve"
-            ),
+            justification=(f"confidence={confidence:.2f}; risk={risk}; type={kind} → approve"),
             advisor="rules-advisor",
         )
 
     return ReviewDecision(
         recommendation="reject",
         justification=(
-            f"confidence={confidence:.2f}; "
-            f"risk={risk}; type={kind} → reject (below threshold)"
+            f"confidence={confidence:.2f}; risk={risk}; type={kind} → reject (below threshold)"
         ),
         advisor="rules-advisor",
     )

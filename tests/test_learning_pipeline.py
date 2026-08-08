@@ -143,9 +143,7 @@ class TestIngestAfterApproval:
 
         knowledge = memory.recall()
         assert len(knowledge.conventions) >= 1
-        assert any(
-            "snake_case" in c.rule for c in knowledge.conventions
-        )
+        assert any("snake_case" in c.rule for c in knowledge.conventions)
 
     def test_full_pipeline_pattern(self, engines) -> None:
         engine, memory = engines
@@ -187,9 +185,7 @@ class TestIngestAfterApproval:
         engine.ingest(cid)
 
         knowledge = memory.recall()
-        assert any(
-            "secrets" in m.description for m in knowledge.mistakes
-        )
+        assert any("secrets" in m.description for m in knowledge.mistakes)
 
     def test_full_pipeline_decision(self, engines) -> None:
         engine, memory = engines
@@ -199,7 +195,7 @@ class TestIngestAfterApproval:
         cid = store.insert_candidate(
             LearningCandidate(
                 content="ADR: Use SQLite for local persistence\n"
-                        "Decision: SQLite because zero deps and WAL mode",
+                "Decision: SQLite because zero deps and WAL mode",
                 suggested_type="decision",
                 confidence=0.9,
                 risk_level="medium",
@@ -211,9 +207,7 @@ class TestIngestAfterApproval:
         engine.ingest(cid)
 
         knowledge = memory.recall()
-        assert any(
-            "SQLite" in d.title for d in knowledge.decisions
-        )
+        assert any("SQLite" in d.title for d in knowledge.decisions)
 
     def test_ingest_increments_version(self, engines) -> None:
         engine, memory = engines

@@ -99,23 +99,17 @@ class TestReviewPolicy:
 
 class TestDefaultReviewLogic:
     def test_approve_convention_high_confidence(self) -> None:
-        c = LearningCandidate(
-            suggested_type="convention", confidence=0.9, risk_level="low"
-        )
+        c = LearningCandidate(suggested_type="convention", confidence=0.9, risk_level="low")
         decision = default_review_logic(c, 0.5)
         assert decision.recommendation == "approve"
 
     def test_reject_low_confidence(self) -> None:
-        c = LearningCandidate(
-            suggested_type="pattern", confidence=0.2, risk_level="low"
-        )
+        c = LearningCandidate(suggested_type="pattern", confidence=0.2, risk_level="low")
         decision = default_review_logic(c, 0.5)
         assert decision.recommendation == "reject"
 
     def test_needs_human_critical_risk(self) -> None:
-        c = LearningCandidate(
-            suggested_type="pattern", confidence=0.9, risk_level="critical"
-        )
+        c = LearningCandidate(suggested_type="pattern", confidence=0.9, risk_level="critical")
         decision = default_review_logic(c, 0.5)
         assert decision.recommendation == "needs_human"
 

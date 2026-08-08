@@ -182,9 +182,7 @@ class LearningEngine:
         if candidate is None:
             raise RuntimeError(f"Candidate {candidate_id} not found")
         if candidate.state in ("approved", "rejected", "ingested"):
-            raise RuntimeError(
-                f"Cannot approve candidate in state '{candidate.state}'"
-            )
+            raise RuntimeError(f"Cannot approve candidate in state '{candidate.state}'")
 
         advisor = self._get_advisor()
         decision = advisor.review(candidate)
@@ -219,9 +217,7 @@ class LearningEngine:
         if candidate is None:
             raise RuntimeError(f"Candidate {candidate_id} not found")
         if candidate.state in ("approved", "rejected", "ingested"):
-            raise RuntimeError(
-                f"Cannot reject candidate in state '{candidate.state}'"
-            )
+            raise RuntimeError(f"Cannot reject candidate in state '{candidate.state}'")
 
         advisor = self._get_advisor()
         decision = advisor.review(candidate)
@@ -304,14 +300,10 @@ class LearningEngine:
         memory_id: str | None = None
         try:
             if kind == "convention":
-                self._memory.remember_convention(
-                    rule=content, category="learning", source=prefix
-                )
+                self._memory.remember_convention(rule=content, category="learning", source=prefix)
                 memory_id = f"convention:{first_line[:50]}"
             elif kind == "decision":
-                self._memory.remember_decision(
-                    title=first_line, context=prefix, decision=content
-                )
+                self._memory.remember_decision(title=first_line, context=prefix, decision=content)
                 memory_id = f"decision:{first_line[:50]}"
             elif kind == "pattern":
                 self._memory.remember_pattern(name=first_line, description=content)
@@ -322,9 +314,7 @@ class LearningEngine:
                 )
                 memory_id = f"mistake:{first_line[:50]}"
             elif kind in ("architecture_note", "dependency-note"):
-                self._memory.remember_decision(
-                    title=first_line, context=prefix, decision=content
-                )
+                self._memory.remember_decision(title=first_line, context=prefix, decision=content)
                 memory_id = f"decision:{first_line[:50]}"
             else:
                 self._memory.remember_pattern(name=first_line, description=content)
@@ -383,9 +373,7 @@ class LearningEngine:
         self._error_counts[hash_key] = count
         return extract_from_agent_failure(payload, count, self._recurrence_threshold)
 
-    def _get_observations_to_extract(
-        self, observation_id: int | None
-    ) -> list[ObservationRecord]:
+    def _get_observations_to_extract(self, observation_id: int | None) -> list[ObservationRecord]:
         if self._store is None:
             return []
         if observation_id is not None:

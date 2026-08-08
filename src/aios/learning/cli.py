@@ -64,8 +64,7 @@ def cmd_learning_candidates(
             f"{c.content[:_CONTENT_PREVIEW_LENGTH]}"
             f"{'...' if len(c.content) > _CONTENT_PREVIEW_LENGTH else ''}"
         )
-        print(f"       confidence={c.confidence:.2f} risk={c.risk_level} "
-              f"advisor={recommendation}")
+        print(f"       confidence={c.confidence:.2f} risk={c.risk_level} advisor={recommendation}")
 
 
 def _parse_list_args(raw_args: list[str]) -> dict:
@@ -93,14 +92,12 @@ def _parse_list_args(raw_args: list[str]) -> dict:
     return opts
 
 
-def cmd_learning_approve(
-    raw_args: list[str], project_path: Path, kernel_factory: Callable
-) -> None:
+def cmd_learning_approve(raw_args: list[str], project_path: Path, kernel_factory: Callable) -> None:
     id_args = [a for a in raw_args if not a.startswith("--")]
     reason = _extract_flag(raw_args, "--reason")
 
     if not id_args:
-        print("Usage: aios learning approve <id> [--reason \"...\"]", file=sys.stderr)
+        print('Usage: aios learning approve <id> [--reason "..."]', file=sys.stderr)
         sys.exit(1)
 
     candidate_id = int(id_args[0])
@@ -120,14 +117,12 @@ def cmd_learning_approve(
         sys.exit(1)
 
 
-def cmd_learning_reject(
-    raw_args: list[str], project_path: Path, kernel_factory: Callable
-) -> None:
+def cmd_learning_reject(raw_args: list[str], project_path: Path, kernel_factory: Callable) -> None:
     id_args = [a for a in raw_args if not a.startswith("--")]
     reason = _extract_flag(raw_args, "--reason")
 
     if not id_args:
-        print("Usage: aios learning reject <id> --reason \"...\"", file=sys.stderr)
+        print('Usage: aios learning reject <id> --reason "..."', file=sys.stderr)
         sys.exit(1)
 
     if not reason:
@@ -151,9 +146,7 @@ def cmd_learning_reject(
         sys.exit(1)
 
 
-def cmd_learning_ingest(
-    raw_args: list[str], project_path: Path, kernel_factory: Callable
-) -> None:
+def cmd_learning_ingest(raw_args: list[str], project_path: Path, kernel_factory: Callable) -> None:
     id_args = [a for a in raw_args if not a.startswith("--")]
 
     if not id_args:
@@ -177,9 +170,7 @@ def cmd_learning_ingest(
         sys.exit(1)
 
 
-def cmd_learning_export(
-    raw_args: list[str], project_path: Path, kernel_factory: Callable
-) -> None:
+def cmd_learning_export(raw_args: list[str], project_path: Path, kernel_factory: Callable) -> None:
     fmt = _extract_flag(raw_args, "--format") or "md"
     output_path = _extract_flag(raw_args, "--out") or ""
 
@@ -237,9 +228,7 @@ def _extract_flag(args: list[str], flag: str) -> str:
     return ""
 
 
-def _cmd_learning(
-    raw_args: list[str], project_path: Path, kernel_factory: Callable
-) -> None:
+def _cmd_learning(raw_args: list[str], project_path: Path, kernel_factory: Callable) -> None:
     if not raw_args:
         print("Usage: aios learning <subcommand>", file=sys.stderr)
         print()
