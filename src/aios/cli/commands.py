@@ -26,6 +26,11 @@ from aios.core.console import (
 )
 from aios.core.run_result import RunResult, StageSummary
 from aios.core.task import Task
+from aios.knowledge.cli import (
+    cmd_knowledge_index,
+    cmd_knowledge_search,
+    cmd_knowledge_sources,
+)
 from aios.memory.models import ProjectKnowledge
 from aios.research.schema import research_result_from_dict, research_result_to_json
 from aios.telemetry.cli import cmd_usage
@@ -438,6 +443,7 @@ def _print_help() -> None:
     print("  aios review [target]  Review code/architecture/conventions (read-only)")
     print("  aios research <q>     Research a question (repo/docs/web)")
     print("  aios usage [opts]     Show token usage and cost telemetry")
+    print("  aios knowledge <cmd>   Manage knowledge store (index/search/sources)")
     print("  aios help             Show this help")
     print()
     print("Commands:")
@@ -699,6 +705,31 @@ COMMANDS: dict[str, Command] = {
         name="usage",
         description="Show token usage and cost telemetry",
         execute=cmd_usage,
+    ),
+    "knowledge": Command(
+        name="knowledge",
+        description="Manage knowledge store",
+        aliases=["k"],
+        subcommands={
+            "index": Command(
+                name="index",
+                description="Index project knowledge sources",
+                aliases=["i"],
+                execute=cmd_knowledge_index,
+            ),
+            "search": Command(
+                name="search",
+                description="Search indexed knowledge",
+                aliases=["s"],
+                execute=cmd_knowledge_search,
+            ),
+            "sources": Command(
+                name="sources",
+                description="List indexed knowledge sources",
+                aliases=["ls"],
+                execute=cmd_knowledge_sources,
+            ),
+        },
     ),
     "exit": Command(
         name="exit",

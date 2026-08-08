@@ -25,6 +25,7 @@ from aios.integrations.projdesk import (
     ProjectAmbiguous,
     ProjectNotFound,
 )
+from aios.knowledge import KnowledgeEngine
 from aios.memory import MemoryEngine
 from aios.runtime import RuntimeEngine
 from aios.scheduler import KanbanEngine
@@ -160,6 +161,7 @@ def _create_kernel(project_path: Path) -> Kernel:
     events = EventsEngine()
     kernel.register(events)
     kernel.register(TelemetryEngine(project_path=project_path))
+    kernel.register(KnowledgeEngine(project_path=project_path))
     security = SecurityEngine(project_path=project_path)
     kernel.register(security)
     executor = AgentExecutor(capabilities_enforcer=security._enforcer)

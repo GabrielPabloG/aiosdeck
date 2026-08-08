@@ -31,6 +31,7 @@ INIT_ORDER = [
     "workflow",
     "events",
     "telemetry",
+    "knowledge",
     "security",
 ]
 
