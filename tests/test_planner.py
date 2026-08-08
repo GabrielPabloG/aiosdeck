@@ -2,6 +2,8 @@
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from aios.agents.planner import PlannerAgent
 from aios.context.packet import ContextPacket, GitInfo, ProjectInfo, ToolsInfo
 from aios.core.task import Task
@@ -85,13 +87,13 @@ def test_planner_fails_on_missing_subtasks():
     assert "subtasks" in result.errors[0].lower()
 
 
-def test_planner_handles_runtime_error():
+def test_planner_propagates_runtime_error():
+    """Runtime errors propagate so the AgentExecutor can retry them centrally."""
     runtime = _make_runtime("")
     runtime.execute.side_effect = RuntimeError("connection lost")
     agent = PlannerAgent(runtime)
-    result = agent.execute(Task(description="do something"), _make_context())
-    assert result.success is False
-    assert "connection lost" in result.errors[0]
+    with pytest.raises(RuntimeError, match="connection lost"):
+        agent.execute(Task(description="do something"), _make_context())
 
 
 def test_planner_agent_has_ask_user_capability():

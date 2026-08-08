@@ -21,6 +21,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from aios.agents.developer import DeveloperAgent
+from aios.agents.executor import AgentExecutor
 from aios.agents.models import AgentResult
 from aios.agents.planner import PlannerAgent
 from aios.agents.reviewer import ReviewerAgent
@@ -62,6 +63,7 @@ def _build_kernel(tmp_path, subtasks: list[dict], dev_results: list[AgentResult]
     developer.execute = MagicMock(side_effect=dev_results)
 
     scheduler = KanbanEngine(project_path=tmp_path)
+    executor = AgentExecutor()
     workflow = WorkflowEngine(
         planner=planner,
         scheduler=scheduler,
@@ -71,9 +73,11 @@ def _build_kernel(tmp_path, subtasks: list[dict], dev_results: list[AgentResult]
         documentation=None,
         git=None,
         project_path=tmp_path,
+        executor=executor,
     )
 
     kernel = Kernel(project_path=str(tmp_path))
+    kernel.set_executor(executor)
     kernel.register(ContextEngine(project_path=tmp_path))
     kernel.register(MemoryEngine(project_path=tmp_path))
     kernel.register(scheduler)

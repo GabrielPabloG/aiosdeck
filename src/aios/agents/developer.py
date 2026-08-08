@@ -1,11 +1,15 @@
-"""DeveloperAgent — prepares prompt, delegates execution to AgentExecutor."""
+"""DeveloperAgent — prepares a prompt and delegates execution to the runtime.
+
+Executor-free by design: the AgentExecutor invokes ``execute()`` and applies
+timeout/retry/events centrally. Runtime exceptions propagate so the executor
+can retry transient failures.
+"""
 
 import logging
 
 from aios.agents.base import BaseAgent
-from aios.agents.executor import AgentExecutor
-from aios.agents.models import AgentResult, ExecutionRequest
-from aios.core.task import Task
+from aios.agents.contracts import STATE_SUCCEEDED, coerce_task
+from aios.agents.models import AgentResult
 from aios.prompts import PromptBuilder
 
 logger = logging.getLogger("aios.agent.developer")
@@ -13,37 +17,24 @@ logger = logging.getLogger("aios.agent.developer")
 
 class DeveloperAgent(BaseAgent):
     name = "developer"
+    timeout = 600.0
     required_capabilities = ["filesystem_read", "filesystem_write", "shell"]
     required_skills = ["project-dna", "coding-style"]
 
-    def __init__(
-        self,
-        runtime,
-        builder: PromptBuilder | None = None,
-        executor: AgentExecutor | None = None,
-    ) -> None:
+    def __init__(self, runtime, builder: PromptBuilder | None = None) -> None:
+        super().__init__()
         self._runtime = runtime
         self._builder = builder or PromptBuilder()
-        self._executor = executor or AgentExecutor()
 
-    def execute(self, task: Task, context) -> AgentResult:
-        prompt = self._builder.build(task, context)
-        request = ExecutionRequest(
-            invoke=lambda: self._runtime.execute(
-                prompt, self.required_skills, self.required_capabilities
-            ),
-        )
-        outcome = self._executor.execute(request)
-
-        if outcome.error:
-            logger.error("DeveloperAgent execution failed: %s", outcome.error)
-            return AgentResult(
-                success=False,
-                errors=[str(outcome.error)],
-                duration_ms=outcome.duration_ms,
-            )
+    def execute(self, task, context) -> AgentResult:
+        agent_task = coerce_task(task)
+        prompt = self._builder.build(agent_task, context)
+        output = self._runtime.execute(prompt, self.required_skills, self.required_capabilities)
         return AgentResult(
             success=True,
-            output=outcome.output,
-            duration_ms=outcome.duration_ms,
+            output=output,
+            status=STATE_SUCCEEDED,
+            agent=self.name,
+            task_id=agent_task.task_id,
+            correlation_id=agent_task.correlation_id,
         )

@@ -10,6 +10,7 @@ import pytest
 
 from aios.agents.developer import DeveloperAgent
 from aios.agents.documentation import DocumentationAgent
+from aios.agents.executor import AgentExecutor
 from aios.agents.git import GitAgent
 from aios.agents.planner import PlannerAgent
 from aios.agents.research import ResearchAgent
@@ -100,6 +101,7 @@ def _make_workflow(
     scheduler = KanbanEngine(project_path=repo, db_path=str(tmp_path / "kanban.db"))
     scheduler.initialize()
     git = GitAgent(repository=repo)
+    executor = AgentExecutor()
     workflow = WorkflowEngine(
         planner=PlannerAgent(planner_runtime or MagicMock()),
         scheduler=scheduler,
@@ -110,6 +112,7 @@ def _make_workflow(
         documentation=DocumentationAgent(docs_dir=str(repo / "docs")),
         git=git,
         project_path=repo,
+        executor=executor,
     )
     return workflow, scheduler, git
 
@@ -295,7 +298,7 @@ def test_workflow_health_check(tmp_path):
 
 
 def test_workflow_configuration_error_on_missing_agent(tmp_path):
-    repo = _setup_project(tmp_path)
+    repo = tmp_path
 
     with pytest.raises(WorkflowConfigurationError):
         WorkflowEngine(
@@ -306,6 +309,7 @@ def test_workflow_configuration_error_on_missing_agent(tmp_path):
             tester=TesterAgent(),
             documentation=DocumentationAgent(),
             git=GitAgent(repository=repo),
+            executor=AgentExecutor(),
         )
 
 
@@ -322,6 +326,7 @@ def _make_workflow_no_optionals(
         developer=DeveloperAgent(dev_runtime or MagicMock()),
         reviewer=ReviewerAgent(),
         project_path=tmp_path,
+        executor=AgentExecutor(),
     )
     return workflow, scheduler
 

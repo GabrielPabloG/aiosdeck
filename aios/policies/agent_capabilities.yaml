@@ -1,5 +1,22 @@
-# agent_capabilities.yaml — maps agent name -> capabilities
-# Capabilities: filesystem (read/write with optional restriction), shell, git, internet, approval_required
+# agent_capabilities.yaml — canonical capability grants per agent.
+# Capabilities: filesystem (read/write), shell, git, internet, ask_user.
+# The canonical source of truth is src/aios/security/capabilities.py; this
+# file is the human-readable reference used by the compliance tests.
+planner:
+  filesystem:
+    - read
+  ask_user: true
+
+research:
+  filesystem:
+    - read
+
+developer:
+  filesystem:
+    - read
+    - write
+  shell: true
+
 reviewer:
   filesystem:
     - read
@@ -15,9 +32,6 @@ documentation:
     - read
     - write
   shell: false
-
-research:
-  internet: true
 
 git:
   git: true

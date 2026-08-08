@@ -21,7 +21,7 @@ def test_generate_changelog_fragment_dry_run(tmp_path):
     docs_dir = tmp_path / "docs"
     agent = DocumentationAgent(docs_dir=str(docs_dir))
 
-    fragment = agent.generate_changelog_fragment(SAMPLE_REPORT, dry_run=True)
+    fragment = agent._generate_changelog_fragment(SAMPLE_REPORT, dry_run=True)
 
     assert fragment.written is False
     assert "passed: 1" in fragment.preview
@@ -38,7 +38,7 @@ def test_generate_changelog_fragment_writes_file(tmp_path, monkeypatch):
     docs_dir = tmp_path / "docs"
     agent = DocumentationAgent(docs_dir=str(docs_dir))
 
-    fragment = agent.generate_changelog_fragment(SAMPLE_REPORT, dry_run=False)
+    fragment = agent._generate_changelog_fragment(SAMPLE_REPORT, dry_run=False)
 
     assert fragment.written is True
     assert fragment.path == docs_dir / "changelog-fragment-20260807-120000.md"
@@ -49,7 +49,7 @@ def test_generate_changelog_fragment_creates_docs_dir(tmp_path):
     docs_dir = tmp_path / "docs" / "nested"
     agent = DocumentationAgent(docs_dir=str(docs_dir))
 
-    fragment = agent.generate_changelog_fragment(SAMPLE_REPORT, dry_run=False)
+    fragment = agent._generate_changelog_fragment(SAMPLE_REPORT, dry_run=False)
 
     assert fragment.written is True
     assert docs_dir.exists()

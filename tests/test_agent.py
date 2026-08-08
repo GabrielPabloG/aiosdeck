@@ -2,6 +2,8 @@
 
 from unittest.mock import MagicMock
 
+import pytest
+
 from aios.agents import AgentResult, Task
 from aios.agents.developer import DeveloperAgent
 from aios.context.packet import ContextPacket, ProjectInfo, ToolsInfo
@@ -84,14 +86,13 @@ def test_agent_with_python_project():
     assert "Add type hints" in prompt
 
 
-def test_agent_handles_runtime_error():
+def test_agent_propagates_runtime_error():
+    """Runtime errors propagate so the AgentExecutor can retry them centrally."""
     runtime = _make_runtime()
     runtime.execute.side_effect = RuntimeError("connection lost")
     agent = DeveloperAgent(runtime)
-    result = agent.execute(Task(description="test"), _make_context())
-    assert result.success is False
-    assert len(result.errors) > 0
-    assert "connection lost" in result.errors[0]
+    with pytest.raises(RuntimeError, match="connection lost"):
+        agent.execute(Task(description="test"), _make_context())
 
 
 def test_developer_agent_does_not_have_ask_user_capability():

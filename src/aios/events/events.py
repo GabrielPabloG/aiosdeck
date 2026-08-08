@@ -44,22 +44,29 @@ TASK_TOPICS = [
     "task.retrying",
 ]
 
-AGENT_TOPICS = [
-    "agent.started",
-    "agent.completed",
-    "agent.errored",
-    "agent.skill_loaded",
+AGENT_LIFECYCLE_TOPICS = [
+    "agent.lifecycle.changed",
 ]
 
 AGENT_EXECUTION_TOPICS = [
     "agent.execution.started",
-    "agent.execution.finished",
+    "agent.execution.progress",
+    "agent.execution.completed",
     "agent.execution.failed",
+    "agent.execution.timed_out",
+    "agent.execution.retried",
+    "agent.execution.cancelled",
 ]
 
+AGENT_LIFECYCLE_CHANGED = "agent.lifecycle.changed"
+
 AGENT_EXECUTION_STARTED = "agent.execution.started"
-AGENT_EXECUTION_FINISHED = "agent.execution.finished"
+AGENT_EXECUTION_PROGRESS = "agent.execution.progress"
+AGENT_EXECUTION_COMPLETED = "agent.execution.completed"
 AGENT_EXECUTION_FAILED = "agent.execution.failed"
+AGENT_EXECUTION_TIMED_OUT = "agent.execution.timed_out"
+AGENT_EXECUTION_RETRIED = "agent.execution.retried"
+AGENT_EXECUTION_CANCELLED = "agent.execution.cancelled"
 
 KANBAN_TOPICS = [
     "kanban.card_moved",
@@ -106,7 +113,7 @@ ALL_TOPICS = (
     + CONTEXT_TOPICS
     + MEMORY_TOPICS
     + TASK_TOPICS
-    + AGENT_TOPICS
+    + AGENT_LIFECYCLE_TOPICS
     + AGENT_EXECUTION_TOPICS
     + KANBAN_TOPICS
     + QUALITY_TOPICS

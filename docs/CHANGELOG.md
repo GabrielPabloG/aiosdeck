@@ -14,6 +14,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Kanban visual display is deprecated; the Kanban Engine remains as internal
   API for flow enforcement and TDD gate validation.
 
+## [0.9.2] - 2026-08-08
+
+### Added
+
+- **Single execution contract** — `AgentTask` (input), `AgentResult` (output),
+  `AgentError` (standardized error with stable codes:
+  `VALIDATION_ERROR`, `RUNTIME_ERROR`, `PERMISSION_DENIED`, `TIMEOUT`,
+  `CANCELLED`, `UNKNOWN`), `AgentCapabilities`, and `AgentMetadata` (name,
+  version, timeout, retry policy). Every agent implements
+  `execute(task, context) -> AgentResult`. (#6)
+- **AgentExecutor as the single execution boundary** — validates the task,
+  enforces capabilities (`PERMISSION_DENIED`), drives the lifecycle, and
+  applies timeout, retry (transient errors only, default **no retry**), and
+  cancellation centrally. Invokes `agent.execute()`; agents are executor-free,
+  so recursion is structurally impossible. (#6)
+- **Standardized lifecycle** — `created → validated → queued → running →
+  succeeded | failed | timed_out | cancelled`, with immutable terminal states
+  and timestamps/duration exposed on the result and the event bus. `running →
+  running` marks a retry. The `created → created` event is the initialization
+  event (not a transition) and guarantees every execution has a complete,
+  deterministic sequence. (#6)
+- **Two-tier lifecycle/execution events** — `agent.lifecycle.changed` (every
+  state transition, with `previous_state`/`current_state`) plus
+  `agent.execution.started/progress/completed/failed/timed_out/retried/
+  cancelled`. Every event shares a consistent payload: `event_id`, `agent`,
+  `task_id`, `correlation_id`, `executor_id` (per instance), `sequence` (per
+  execution), `attempt`, `status`, `duration_ms`, `error_code`, `message`.
+  The legacy `agent.execution.finished` topic was removed. (#6)
+- **Capability enforcement** — `CapabilityEnforcer` validates declared
+  capabilities against the canonical policy and guards read-only agents
+  (Planner/Research/Reviewer) from write/shell/internet. The executor applies
+  it before running; violations map to `PERMISSION_DENIED`. (#6)
+- **Compliance matrix** — `tests/agent_compliance_matrix.py` declares, per
+  agent, the input/output contract, capabilities, timeout, retry policy,
+  required events, and error behavior. Contract, integration, and architecture
+  tests are driven by it. (#6)
+- **Test suites** — per-agent contract tests, integration tests via the
+  executor (all 7 agents, events, retry, capability enforcement), and
+  architecture checks enforcing both directions of the execution boundary and
+  the single producer of `agent.*` events. (#6)
+- **Workflow/CLI full compliance** — `WorkflowEngine`, `Kernel.run()`, and the
+  `review`/`research` CLI commands route exclusively through the executor /
+  `Kernel.run_agent()`. Rich domain APIs (`review`, `research`, `run`,
+  `generate_changelog_fragment`, git ops) became private implementations. (#6)
+- **Report** — `docs/reports/agent-core-compliance-report.md` with per-agent
+  ✅/❌ verdicts per category.
+
+### Changed
+
+- `ReviewerAgent`, `ResearchAgent`, `TesterAgent`, `DocumentationAgent`, and
+  `GitAgent` now expose `execute(task, context)` as their contract method and
+  route all work through the AgentExecutor; their deterministic domain methods
+  are private.
+- Planner/Developer runtime errors now propagate so the AgentExecutor can
+  retry transient failures centrally; domain failures (e.g., invalid JSON
+  plans) still return a failed `AgentResult`.
+- The `aios/policies/agent_capabilities.yaml` reference policy now covers all
+  seven agents consistently.
+
 ## [0.9.1] - 2026-08-08
 
 ### Added

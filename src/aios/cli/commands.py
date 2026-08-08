@@ -17,6 +17,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from aios import __version__
+from aios.agents.contracts import AgentTask
 from aios.core.console import (
     ProgressSpinner,
     log_step,
@@ -26,8 +27,7 @@ from aios.core.console import (
 from aios.core.run_result import RunResult, StageSummary
 from aios.core.task import Task
 from aios.memory.models import ProjectKnowledge
-from aios.research import ResearchTask
-from aios.research.schema import research_result_to_json
+from aios.research.schema import research_result_from_dict, research_result_to_json
 
 VERSION_TEXT = f"AiosDeck v{__version__}"
 
@@ -151,15 +151,21 @@ def _cmd_review(raw_args: list[str], project_path: Path, kernel_factory: Callabl
     kernel = kernel_factory(project_path)
     kernel.start()
 
-    reviewer = kernel.get_engine("reviewer")
-    if reviewer is None:
-        _error("Reviewer agent not available.")
-
     if opts["diff_only"]:
         target = _resolve_diff_target(target)
 
+    task = AgentTask(
+        description=f"review {target}",
+        task_type="review",
+        params={"target": target, "level": opts["level"]},
+    )
+
     with ProgressSpinner("Reviewing"):
-        report = reviewer.review(target, level=opts["level"])
+        result = kernel.run_agent("reviewer", task)
+
+    if not result.success:
+        _error(result.errors[0] if result.errors else "Review failed")
+    report = json.loads(result.output)
 
     if opts["dry_run"]:
         report["summary"] = f"{report['summary']} (dry-run, read-only)"
@@ -238,30 +244,30 @@ def _cmd_research(raw_args: list[str], project_path: Path, kernel_factory: Calla
     kernel = kernel_factory(project_path)
     kernel.start()
 
-    researcher = kernel.get_engine("research")
-    if researcher is None:
-        _error("Research agent not available.")
-
     context = kernel.get_context()
-    task = ResearchTask(
-        question=question,
-        scope=opts["scope"],
-        context_packet=context.to_dict() if context else {},
+    task = AgentTask(
+        description=question,
+        task_type="research",
+        params={"scope": opts["scope"]},
     )
 
     with ProgressSpinner("Researching"):
-        result = researcher.research(task)
+        result = kernel.run_agent("research", task, context)
+
+    if not result.success:
+        _error(result.errors[0] if result.errors else "Research failed")
+    research = research_result_from_dict(json.loads(result.output))
 
     if opts["output"]:
         with Path(opts["output"]).open("w", encoding="utf-8") as f:
-            f.write(research_result_to_json(result) + "\n")
+            f.write(research_result_to_json(research) + "\n")
         print(f"Wrote research report: {opts['output']}")
         return
     if opts["json"]:
-        print(research_result_to_json(result))
+        print(research_result_to_json(research))
         return
 
-    _print_research_text(result)
+    _print_research_text(research)
 
 
 def _print_research_text(result) -> None:

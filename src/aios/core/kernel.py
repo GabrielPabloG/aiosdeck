@@ -6,6 +6,8 @@ from contextlib import suppress
 from pathlib import Path
 from typing import Literal
 
+from aios.agents.contracts import coerce_task
+from aios.agents.executor import make_request
 from aios.core.console import (
     render_engine,
     render_footer,
@@ -18,7 +20,6 @@ from aios.core.run_result import RunResult, StageSummary, stage_to_summary
 from aios.core.task import Task
 
 logger = logging.getLogger("aios.kernel")
-
 INIT_ORDER = [
     "config",
     "context",
@@ -39,9 +40,14 @@ class Kernel:
         self._engines: dict[str, Engine] = {}
         self._engine_status: dict[str, str] = {}
         self._errors: list[str] = []
+        self._executor = None
 
     def register(self, engine: Engine) -> None:
         self._engines[engine.name] = engine
+
+    def set_executor(self, executor) -> None:
+        """Attach the single AgentExecutor execution boundary."""
+        self._executor = executor
 
     def start(self) -> None:
         logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -156,21 +162,44 @@ class Kernel:
         ``mode="plan"`` runs the planner only; ``mode="plan-run"`` runs the full
         workflow pipeline. The Kernel resolves the right engine internally, so
         callers never reach into individual agents. Failures are normalized into
-        ``RunResult.errors`` with a friendly message.
+        ``RunResult.errors`` with a friendly message. Agent work always routes
+        through the single AgentExecutor boundary.
         """
         if mode == "plan-run":
             return self._run_workflow(task, context, on_stage)
         return self._run_plan(task, context)
 
+    def run_agent(self, name: str, task: Task, context=None) -> RunResult:
+        """Run a single agent through the executor boundary (used by the CLI)."""
+        agent = self._engines.get(name)
+        if agent is None:
+            return RunResult(success=False, errors=(f"Agent '{name}' not available.",))
+        if self._executor is None:
+            return RunResult(success=False, errors=("Executor not available.",))
+        try:
+            outcome = self._executor.execute(make_request(agent, coerce_task(task), context))
+        except Exception as exc:  # noqa: BLE001 - surface a friendly message
+            return RunResult(success=False, errors=(f"{name} failed: {exc}",))
+        return self._run_result_from_outcome(outcome)
+
     def _run_plan(self, task: Task, context) -> RunResult:
         planner = self._engines.get("planner")
         if planner is None:
             return RunResult(success=False, errors=("Planner agent not available.",))
+        if self._executor is None:
+            return RunResult(success=False, errors=("Executor not available.",))
         try:
-            result = planner.execute(task, context)
+            outcome = self._executor.execute(make_request(planner, coerce_task(task), context))
         except Exception as exc:  # noqa: BLE001 - surface a friendly message
             return RunResult(success=False, errors=(f"Planning failed: {exc}",))
-        return RunResult.from_agent(result)
+        return self._run_result_from_outcome(outcome)
+
+    @staticmethod
+    def _run_result_from_outcome(outcome) -> RunResult:
+        if outcome.result is not None:
+            return RunResult.from_agent(outcome.result)
+        message = outcome.error.message if outcome.error else "Agent execution failed"
+        return RunResult(success=False, errors=(message,))
 
     def _run_workflow(
         self,
@@ -193,8 +222,11 @@ class Kernel:
     def _wire_event_bus(self) -> None:
         events = self._engines.get("events")
         scheduler = self._engines.get("scheduler")
-        if events is not None and scheduler is not None and events.bus is not None:
-            scheduler.set_event_bus(events.bus)
+        if events is not None and events.bus is not None:
+            if scheduler is not None:
+                scheduler.set_event_bus(events.bus)
+            if self._executor is not None:
+                self._executor.set_event_bus(events.bus)
 
     def _enrich_context_with_memory(self) -> None:
         memory = self._engines.get("memory")

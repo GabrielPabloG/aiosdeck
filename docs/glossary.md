@@ -17,21 +17,21 @@ A specialized worker process with a single responsibility. Agents receive tasks 
 
 ### AgentExecutor
 
-The execution guardrail shared by all LLM-based agents. Receives an `ExecutionRequest` (a callable operation), enforces timeout and retry (future), publishes `agent.execution.*` events to the Event Bus, and returns a neutral `ExecutionOutcome`. The Executor does not know about agents, prompts, LLMs, or runtimes — it only executes operations.
+The execution guardrail shared by all agents. It is the single execution boundary: it validates the `AgentTask`, enforces capabilities, manages the lifecycle (created → validated → queued → running → succeeded|failed|timed_out|cancelled), applies timeout/retry/cancellation centrally, and publishes the two-tier events — `agent.lifecycle.changed` (every transition, plus the `created → created` initialization event) and `agent.execution.*` (observability). It invokes `agent.execute(task, context)` — the agent's contract method — and never recurses. The Executor does not know about prompts, LLMs, or runtimes — it only orchestrates the execution of an Agent.
 
 **First used in**: `agents/executor.py`. **Introduced**: v0.5.
 
 ### ExecutionRequest
 
-A value object carrying the operation to execute. Contains a single field: `invoke` — a callable that returns a string. The AgentExecutor calls `request.invoke()` without knowing what the operation does (LLM prompt, Git command, HTTP call, etc.).
+The value object handed to `AgentExecutor.execute()`. It binds an Agent (the `name`/`metadata`/`capabilities`/`execute` protocol), an `AgentTask`, an optional `context`, and optional timeout/retry overrides. The Executor orchestrates the run and invokes `agent.execute(task, context)`.
 
-**First used in**: `agents/models.py`. **Introduced**: v0.5.
+**First used in**: `agents/models.py`. **Introduced**: v0.5, reshaped in v0.9.2.
 
 ### ExecutionOutcome
 
-The neutral result returned by `AgentExecutor`. Contains `output` (string), `duration_ms` (float), and optional `error`. The Executor never decides success vs. failure — it reports facts. The agent interprets the outcome into an `AgentResult`.
+The neutral result returned by `AgentExecutor`. Contains the terminal lifecycle `status`, the resulting `AgentResult` (or a standardized `AgentError`), `duration_ms`, `attempts`, and `retried`. The Executor maps every failure to the error contract; it never leaks raw exceptions.
 
-**First used in**: `agents/models.py`. **Introduced**: v0.5.
+**First used in**: `agents/models.py`. **Introduced**: v0.5, reshaped in v0.9.2.
 
 ### ProjDeskClient
 
@@ -166,7 +166,7 @@ A structured message published to the Event Bus. Events have a topic, payload, t
 
 ### Event Bus
 
-The pub/sub infrastructure that routes messages between components. Topics are hierarchical (e.g., `task.created`, `agent.completed`). The Event Dispatcher manages topic registration, subscription, and delivery. No component communicates directly with another.
+The pub/sub infrastructure that routes messages between components. Topics are hierarchical (e.g., `task.created`, `agent.lifecycle.changed`, `agent.execution.completed`). The Event Dispatcher manages topic registration, subscription, and delivery. No component communicates directly with another.
 
 **First used in**: `internals/event-bus.md`. **Introduced**: v0.1.
 

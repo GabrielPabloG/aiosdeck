@@ -12,15 +12,17 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 
+from aios.agents.contracts import AgentTask, coerce_task
 from aios.agents.developer import DeveloperAgent
 from aios.agents.documentation import DocumentationAgent
+from aios.agents.executor import AgentExecutor, make_request
 from aios.agents.git import GitAgent
+from aios.agents.models import AgentResult
 from aios.agents.planner import PlannerAgent
 from aios.agents.research import ResearchAgent
 from aios.agents.reviewer import ReviewerAgent
 from aios.agents.tester import TesterAgent
 from aios.core.task import Task
-from aios.research import ResearchTask
 from aios.scheduler import KanbanEngine
 from aios.workflow.models import (
     InMemoryRunIdGenerator,
@@ -49,6 +51,7 @@ class WorkflowEngine:
         scheduler: KanbanEngine,
         developer: DeveloperAgent,
         reviewer: ReviewerAgent,
+        executor: AgentExecutor,
         researcher: ResearchAgent | None = None,
         tester: TesterAgent | None = None,
         documentation: DocumentationAgent | None = None,
@@ -75,6 +78,7 @@ class WorkflowEngine:
         self._project_path = project_path or Path.cwd()
         self._commit_factory = commit_factory or (lambda ctx: f"feat: {ctx.goal}")
         self._run_ids = run_ids or InMemoryRunIdGenerator()
+        self._executor = executor
 
     def initialize(self) -> None:
         """No setup required."""
@@ -109,7 +113,7 @@ class WorkflowEngine:
             self._run_research(ctx, task, context, notify)
 
         # 1. Planner
-        plan_result = agents["planner"].execute(task, context)
+        plan_result = self._run_agent(agents["planner"], coerce_task(task), context)
         if not plan_result.success:
             ctx.stages.append(WorkflowStage(name="planner", success=False))
             notify(ctx.stages[-1])
@@ -124,18 +128,25 @@ class WorkflowEngine:
         # 2. Git — create the run branch before any scheduler persistence
         if agents["git"] is not None:
             branch = self._build_branch(ctx.run_id, ctx.goal)
-            branch_op = agents["git"].create_branch(branch)
+            git_result = self._run_agent(
+                agents["git"],
+                AgentTask(
+                    description=f"create branch {branch}",
+                    task_type="create_branch",
+                    params={"name": branch},
+                ),
+            )
             ctx.stages.append(
                 WorkflowStage(
                     name="git",
-                    success=branch_op.returncode == 0,
-                    error=branch_op.stderr or None,
+                    success=git_result.success,
+                    error=self._git_error(git_result),
                 )
             )
             notify(ctx.stages[-1])
-            if branch_op.returncode != 0:
+            if not git_result.success:
                 ctx.errors.append(
-                    f"Git: failed to create branch {branch}: {branch_op.stderr.strip()}"
+                    f"Git: failed to create branch {branch}: {self._git_error(git_result)}"
                 )
                 return self._finish(ctx)
             ctx.branch = branch
@@ -155,10 +166,10 @@ class WorkflowEngine:
         for i, subtask in enumerate(subtasks):
             card = ctx.cards[i]
             agents["scheduler"].begin_work(card.id)
-            dev_task = Task(
+            dev_task = AgentTask(
                 description=subtask["description"], task_type=subtask.get("type", "code")
             )
-            dev_result = agents["developer"].execute(dev_task, context)
+            dev_result = self._run_agent(agents["developer"], dev_task, context)
             if not dev_result.success:
                 agents["scheduler"].block_card(card.id, reason="execution failed")
                 error = dev_result.errors[0] if dev_result.errors else "Developer failed"
@@ -188,15 +199,31 @@ class WorkflowEngine:
             notify(ctx.stages[-1])
 
         # 5. Reviewer
-        ctx.review_report = agents["reviewer"].review(target=str(self._project_path))
-        ctx.stages.append(WorkflowStage(name="reviewer", success=True))
+        review_result = self._run_agent(
+            agents["reviewer"],
+            AgentTask(
+                description="review project",
+                task_type="review",
+                params={"target": str(self._project_path)},
+            ),
+        )
+        ctx.review_report = json.loads(review_result.output) if review_result.output else {}
+        ctx.stages.append(WorkflowStage(name="reviewer", success=review_result.success))
         notify(ctx.stages[-1])
 
         # 6. Tester
         if agents["tester"] is not None:
             tests_dir = self._project_path / "tests"
             if tests_dir.exists():
-                ctx.test_report = agents["tester"].run(target=str(tests_dir), dry_run=False)
+                test_result = self._run_agent(
+                    agents["tester"],
+                    AgentTask(
+                        description="run test suite",
+                        task_type="test",
+                        params={"target": str(tests_dir), "dry_run": False},
+                    ),
+                )
+                ctx.test_report = json.loads(test_result.output) if test_result.output else {}
             failed = (ctx.test_report or {}).get("failed", 0)
             ctx.stages.append(WorkflowStage(name="tester", success=failed == 0))
         else:
@@ -216,10 +243,15 @@ class WorkflowEngine:
                 },
                 "items": (ctx.review_report or {}).get("items", []),
             }
-            ctx.fragment = agents["documentation"].generate_changelog_fragment(
-                combined_report, dry_run=False
+            doc_result = self._run_agent(
+                agents["documentation"],
+                AgentTask(
+                    description="generate changelog fragment",
+                    task_type="documentation",
+                    params={"report": combined_report, "dry_run": False},
+                ),
             )
-            ctx.stages.append(WorkflowStage(name="documentation", success=True))
+            ctx.stages.append(WorkflowStage(name="documentation", success=doc_result.success))
         else:
             ctx.stages.append(
                 WorkflowStage(name="documentation", success=True, details={"skipped": True})
@@ -228,44 +260,100 @@ class WorkflowEngine:
 
         # 8. Git — stage and commit (push is never called)
         if agents["git"] is not None:
-            agents["git"].stage()
-            ctx.commit = agents["git"].commit(self._commit_factory(ctx))
+            stage_result = self._run_agent(
+                agents["git"],
+                AgentTask(description="stage changes", task_type="stage"),
+            )
+            ctx.commit = self._git_operation(stage_result)
+            commit_result = self._run_agent(
+                agents["git"],
+                AgentTask(
+                    description="commit changes",
+                    task_type="commit",
+                    params={"message": self._commit_factory(ctx)},
+                ),
+            )
+            ctx.commit = self._git_operation(commit_result)
             ctx.stages.append(
                 WorkflowStage(
                     name="git",
-                    success=ctx.commit.returncode == 0,
-                    error=ctx.commit.stderr or None,
+                    success=commit_result.success,
+                    error=self._git_error(commit_result),
                 )
             )
             notify(ctx.stages[-1])
-            if ctx.commit.returncode != 0:
-                ctx.errors.append(f"Git: commit failed: {ctx.commit.stderr.strip()}")
+            if not commit_result.success:
+                ctx.errors.append(f"Git: commit failed: {self._git_error(commit_result)}")
         else:
             ctx.stages.append(WorkflowStage(name="git", success=True, details={"skipped": True}))
             notify(ctx.stages[-1])
 
         return self._finish(ctx)
 
+    def _run_agent(self, agent, task: AgentTask, context=None) -> AgentResult:
+        """Execute one agent through the single AgentExecutor boundary."""
+        outcome = self._executor.execute(make_request(agent, task, context))
+        if outcome.result is not None:
+            return outcome.result
+        error = outcome.error
+        return AgentResult(
+            success=False,
+            errors=[error.message if error else "Agent execution failed"],
+            error=error,
+            error_code=error.code if error else None,
+            status=outcome.status,
+            agent=agent.name,
+            task_id=task.task_id,
+            correlation_id=task.correlation_id,
+        )
+
+    @staticmethod
+    def _git_operation(result: AgentResult) -> dict | None:
+        if not result.output:
+            return None
+        try:
+            return json.loads(result.output)
+        except json.JSONDecodeError:
+            return None
+
+    @staticmethod
+    def _git_error(result: AgentResult) -> str | None:
+        operation = WorkflowEngine._git_operation(result)
+        if operation and operation.get("stderr"):
+            return operation["stderr"].strip()
+        return result.errors[0] if result.errors else None
+
     def _finish(self, ctx: _WorkflowContext) -> WorkflowResult:
         ctx.finished_at = datetime.now(UTC).isoformat()
         return WorkflowResult.from_context(ctx)
 
     def _run_research(self, ctx: _WorkflowContext, task: Task, context, notify) -> None:
-        packet = getattr(context, "to_dict", lambda: {})()
-        research_task = ResearchTask(
-            question=task.description,
-            scope="mixed",
-            context_packet=packet,
+        result = self._run_agent(
+            self._agents["research"],
+            AgentTask(
+                description=task.description,
+                task_type="research",
+                params={"scope": "mixed"},
+                correlation_id=str(ctx.run_id),
+            ),
+            context,
         )
-        try:
-            result = self._agents["research"].research(research_task)
-        except Exception as exc:  # noqa: BLE001 - research is advisory, never blocks the pipeline
-            logger.warning("Research front-gate failed: %s", exc)
-            ctx.stages.append(WorkflowStage(name="research", success=False, error=str(exc)))
+        if not result.success:
+            ctx.stages.append(
+                WorkflowStage(
+                    name="research",
+                    success=False,
+                    error=result.errors[0] if result.errors else "Research failed",
+                )
+            )
             notify(ctx.stages[-1])
             return
 
-        serialized = result.to_dict()
+        try:
+            serialized = json.loads(result.output)
+        except json.JSONDecodeError:
+            logger.warning("Research front-gate returned invalid JSON output")
+            serialized = {}
         ctx.research_result = serialized
         try:
             context.research = serialized
@@ -276,10 +364,10 @@ class WorkflowEngine:
                 name="research",
                 success=True,
                 details={
-                    "status": result.status,
-                    "summary_short": result.summary_short,
-                    "sources": len(result.sources),
-                    "findings": len(result.findings),
+                    "status": serialized.get("status"),
+                    "summary_short": serialized.get("summary_short"),
+                    "sources": len(serialized.get("sources", [])),
+                    "findings": len(serialized.get("findings", [])),
                 },
             )
         )

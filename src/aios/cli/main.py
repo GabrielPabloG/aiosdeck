@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 from aios import __version__
+from aios.agents import AgentExecutor
 from aios.agents.developer import DeveloperAgent
 from aios.agents.documentation import DocumentationAgent
 from aios.agents.git import GitAgent
@@ -155,18 +156,23 @@ def _create_kernel(project_path: Path) -> Kernel:
     kernel.register(ContextEngine(project_path=project_path))
     kernel.register(MemoryEngine(project_path=project_path))
     kernel.register(KanbanEngine(project_path=project_path))
+    events = EventsEngine()
+    kernel.register(events)
+    security = SecurityEngine(project_path=project_path)
+    kernel.register(security)
+    executor = AgentExecutor(capabilities_enforcer=security._enforcer)
+    executor.set_event_bus(events.bus)
+    kernel.set_executor(executor)
     runtime = RuntimeEngine()
     kernel.register(runtime)
     developer = DeveloperAgent(runtime)
     planner = PlannerAgent(runtime)
-    reviewer = ReviewerAgent(runtime)
+    reviewer = ReviewerAgent()
     research_agent = ResearchAgent()
     kernel.register(developer)
     kernel.register(planner)
     kernel.register(reviewer)
     kernel.register(research_agent)
-    kernel.register(EventsEngine())
-    kernel.register(SecurityEngine(project_path=project_path))
     git = GitAgent(repository=project_path) if (project_path / ".git").exists() else None
     kernel.register(
         WorkflowEngine(
@@ -179,6 +185,7 @@ def _create_kernel(project_path: Path) -> Kernel:
             documentation=DocumentationAgent(docs_dir=str(project_path / "docs")),
             git=git,
             project_path=project_path,
+            executor=executor,
         )
     )
     _active_kernel = kernel

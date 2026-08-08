@@ -12,7 +12,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from aios.agents.contracts import coerce_task
 from aios.agents.developer import DeveloperAgent
+from aios.agents.executor import AgentExecutor, make_request
 from aios.agents.planner import PlannerAgent
 from aios.agents.reviewer import ReviewerAgent
 from aios.agents.tester import TesterAgent
@@ -79,7 +81,7 @@ def _setup_project(tmp_path: Path) -> Path:
 
 
 @pytest.mark.parametrize("failure_point", ["planner", "developer", "tester"])
-def test_pipeline_stops_at_failure(failure_point, tmp_path):
+def test_pipeline_stops_at_failure(failure_point, tmp_path):  # noqa: PLR0915
     """The pipeline stops exactly at the failing stage."""
     repo = _setup_project(tmp_path)
     context = _make_context(str(repo))
@@ -116,17 +118,23 @@ def test_pipeline_stops_at_failure(failure_point, tmp_path):
             dev_runtime.execute.return_value = "Implementation complete."
         developer = DeveloperAgent(dev_runtime)
 
-        dev_result = developer.execute(
-            Task(description=plan["subtasks"][0]["description"]), context
+        dev_outcome = AgentExecutor().execute(
+            make_request(
+                developer,
+                coerce_task(Task(description=plan["subtasks"][0]["description"])),
+                context,
+            )
         )
         if failure_point == "developer":
-            assert dev_result.success is False
+            assert dev_outcome.status == "failed"
+            assert "execution failed" in dev_outcome.error.message
             return
 
-        assert dev_result.success is True
+        assert dev_outcome.status == "succeeded"
+        assert dev_outcome.result.success is True
 
         reviewer = ReviewerAgent()
-        review_report = reviewer.review(target=str(repo))
+        review_report = reviewer._review(target=str(repo))
         assert "items" in review_report
         assert "summary" in review_report
 
@@ -137,11 +145,11 @@ def test_pipeline_stops_at_failure(failure_point, tmp_path):
             (fail_dir / "test_fail.py").write_text(
                 "def test_fails():\n    assert False\n", encoding="utf-8"
             )
-            test_report = tester.run(target=str(fail_dir), dry_run=False)
+            test_report = tester._run(target=str(fail_dir), dry_run=False)
             assert test_report["failed"] > 0
             return
 
-        test_report = tester.run(target=str(repo / "tests"), dry_run=False)
+        test_report = tester._run(target=str(repo / "tests"), dry_run=False)
         assert test_report["passed"] > 0
         assert test_report["failed"] == 0
     finally:

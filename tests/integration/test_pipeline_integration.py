@@ -133,13 +133,13 @@ def test_pipeline_b_developer_to_git(tmp_path):
     assert dev_runtime.execute.called is True
 
     reviewer = ReviewerAgent()
-    review_report = reviewer.review(target=str(repo))
+    review_report = reviewer._review(target=str(repo))
     assert "items" in review_report
     assert "summary" in review_report
     assert json.dumps(review_report)
 
     tester = TesterAgent()
-    test_report = tester.run(target=str(repo / "tests"), dry_run=False)
+    test_report = tester._run(target=str(repo / "tests"), dry_run=False)
     assert test_report["collected"] > 0
     assert test_report["passed"] > 0
     assert test_report["failed"] == 0
@@ -150,22 +150,22 @@ def test_pipeline_b_developer_to_git(tmp_path):
         "summary": {"passed": test_report["passed"], "failed": test_report["failed"]},
         "items": review_report["items"],
     }
-    fragment = doc.generate_changelog_fragment(combined_report, dry_run=False)
+    fragment = doc._generate_changelog_fragment(combined_report, dry_run=False)
     assert fragment.written is True
     assert fragment.path.exists()
     assert len(fragment.preview) > 0
     assert json.dumps(asdict(fragment), default=str)
 
     git = GitAgent(repository=repo)
-    stage_result = git.stage()
+    stage_result = git._stage()
     assert stage_result.executed is True
     assert stage_result.returncode == 0
 
-    commit_result = git.commit("pipeline: add /health endpoint")
+    commit_result = git._commit("pipeline: add /health endpoint")
     assert commit_result.executed is True
     assert commit_result.returncode == 0
 
-    push_result = git.push(approved=False)
+    push_result = git._push(approved=False)
     assert push_result.executed is False
     assert json.dumps(asdict(push_result))
 

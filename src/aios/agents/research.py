@@ -25,8 +25,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from aios.agents.base import BaseAgent
+from aios.agents.contracts import RUNTIME_ERROR, STATE_FAILED, AgentError, coerce_task
 from aios.agents.models import AgentResult
-from aios.core.task import Task
 from aios.research import (
     Finding,
     MemoryCandidate,
@@ -36,7 +36,7 @@ from aios.research import (
     ResearchSource,
     ResearchTask,
 )
-from aios.research.models import VALID_CANDIDATE_KINDS
+from aios.research.models import VALID_CANDIDATE_KINDS, VALID_SCOPES
 from aios.research.schema import research_result_to_json, validate_research_result
 
 logger = logging.getLogger("aios.agent.research")
@@ -140,6 +140,7 @@ _WEB_UNAVAILABLE_RECO = Recommendation(
 
 class ResearchAgent(BaseAgent):
     name = "research"
+    timeout = 60.0
     required_capabilities = ["filesystem_read"]
     required_skills = ["project-dna", "coding-style"]
 
@@ -148,11 +149,12 @@ class ResearchAgent(BaseAgent):
         fetcher: Fetcher | None = None,
         synthesizer: Synthesizer | None = None,
     ) -> None:
+        super().__init__()
         self._fetcher = fetcher
         self._synthesizer = synthesizer
 
-    def research(self, task: ResearchTask) -> ResearchResult:
-        """Run the research pipeline for a single ResearchTask."""
+    def _research(self, task: ResearchTask) -> ResearchResult:
+        """Run the research pipeline for a single ResearchTask (internal domain API)."""
         sources = self._collect(task)
         sources = _dedupe_sources(sources)
         web_unavailable = _web_was_unavailable(task, self._fetcher)
@@ -174,18 +176,40 @@ class ResearchAgent(BaseAgent):
         )
         return self._validated(result)
 
-    def execute(self, task: Task, context) -> AgentResult:
-        """Generic adapter for AgentExecutor — builds a ResearchTask from a Task."""
-        packet = getattr(context, "to_dict", lambda: {})()
+    def execute(self, task, context) -> AgentResult:
+        """Contract method — builds a ResearchTask from an AgentTask and runs it."""
+        agent_task = coerce_task(task)
+        scope = agent_task.params.get("scope", "mixed")
+        if scope not in VALID_SCOPES:
+            scope = "mixed"
+        packet = agent_task.params.get("context_packet")
+        if packet is None and context is not None:
+            packet = getattr(context, "to_dict", lambda: {})()
         research_task = ResearchTask(
-            question=task.description,
-            scope="mixed",
-            context_packet=packet,
+            question=agent_task.description,
+            scope=scope,
+            constraints=agent_task.params.get("constraints", {}),
+            context_packet=packet or {},
         )
-        result = self.research(research_task)
+        try:
+            result = self._research(research_task)
+        except ResearchError as exc:
+            return AgentResult(
+                success=False,
+                errors=[str(exc)],
+                error=AgentError(code=RUNTIME_ERROR, message=str(exc)),
+                error_code=RUNTIME_ERROR,
+                status=STATE_FAILED,
+                agent=self.name,
+                task_id=agent_task.task_id,
+                correlation_id=agent_task.correlation_id,
+            )
         return AgentResult(
             success=result.status != "error",
             output=research_result_to_json(result),
+            agent=self.name,
+            task_id=agent_task.task_id,
+            correlation_id=agent_task.correlation_id,
         )
 
     def _collect(self, task: ResearchTask) -> list[ResearchSource]:

@@ -12,10 +12,14 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from aios.agents import AgentExecutor
+from aios.agents.developer import DeveloperAgent
 from aios.agents.models import AgentResult
+from aios.agents.planner import PlannerAgent
 from aios.agents.reviewer import ReviewerAgent
 from aios.cli.commands import _cmd_plan
 from aios.cli.main import _create_kernel
+from aios.context import ContextEngine
 from aios.context.packet import ContextPacket, GitInfo, ProjectInfo, ToolsInfo
 from aios.core import Kernel, RunResult, StageSummary
 from aios.scheduler import KanbanEngine
@@ -263,8 +267,6 @@ class TestPlanRunIntegration:
 
     def test_plan_run_without_optional_agents_completes(self, tmp_path):
         """Missing tester/documentation/git degrade gracefully — pipeline continues."""
-        planner = MagicMock()
-        developer = MagicMock()
         subtask = {
             "id": "1",
             "description": "Task A",
@@ -273,22 +275,30 @@ class TestPlanRunIntegration:
             "dependencies": [],
             "estimated_complexity": "low",
         }
-        planner.execute.return_value = _make_plan_result([subtask])
-        developer.execute.return_value = _make_exec_success("Task A")
+        planner_runtime = MagicMock()
+        planner_runtime.execute.return_value = json.dumps(
+            {"goal": "add login", "subtasks": [subtask], "risks": [], "unknowns": []}
+        )
+        dev_runtime = MagicMock()
+        dev_runtime.execute.return_value = "Executed: Task A"
+        executor = AgentExecutor()
 
         scheduler = KanbanEngine(project_path=tmp_path, db_path=str(tmp_path / "kanban.db"))
         scheduler.initialize()
         workflow = WorkflowEngine(
-            planner=planner,
+            planner=PlannerAgent(planner_runtime),
             scheduler=scheduler,
-            developer=developer,
+            developer=DeveloperAgent(dev_runtime),
             reviewer=ReviewerAgent(),
             tester=None,
             documentation=None,
             git=None,
             project_path=tmp_path,
+            executor=executor,
         )
         kernel = Kernel(project_path=str(tmp_path))
+        kernel.set_executor(executor)
+        kernel.register(ContextEngine(project_path=tmp_path))
         kernel.register(workflow)
 
         stdout = io.StringIO()
