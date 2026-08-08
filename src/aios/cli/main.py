@@ -10,6 +10,7 @@ from aios.agents.developer import DeveloperAgent
 from aios.agents.documentation import DocumentationAgent
 from aios.agents.git import GitAgent
 from aios.agents.planner import PlannerAgent
+from aios.agents.research import ResearchAgent
 from aios.agents.reviewer import ReviewerAgent
 from aios.agents.tester import TesterAgent
 from aios.cli.commands import COMMANDS, _error, _print_command_help, _print_help
@@ -159,9 +160,11 @@ def _create_kernel(project_path: Path) -> Kernel:
     developer = DeveloperAgent(runtime)
     planner = PlannerAgent(runtime)
     reviewer = ReviewerAgent(runtime)
+    research_agent = ResearchAgent()
     kernel.register(developer)
     kernel.register(planner)
     kernel.register(reviewer)
+    kernel.register(research_agent)
     kernel.register(EventsEngine())
     kernel.register(SecurityEngine(project_path=project_path))
     git = GitAgent(repository=project_path) if (project_path / ".git").exists() else None
@@ -171,6 +174,7 @@ def _create_kernel(project_path: Path) -> Kernel:
             scheduler=kernel.get_engine("scheduler"),
             developer=developer,
             reviewer=reviewer,
+            researcher=research_agent,
             tester=TesterAgent(),
             documentation=DocumentationAgent(docs_dir=str(project_path / "docs")),
             git=git,

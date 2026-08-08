@@ -1,3 +1,4 @@
+import json
 import subprocess
 
 
@@ -190,3 +191,64 @@ def test_completion_partial():
     )
     assert result.returncode == 0
     assert "memory" in result.stdout
+
+
+def test_research_web_without_fetcher(tmp_path):
+    result = subprocess.run(
+        ["aios", "research", "auth flow", "--scope", "web"],
+        capture_output=True,
+        text=True,
+        check=False,
+        cwd=tmp_path,
+    )
+    assert result.returncode == 0
+    output = result.stdout + result.stderr
+    assert "source_unavailable" in output
+
+
+def test_research_json(tmp_path):
+    result = subprocess.run(
+        ["aios", "research", "auth flow", "--scope", "web", "--json"],
+        capture_output=True,
+        text=True,
+        check=False,
+        cwd=tmp_path,
+    )
+    assert result.returncode == 0
+    data = json.loads(result.stdout)
+    assert data["status"] == "source_unavailable"
+    assert data["findings"] == []
+    assert data["sources"] == []
+
+
+def test_research_repo_scope(tmp_path):
+    (tmp_path / "health.py").write_text(
+        "def health_check():\n    return True\n",
+        encoding="utf-8",
+    )
+    result = subprocess.run(
+        ["aios", "research", "health check", "--scope", "repo"],
+        capture_output=True,
+        text=True,
+        check=False,
+        cwd=tmp_path,
+    )
+    assert result.returncode == 0
+    output = result.stdout + result.stderr
+    assert "status: ok" in output
+    assert "Findings" in output
+
+
+def test_research_output_file(tmp_path):
+    out = tmp_path / "report.json"
+    result = subprocess.run(
+        ["aios", "research", "auth flow", "--scope", "web", "--output", str(out)],
+        capture_output=True,
+        text=True,
+        check=False,
+        cwd=tmp_path,
+    )
+    assert result.returncode == 0
+    assert out.exists()
+    data = json.loads(out.read_text(encoding="utf-8"))
+    assert data["status"] == "source_unavailable"

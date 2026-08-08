@@ -12,6 +12,7 @@ from aios.agents.developer import DeveloperAgent
 from aios.agents.documentation import DocumentationAgent
 from aios.agents.git import GitAgent
 from aios.agents.planner import PlannerAgent
+from aios.agents.research import ResearchAgent
 from aios.agents.reviewer import ReviewerAgent
 from aios.agents.tester import TesterAgent
 from aios.context.packet import ContextPacket, GitInfo, ProjectInfo, ToolsInfo
@@ -94,6 +95,7 @@ def _make_workflow(
     repo: Path,
     planner_runtime: MagicMock | None = None,
     dev_runtime: MagicMock | None = None,
+    researcher: "ResearchAgent | None" = None,
 ) -> tuple[WorkflowEngine, KanbanEngine, GitAgent]:
     scheduler = KanbanEngine(project_path=repo, db_path=str(tmp_path / "kanban.db"))
     scheduler.initialize()
@@ -103,6 +105,7 @@ def _make_workflow(
         scheduler=scheduler,
         developer=DeveloperAgent(dev_runtime or MagicMock()),
         reviewer=ReviewerAgent(),
+        researcher=researcher,
         tester=TesterAgent(),
         documentation=DocumentationAgent(docs_dir=str(repo / "docs")),
         git=git,
@@ -282,6 +285,7 @@ def test_workflow_health_check(tmp_path):
             "scheduler",
             "developer",
             "reviewer",
+            "research",
             "tester",
             "documentation",
             "git",
@@ -384,7 +388,40 @@ def test_workflow_health_with_missing_optionals(tmp_path):
 
         assert health.healthy is True
         assert health.missing_agents == []
-        assert set(health.optional) == {"tester", "documentation", "git"}
+        assert set(health.optional) == {"tester", "documentation", "git", "research"}
         assert health.agents["git"] is False
+        assert health.agents["research"] is False
+    finally:
+        scheduler.shutdown()
+
+
+def test_workflow_research_front_gate_feeds_planner(tmp_path):
+    """With a researcher injected, research runs first and feeds the planner."""
+    repo = _setup_project(tmp_path)
+    context = _make_context(str(repo))
+
+    planner_runtime = MagicMock()
+    planner_runtime.execute.return_value = json.dumps(VALID_PLAN)
+    dev_runtime = MagicMock()
+    dev_runtime.execute.return_value = "Implementation complete."
+
+    workflow, scheduler, _ = _make_workflow(
+        tmp_path,
+        repo,
+        planner_runtime=planner_runtime,
+        dev_runtime=dev_runtime,
+        researcher=ResearchAgent(),
+    )
+    try:
+        result = workflow.execute(Task(description="Add endpoint /health"), context)
+
+        assert result.success is True
+        assert result.stages[0].name == "research"
+        assert result.stages[0].success is True
+        assert result.research_result is not None
+        assert result.research_result["status"] in ("ok", "partial")
+
+        prompt = planner_runtime.execute.call_args[0][0]
+        assert "## Research" in prompt
     finally:
         scheduler.shutdown()

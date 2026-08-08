@@ -58,6 +58,7 @@ class _WorkflowContext:
     test_report: dict | None = None
     fragment: ChangelogFragment | None = None
     commit: GitOperation | None = None
+    research_result: dict | None = None
     stages: list[WorkflowStage] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
     completed_count: int = 0
@@ -81,6 +82,7 @@ class WorkflowResult:
     errors: tuple[str, ...]
     started_at: str
     finished_at: str | None
+    research_result: dict | None = None
 
     @classmethod
     def from_context(cls, ctx: _WorkflowContext) -> WorkflowResult:
@@ -96,6 +98,7 @@ class WorkflowResult:
             errors=tuple(ctx.errors),
             started_at=ctx.started_at,
             finished_at=ctx.finished_at,
+            research_result=ctx.research_result,
         )
 
 

@@ -20,6 +20,14 @@ from aios.agents.documentation import ChangelogFragment
 from aios.agents.git import GitOperation
 from aios.agents.models import AgentResult
 from aios.core.task import Task
+from aios.research import (
+    Finding,
+    MemoryCandidate,
+    Recommendation,
+    ResearchResult,
+    ResearchSource,
+    ResearchTask,
+)
 from aios.scheduler import KanbanCard
 
 
@@ -55,3 +63,27 @@ def test_agent_interfaces_are_compatible():
     )
     assert git_operation.executed is False
     assert json.dumps(asdict(git_operation))
+
+
+def test_research_result_is_serializable_and_traceable():
+    """ResearchResult is JSON-serializable and findings reference existing sources."""
+    source = ResearchSource(
+        id="s1", title="Source", url="file://src/a.py", type="code", trust_score=0.8
+    )
+    finding = Finding(id="F1", claim="claim", evidence_source_ids=["s1"], confidence=0.8)
+    result = ResearchResult(
+        task=ResearchTask(question="question", scope="repo"),
+        status="ok",
+        summary_short="summary",
+        sources=[source],
+        findings=[finding],
+        confidence_overall=0.8,
+        recommendations=[Recommendation(action="action", rationale="why")],
+        memory_candidates=[MemoryCandidate(kind="pattern", content="claim")],
+    )
+    serialized = json.dumps(asdict(result), default=str)
+    assert isinstance(serialized, str)
+
+    source_ids = {s.id for s in result.sources}
+    for f in result.findings:
+        assert set(f.evidence_source_ids) <= source_ids

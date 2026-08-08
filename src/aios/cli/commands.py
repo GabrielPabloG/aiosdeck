@@ -26,6 +26,8 @@ from aios.core.console import (
 from aios.core.run_result import RunResult, StageSummary
 from aios.core.task import Task
 from aios.memory.models import ProjectKnowledge
+from aios.research import ResearchTask
+from aios.research.schema import research_result_to_json
 
 VERSION_TEXT = f"AiosDeck v{__version__}"
 
@@ -195,6 +197,104 @@ def _resolve_diff_target(target: str) -> str:
     return str(diff_dir)
 
 
+_RESEARCH_SCOPES = ("repo", "docs", "web", "mixed")
+
+
+def _cmd_research(raw_args: list[str], project_path: Path, kernel_factory: Callable) -> None:
+    opts: dict = {"scope": "mixed", "json": False, "output": None}
+    positional: list[str] = []
+    i = 0
+    while i < len(raw_args or []):
+        arg = raw_args[i]
+        if arg == "--json":
+            opts["json"] = True
+        elif arg == "--scope":
+            i += 1
+            value = raw_args[i] if i < len(raw_args) else ""
+            if value not in _RESEARCH_SCOPES:
+                _error(f"--scope must be one of {', '.join(_RESEARCH_SCOPES)}")
+            opts["scope"] = value
+        elif arg == "--output":
+            i += 1
+            value = raw_args[i] if i < len(raw_args) else ""
+            if not value:
+                _error("--output requires a file path")
+            opts["output"] = value
+        elif arg.startswith("-"):
+            _error(f"unknown option {arg}")
+        else:
+            positional.append(arg)
+        i += 1
+
+    question = " ".join(positional).strip()
+    if not question:
+        print(
+            "Usage: aios research <question> "
+            "[--scope repo|docs|web|mixed] [--json] [--output FILE]",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    kernel = kernel_factory(project_path)
+    kernel.start()
+
+    researcher = kernel.get_engine("research")
+    if researcher is None:
+        _error("Research agent not available.")
+
+    context = kernel.get_context()
+    task = ResearchTask(
+        question=question,
+        scope=opts["scope"],
+        context_packet=context.to_dict() if context else {},
+    )
+
+    with ProgressSpinner("Researching"):
+        result = researcher.research(task)
+
+    if opts["output"]:
+        with Path(opts["output"]).open("w", encoding="utf-8") as f:
+            f.write(research_result_to_json(result) + "\n")
+        print(f"Wrote research report: {opts['output']}")
+        return
+    if opts["json"]:
+        print(research_result_to_json(result))
+        return
+
+    _print_research_text(result)
+
+
+def _print_research_text(result) -> None:
+    print(f"status: {result.status}")
+    print(f"summary: {result.summary_short}")
+    print(f"confidence: {result.confidence_overall:.2f}")
+    if result.error:
+        print(f"error: {result.error}")
+
+    if result.findings:
+        print("\nFindings:")
+        for f in result.findings:
+            confidence = f"{f.confidence:.2f}"
+            print(f"  - [{f.id}] (conf {confidence}) {f.claim}")
+    elif result.sources:
+        print("\nNo findings synthesized.")
+
+    if result.sources:
+        print("\nSources:")
+        for s in result.sources:
+            print(f"  - {s.type}: {s.title} ({s.url})")
+
+    if result.recommendations:
+        print("\nRecommendations:")
+        for r in result.recommendations:
+            print(f"  - [{r.priority}] {r.action}")
+
+    if result.memory_candidates:
+        print("\nMemory candidates (advisory, not persisted):")
+        for m in result.memory_candidates:
+            print(f"  - [{m.kind}] {m.content}")
+
+
 def _cmd_plan(raw_args: list[str], project_path: Path, kernel_factory: Callable) -> None:
     run_mode = "--run" in (raw_args or [])
 
@@ -329,6 +429,7 @@ def _print_help() -> None:
     print("  aios memory <cmd>     Manage project knowledge")
     print("  aios plan <intent>    Decompose goal into subtasks")
     print("  aios review [target]  Review code/architecture/conventions (read-only)")
+    print("  aios research <q>     Research a question (repo/docs/web)")
     print("  aios help             Show this help")
     print()
     print("Commands:")
@@ -568,6 +669,12 @@ COMMANDS: dict[str, Command] = {
         name="plan",
         description="Decompose goal into subtasks",
         execute=_cmd_plan,
+    ),
+    "research": Command(
+        name="research",
+        description="Research a question (repo/docs/web)",
+        aliases=["r"],
+        execute=_cmd_research,
     ),
     "review": Command(
         name="review",
