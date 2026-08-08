@@ -7,6 +7,22 @@ and initializes the audit logger. Full enforcement is implemented in v0.6.
 import logging
 from pathlib import Path
 
+from aios.security.actions import (
+    ASK_USER_ACTION,
+    CAPABILITY_ACTIONS,
+    DEFAULT_INTENTS,
+    FILESYSTEM_DELETE,
+    FILESYSTEM_READ_ACTION,
+    FILESYSTEM_WRITE_ACTION,
+    GIT_BRANCH,
+    GIT_COMMIT,
+    GIT_PUSH,
+    GIT_TAG,
+    NETWORK_ACCESS,
+    RELEASE_PUBLISH,
+    SHELL_EXECUTE,
+    expand,
+)
 from aios.security.capabilities import CapabilityEnforcer
 from aios.security.contracts import (
     EffectivePermissions,
@@ -17,11 +33,25 @@ from aios.security.contracts import (
 logger = logging.getLogger("aios.security")
 
 __all__ = [
+    "ASK_USER_ACTION",
+    "CAPABILITY_ACTIONS",
     "CapabilityEnforcer",
+    "DEFAULT_INTENTS",
     "EffectivePermissions",
+    "FILESYSTEM_DELETE",
+    "FILESYSTEM_READ_ACTION",
+    "FILESYSTEM_WRITE_ACTION",
+    "GIT_BRANCH",
+    "GIT_COMMIT",
+    "GIT_PUSH",
+    "GIT_TAG",
     "IntentPolicy",
+    "NETWORK_ACCESS",
+    "RELEASE_PUBLISH",
+    "SHELL_EXECUTE",
     "SecurityDecision",
     "SecurityEngine",
+    "expand",
 ]
 
 
