@@ -13,6 +13,7 @@ _TRUNCATE_LEN = 500
 
 
 def cmd_knowledge_index(raw_args: list[str], project_path: Path, kernel_factory: Callable) -> None:
+    do_embed = "--embed" in (raw_args or [])
     kernel = kernel_factory(project_path)
     kernel.start()
 
@@ -30,6 +31,18 @@ def cmd_knowledge_index(raw_args: list[str], project_path: Path, kernel_factory:
     print(render_row("Reindexed (changed)", str(summary.reindexed)))
     print(render_row("Chunks created", str(summary.chunks_created)))
     print(render_row("Chunks deleted", str(summary.chunks_deleted)))
+
+    if do_embed:
+        embed_result = engine.embed_indexed()
+        status = embed_result.get("status", "ok")
+        print(
+            render_row(
+                "Embeddings",
+                f"{embed_result.get('embedded', 0)} embedded, "
+                f"{embed_result.get('skipped', 0)} skipped ({status})",
+            )
+        )
+
     print()
     print("Knowledge index complete.")
 
@@ -68,6 +81,98 @@ def cmd_knowledge_search(raw_args: list[str], project_path: Path, kernel_factory
         if len(r.content) > _TRUNCATE_LEN:
             content += "\n... (truncated)"
         print(content)
+
+
+def cmd_knowledge_retrieve(
+    raw_args: list[str], project_path: Path, kernel_factory: Callable
+) -> None:
+    if not raw_args:
+        usage = "Usage: aios knowledge retrieve <query> [--agent X] [--vector] [--json]"
+        print(usage, file=sys.stderr)
+        sys.exit(1)
+
+    query = raw_args[0]
+    agent = "research"
+    use_vector = False
+    as_json = False
+    limit = 20
+
+    for arg in raw_args:
+        if arg == "--json":
+            as_json = True
+        elif arg == "--vector":
+            use_vector = True
+        elif arg == "--agent":
+            idx = raw_args.index(arg) + 1
+            if idx < len(raw_args) and not raw_args[idx].startswith("-"):
+                agent = raw_args[idx]
+
+    kernel = kernel_factory(project_path)
+    kernel.start()
+
+    engine = kernel.get_engine("knowledge")
+    if engine is None:
+        print("Knowledge engine not available.")
+        return
+
+    result = engine.retrieve(query, agent=agent, limit=limit, use_vector=use_vector)
+
+    telemetry = kernel.get_engine("telemetry")
+    if telemetry is not None:
+        telemetry.record_retrieval(
+            {
+                "agent": agent,
+                "query": query,
+                "chunks_retrieved": result.chunks_retrieved,
+                "chunks_selected": result.chunks_selected,
+                "tokens_before": result.tokens_before,
+                "tokens_after": result.tokens_after,
+                "compression_ratio": result.compression_ratio,
+                "retrieval_latency_ms": result.retrieval_latency_ms,
+                "retriever": "vector" if use_vector else "keyword",
+            }
+        )
+
+    if as_json:
+        output = {
+            "agent": agent,
+            "selected_count": result.selected_count,
+            "chunks_retrieved": result.chunks_retrieved,
+            "chunks_selected": result.chunks_selected,
+            "tokens_before": result.tokens_before,
+            "tokens_after": result.tokens_after,
+            "compression_ratio": result.compression_ratio,
+            "retrieval_latency_ms": result.retrieval_latency_ms,
+            "prompt_context": result.prompt_context,
+            "chunks": [
+                {
+                    "score": c.score,
+                    "justification": c.justification,
+                    "content": c.result.content,
+                    "source": f"{c.result.source_type}/{c.result.source_path}",
+                    "token_estimate": c.result.token_estimate,
+                }
+                for c in result.chunks
+            ],
+        }
+        print(json.dumps(output, indent=2, ensure_ascii=False))
+        return
+
+    if not result.chunks:
+        print(f"No relevant knowledge for: {query}")
+        return
+
+    print(render_section("Retrieval Results"))
+    print(render_row("Agent", agent))
+    print(render_row("Retrieved", str(result.chunks_retrieved)))
+    print(render_row("Selected", str(result.chunks_selected)))
+    print(render_row("Tokens before", str(result.tokens_before)))
+    print(render_row("Tokens after", str(result.tokens_after)))
+    print(render_row("Compression", f"{result.compression_ratio:.1%}"))
+    print(render_row("Latency", f"{result.retrieval_latency_ms:.1f}ms"))
+
+    print(f"\n--- Prompt Context (agent={agent}) ---")
+    print(result.prompt_context)
 
 
 def cmd_knowledge_sources(

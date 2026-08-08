@@ -70,6 +70,24 @@ CREATE INDEX IF NOT EXISTS idx_tu_timestamp ON telemetry_usage(timestamp);
 CREATE INDEX IF NOT EXISTS idx_tu_agent ON telemetry_usage(agent);
 CREATE INDEX IF NOT EXISTS idx_tu_model ON telemetry_usage(model);
 CREATE INDEX IF NOT EXISTS idx_tc_execution ON telemetry_costs(execution_id);
+
+CREATE TABLE IF NOT EXISTS telemetry_retrieval (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent TEXT NOT NULL DEFAULT '',
+    query TEXT NOT NULL DEFAULT '',
+    chunks_retrieved INTEGER NOT NULL DEFAULT 0,
+    chunks_selected INTEGER NOT NULL DEFAULT 0,
+    tokens_before INTEGER NOT NULL DEFAULT 0,
+    tokens_after INTEGER NOT NULL DEFAULT 0,
+    compression_ratio REAL NOT NULL DEFAULT 0.0,
+    retrieval_latency_ms REAL NOT NULL DEFAULT 0.0,
+    retriever TEXT NOT NULL DEFAULT '',
+    timestamp TEXT NOT NULL DEFAULT '',
+    project_id TEXT NOT NULL DEFAULT ''
+);
+
+CREATE INDEX IF NOT EXISTS idx_tr_agent ON telemetry_retrieval(agent);
+CREATE INDEX IF NOT EXISTS idx_tr_timestamp ON telemetry_retrieval(timestamp);
 """
 
 
@@ -495,6 +513,87 @@ class TelemetryStore:
             "records": usage_rows,
             "cost_records": cost_rows,
         }
+
+    # ------------------------------------------------------------------
+    # Retrieval metrics
+    # ------------------------------------------------------------------
+
+    def insert_retrieval(self, record: dict) -> None:
+        if not self._conn:
+            return
+        try:
+            self._conn.execute(
+                """INSERT INTO telemetry_retrieval
+                   (agent, query, chunks_retrieved, chunks_selected,
+                    tokens_before, tokens_after, compression_ratio,
+                    retrieval_latency_ms, retriever, timestamp, project_id)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    record.get("agent", ""),
+                    record.get("query", ""),
+                    record.get("chunks_retrieved", 0),
+                    record.get("chunks_selected", 0),
+                    record.get("tokens_before", 0),
+                    record.get("tokens_after", 0),
+                    record.get("compression_ratio", 0.0),
+                    record.get("retrieval_latency_ms", 0.0),
+                    record.get("retriever", ""),
+                    record.get("timestamp", _now()),
+                    self._project_id,
+                ),
+            )
+            self._conn.commit()
+        except sqlite3.Error as exc:
+            logger.warning("insert_retrieval failed: %s", exc)
+
+    def query_retrieval(
+        self,
+        *,
+        agent: str | None = None,
+        limit: int = 100,
+    ) -> list[dict]:
+        if not self._conn:
+            return []
+
+        conditions = ["project_id = ?"]
+        params: list = [self._project_id]
+
+        if agent:
+            conditions.append("agent = ?")
+            params.append(agent)
+
+        where = " AND ".join(conditions)
+        try:
+            rows = self._conn.execute(
+                f"SELECT id, agent, query, chunks_retrieved, chunks_selected, "
+                f"tokens_before, tokens_after, compression_ratio, "
+                f"retrieval_latency_ms, retriever, timestamp "
+                f"FROM telemetry_retrieval "
+                f"WHERE {where} "
+                f"ORDER BY timestamp DESC "
+                f"LIMIT ?",
+                params + [limit],
+            ).fetchall()
+        except sqlite3.Error as exc:
+            logger.warning("query_retrieval failed: %s", exc)
+            return []
+
+        return [
+            {
+                "id": row[0],
+                "agent": row[1],
+                "query": row[2],
+                "chunks_retrieved": row[3],
+                "chunks_selected": row[4],
+                "tokens_before": row[5],
+                "tokens_after": row[6],
+                "compression_ratio": row[7],
+                "retrieval_latency_ms": row[8],
+                "retriever": row[9],
+                "timestamp": row[10],
+            }
+            for row in rows
+        ]
 
 
 def _now() -> str:

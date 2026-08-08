@@ -61,6 +61,16 @@ class TelemetryEngine:
             return {"totals": {}, "by_agent": {}, "by_model": {}, "records": [], "cost_records": []}
         return self._store.aggregate_usage(**filters)
 
+    def record_retrieval(self, metrics: dict) -> None:
+        if self._store is None:
+            return
+        self._store.insert_retrieval(metrics)
+
+    def query_retrieval(self, *, agent: str | None = None, limit: int = 100) -> list[dict]:
+        if self._store is None:
+            return []
+        return self._store.query_retrieval(agent=agent, limit=limit)
+
     # ------------------------------------------------------------------
     # EventBus subscriptions
     # ------------------------------------------------------------------

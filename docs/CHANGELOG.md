@@ -9,20 +9,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Knowledge Store (v0.9.4)** — structured, incremental knowledge layer with
-  SQLite persistence and deterministic chunking. Sources: skills,
-  documentation, ADRs, source code, research, memory, and project DNA.
-- **Knowledge Engine** registered in the Kernel (dashboard + `kernel.get_engine`).
-- **Incremental indexing** — sha256 content hash per source; unchanged sources
-  are skipped, changed sources are re-chunked automatically.
-- **Deterministic chunking** — markdown (heading-based + size fallback with
-  overlap) and code (top-level symbol-based). Same input produces same chunk
-  IDs and hashes.
-- **FTS5 search** with LIKE fallback — `knowledge_fts` virtual table.
-- **CLI** — `aios knowledge index`, `aios knowledge search "<query>"`, and
-  `aios knowledge sources` (alias `aios k`).
-- **Audit trail** — `knowledge_index_runs` table tracks every indexing run.
-- Embedding field reserved on `KnowledgeChunk` (optional, not used yet).
+- **Local Retrieval / RAG (v0.9.5)** — context-aware retrieval with per-agent
+  token budgets, keyword and vector retrievers, and compression metrics.
+- **EmbeddingProvider contract** — protocol-based interface (`embed`, `dimensions`,
+  `available`, `name`) with `OllamaEmbeddingProvider` implementation using
+  Ollama's `/api/embed` endpoint (stdlib-only, zero external deps).
+- **KeywordRetriever** — lexical overlap scoring over FTS5 results. Always
+  active; no external dependencies.
+- **VectorRetriever** — cosine similarity over stored embeddings (opt-in
+  via `--vector` flag). Falls back gracefully to keyword when embeddings are
+  missing or Ollama is unavailable.
+- **ContextSelector** — `retrieve(20) → rank → dedupe → select(≤ budget)`
+  pipeline with source-type boosts, per-source deduplication, token-budget
+  enforcement, and oversized-chunk truncation.
+- **ContextBudget** — per-agent defaults (planner: 3000, research: 5000,
+  reviewer: 2000), overridable at construction.
+- **knowledge_embeddings** table — stores chunk embeddings with
+  `embedding_hash` for incremental re-embed; auto-deleted on source reindex.
+- **Retrieval telemetry** — `telemetry_retrieval` table recording
+  `retrieval_latency_ms`, `chunks_retrieved`, `chunks_selected`,
+  `tokens_before`, `tokens_after`, and `compression_ratio`.
+- **CLI** — `aios knowledge retrieve "<q>" [--agent X] [--vector] [--json]`;
+  `aios knowledge index --embed` for embedding-after-index.
+- **Fallback safe** — missing embeddings or unavailable provider never fail
+  retrieval; keyword path is always available.
 
 ### Changed
 
