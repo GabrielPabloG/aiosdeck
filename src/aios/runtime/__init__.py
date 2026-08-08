@@ -44,6 +44,9 @@ class RuntimeEngine:
     def shutdown(self) -> None:
         self.adapter.shutdown()
 
+    def set_event_bus(self, bus: object) -> None:
+        self._bus = bus
+
     @property
     def command(self) -> str:
         return self.adapter.command

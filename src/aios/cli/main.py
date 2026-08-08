@@ -221,7 +221,7 @@ def _create_kernel(project_path: Path) -> Kernel:
     if routing_config and routing_config.enabled:
         router = RuleBasedRouter(routing_config)
 
-    runtime = RuntimeEngine(router=router, bus=events.bus)
+    runtime = RuntimeEngine(router=router)
     kernel.register(runtime)
 
     assembler = _build_skill_assembler(project_path, kernel)

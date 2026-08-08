@@ -46,6 +46,8 @@ class TelemetryEngine:
 
     def set_event_bus(self, bus: EventBus) -> None:
         self._bus = bus
+        if bus is not None and self._store is not None:
+            self._subscribe()
 
     def initialize(self) -> None:
         self._store = TelemetryStore(Path(self._db_path), self._project_id)
@@ -185,7 +187,7 @@ class TelemetryEngine:
     # ------------------------------------------------------------------
 
     def _subscribe(self) -> None:
-        if self._bus is None:
+        if self._bus is None or self._subscription_count > 0:
             return
         self._bus.subscribe("agent.lifecycle.changed", self._on_lifecycle_event)
         self._bus.subscribe("agent.execution.*", self._on_execution_event)
@@ -195,7 +197,7 @@ class TelemetryEngine:
         self._subscription_count += 5
 
     def _unsubscribe(self) -> None:
-        if self._bus is None:
+        if self._bus is None or self._subscription_count == 0:
             return
         self._bus.unsubscribe("agent.lifecycle.changed", self._on_lifecycle_event)
         self._bus.unsubscribe("agent.execution.*", self._on_execution_event)
