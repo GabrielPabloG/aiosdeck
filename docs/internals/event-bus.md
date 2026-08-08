@@ -95,10 +95,10 @@ Every event carries:
 ```python
 @dataclass
 class Event:
-    topic: str              # e.g. "task.created"
-    payload: Any            # event-specific data
-    timestamp: datetime     # when the event was created
-    correlation_id: str     # ties events to a session or workflow run
+    topic: str  # e.g. "task.created"
+    payload: Any  # event-specific data
+    timestamp: datetime  # when the event was created
+    correlation_id: str  # ties events to a session or workflow run
 ```
 
 Wildcard subscriptions are supported: subscribing to `task.*` receives all task events. Exact subscriptions receive only matching topics.
@@ -145,8 +145,8 @@ Every event published is also forwarded to the Audit Logger:
 ```python
 async def publish(self, topic: str, payload: Any) -> None:
     event = Event(...)
-    await self._audit_logger.log(event)     # non-blocking
-    await self._dispatch(event)             # normal delivery
+    await self._audit_logger.log(event)  # non-blocking
+    await self._dispatch(event)  # normal delivery
 ```
 
 The Audit Logger appends to a structured log file. No event is silently dropped.
@@ -161,6 +161,7 @@ async def _dispatch(self, event: Event) -> None:
     for handler in self._resolve_handlers(event.topic):
         tasks.append(self._safe_call(handler, event))
     await asyncio.gather(*tasks, return_exceptions=True)
+
 
 async def _safe_call(self, handler: Callable, event: Event) -> None:
     try:

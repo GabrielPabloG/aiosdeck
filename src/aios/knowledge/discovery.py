@@ -1,13 +1,16 @@
 """Source discovery — scans a project directory and produces candidate sources.
 
 Returns a deterministic (sorted) list of SourceCandidate named tuples
-with type, path, and version.
+with type, path, version, and optional metadata.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import logging
+from dataclasses import dataclass, field
 from pathlib import Path
+
+logger = logging.getLogger("aios.knowledge.discovery")
 
 
 @dataclass
@@ -15,6 +18,7 @@ class SourceCandidate:
     type: str
     path: str
     version: str = "1"
+    metadata: dict = field(default_factory=dict)
 
 
 def discover_sources(project_path: Path) -> list[SourceCandidate]:
@@ -42,10 +46,12 @@ def _discover_skills(root: Path) -> list[SourceCandidate]:
         skill_file = entry / "SKILL.md"
         if skill_file.is_file():
             stype = "project_dna" if entry.name == "project-dna" else "skill"
+            metadata = _parse_skill_frontmatter(skill_file)
             results.append(
                 SourceCandidate(
                     type=stype,
                     path=_rel(root, skill_file),
+                    metadata=metadata,
                 )
             )
         for md_file in sorted(entry.rglob("*.md")):
@@ -58,6 +64,21 @@ def _discover_skills(root: Path) -> list[SourceCandidate]:
                 )
             )
     return results
+
+
+def _parse_skill_frontmatter(skill_file: Path) -> dict:
+    try:
+        text = skill_file.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return {}
+    try:
+        from aios.skills.metadata import SkillMetadata
+
+        meta = SkillMetadata.from_frontmatter(text)
+        return meta.to_dict()
+    except Exception:
+        logger.debug("Could not parse frontmatter from %s", skill_file)
+        return {}
 
 
 def _discover_adrs(root: Path) -> list[SourceCandidate]:

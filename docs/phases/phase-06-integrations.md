@@ -35,10 +35,10 @@ class IntegrationAdapter(Protocol):
     name: str
     version: str
 
-    async def is_available(self) -> bool: ...        # Can the system be reached?
-    async def initialize(self) -> None: ...            # Setup connection
-    async def health_check(self) -> bool: ...          # Is the system healthy?
-    async def shutdown(self) -> None: ...              # Tear down
+    async def is_available(self) -> bool: ...  # Can the system be reached?
+    async def initialize(self) -> None: ...  # Setup connection
+    async def health_check(self) -> bool: ...  # Is the system healthy?
+    async def shutdown(self) -> None: ...  # Tear down
 ```
 
 ### Discovery
@@ -50,13 +50,16 @@ class ProjDeskAdapter:
     async def is_available(self) -> bool:
         return self._is_installed("pd") or self._is_installed("projdesk")
 
+
 class OpenCodeAdapter:
     async def is_available(self) -> bool:
         return self._is_installed("opencode")
 
+
 class AiJailAdapter:
     async def is_available(self) -> bool:
         return self._is_installed("ai-jail")
+
 
 class OllamaAdapter:
     async def is_available(self) -> bool:
@@ -66,13 +69,16 @@ class OllamaAdapter:
         except Exception:
             return False
 
+
 class DockerAdapter:
     async def is_available(self) -> bool:
         return self._is_installed("docker") and self._run("docker info").returncode == 0
 
+
 class VSCodeAdapter:
     async def is_available(self) -> bool:
         return self._is_installed("code")
+
 
 class GitHubAdapter:
     async def is_available(self) -> bool:

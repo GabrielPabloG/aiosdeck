@@ -90,9 +90,12 @@ class KnowledgeEngine:
                 content=content,
                 type=candidate.type,
                 version=candidate.version,
+                metadata=candidate.metadata,
             )
             try:
                 result = self._store.index_document(doc)
+                if doc.metadata:
+                    self._store.upsert_source_metadata(doc.source_id, doc.metadata)
                 if result["action"] == "skipped":
                     skipped += 1
                 else:
@@ -183,6 +186,21 @@ class KnowledgeEngine:
     # ------------------------------------------------------------------
     # Retrieval
     # ------------------------------------------------------------------
+
+    def retrieve_raw(
+        self,
+        query: str,
+        *,
+        limit: int = 50,
+        source_types: list[str] | None = None,
+    ):
+        if self._store is None:
+            return []
+        kw = KeywordRetriever(self._store)
+        filters: dict = {}
+        if source_types:
+            filters["source_types"] = source_types
+        return kw.retrieve(query, k=limit, filters=filters)
 
     def retrieve(  # noqa: PLR0913
         self,

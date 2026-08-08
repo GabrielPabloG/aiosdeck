@@ -32,6 +32,11 @@ from aios.retrieval.providers import OllamaEmbeddingProvider
 from aios.runtime import RuntimeEngine
 from aios.scheduler import KanbanEngine
 from aios.security import SecurityEngine
+from aios.skills.assembler import SkillAssembler
+from aios.skills.discovery import SkillDiscoveryService
+from aios.skills.registry import SkillRegistry
+from aios.skills.retrieval import SkillRetrievalService
+from aios.skills.telemetry import SkillUsageRecorder
 from aios.telemetry import TelemetryEngine
 from aios.workflow import WorkflowEngine
 
@@ -153,6 +158,21 @@ def _dispatch(cmd, raw_args: list[str], project_path: Path) -> None:
     _error(f"Unknown subcommand: {sub_name}")
 
 
+def _build_skill_assembler(project_path: Path, kernel: Kernel):
+    try:
+        registry = SkillRegistry(project_path)
+        discovery = SkillDiscoveryService(registry)
+        knowledge = kernel.get_engine("knowledge")
+        telemetry = kernel.get_engine("telemetry")
+        if knowledge is not None:
+            retrieval = SkillRetrievalService(knowledge)
+            recorder = SkillUsageRecorder(telemetry)
+            return SkillAssembler(discovery=discovery, retrieval=retrieval, recorder=recorder)
+    except Exception:
+        pass
+    return SkillAssembler()
+
+
 def _create_kernel(project_path: Path) -> Kernel:
     global _active_kernel  # noqa: PLW0603
     kernel = Kernel(project_path=str(project_path))
@@ -176,8 +196,10 @@ def _create_kernel(project_path: Path) -> Kernel:
     kernel.set_executor(executor)
     runtime = RuntimeEngine()
     kernel.register(runtime)
-    developer = DeveloperAgent(runtime)
-    planner = PlannerAgent(runtime)
+
+    assembler = _build_skill_assembler(project_path, kernel)
+    developer = DeveloperAgent(runtime, skills=assembler)
+    planner = PlannerAgent(runtime, skills=assembler)
     reviewer = ReviewerAgent()
     research_agent = ResearchAgent()
     kernel.register(developer)

@@ -48,8 +48,8 @@ Every gate implements the same protocol:
 ```python
 class QualityGate(Protocol):
     name: str
-    command: str | None          # CLI command to run, None for AI gates
-    auto_detect: bool = True     # Detect tool from project context
+    command: str | None  # CLI command to run, None for AI gates
+    auto_detect: bool = True  # Detect tool from project context
 
     async def run(self, files: list[str], context: ContextPacket) -> GateResult: ...
     async def is_applicable(self, context: ContextPacket) -> bool: ...
@@ -88,16 +88,17 @@ quality:
 @dataclass
 class GateResult:
     gate_name: str
-    status: GateStatus       # passed, failed, skipped, error
-    output: str              # Command output for debugging
+    status: GateStatus  # passed, failed, skipped, error
+    output: str  # Command output for debugging
     duration_ms: int
-    suggestions: list[str]   # How to fix failures (for agents)
+    suggestions: list[str]  # How to fix failures (for agents)
+
 
 class GateStatus(Enum):
     PASSED = "passed"
     FAILED = "failed"
-    SKIPPED = "skipped"     # Tool not installed
-    ERROR = "error"         # Gate execution error
+    SKIPPED = "skipped"  # Tool not installed
+    ERROR = "error"  # Gate execution error
 ```
 
 ### AI Quality Gates
@@ -181,7 +182,7 @@ async def on_gate_failed(self, gate_result: GateResult, original_task: Task) -> 
             "description": f"Fix {gate_result.gate_name} issues:\n{gate_result.suggestions}",
             "original_task_id": original_task.id,
             "gate_output": gate_result.output,
-        }
+        },
     )
     await self.bus.publish("task.created", fix_task)
 ```

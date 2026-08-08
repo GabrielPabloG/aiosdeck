@@ -9,6 +9,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Intelligent Skills / Living Skills (v0.9.6)** — skills evolve from static
+  files into measurable, retrievable-by-intent knowledge assets with lifecycle
+  telemetry.
+- **Skill metadata schema** — `SkillMetadata` dataclass with `name`,
+  `description`, `triggers`, `scope`, `dependencies`, `priority`, `status`,
+  `version`, and `schema_version` field. Strict frontmatter validation on load.
+- **SkillRegistry** — loads validated skill metadata from
+  `.opencode/skills/*/SKILL.md`, filtering deprecated skills by default.
+- **SkillDiscoveryService** — deterministic, explainable intent-based skill
+  ranking by trigger match (0.50), scope match (0.30), and priority (0.20).
+  Each `ScoredSkill` carries its own `trigger_matches` and `scope_matches` for
+  audit trails.
+- **SkillRetrievalService** — maps discovered skills to Knowledge Store chunks
+  with per-skill chunk policy (top-N chunks per skill), respecting
+  `ContextBudget` per agent. Generic retriever layer unchanged.
+- **SkillAssembler** — explicit fallback boundary: discovery → retrieval →
+  `SkillContext[]`. Any failure returns `[]`, and agents fall back to the
+  static `required_skills` path (byte-identical prompt to v0.9.5).
+- **PromptBuilder smart skills section** — renders budgeted skill chunks with
+  audit trail (considered/selected/used/dropped, budget consumed). Optional
+  `skill_contexts` parameter; `None`/`[]` preserves the golden path.
+- **Skill telemetry** — `telemetry_skills` table with lifecycle signals
+  (`considered`, `selected`, `used`, `relevance_score`, `tokens_contributed`,
+  raw `downstream_success`). `SkillUsageRecorder` emits one row per skill per
+  invocation.
+- **Skills CLI** — `aios skills discover <intent>` (ranked candidates + score
+  breakdown), `aios skills inspect <name>` (metadata + index status), and
+  `aios skills stats` (per-skill lifecycle metrics).
+
+### Changed
+
+- DeveloperAgent and PlannerAgent accept optional `skills` (SkillAssembler)
+  injected by the kernel factory. Skills are only assembled when available;
+  otherwise behavior is unchanged.
+
 - **Local Retrieval / RAG (v0.9.5)** — context-aware retrieval with per-agent
   token budgets, keyword and vector retrievers, and compression metrics.
 - **EmbeddingProvider contract** — protocol-based interface (`embed`, `dimensions`,

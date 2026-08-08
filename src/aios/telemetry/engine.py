@@ -71,6 +71,30 @@ class TelemetryEngine:
             return []
         return self._store.query_retrieval(agent=agent, limit=limit)
 
+    def record_skill_usage(self, record: dict) -> None:
+        if self._store is None:
+            return
+        self._store.insert_skill_usage(record)
+
+    def query_skill_stats(
+        self,
+        *,
+        skill: str | None = None,
+        agent: str | None = None,
+        date_from: str | None = None,
+        date_to: str | None = None,
+        limit: int = 200,
+    ) -> list[dict]:
+        if self._store is None:
+            return []
+        return self._store.query_skill_stats(
+            skill=skill,
+            agent=agent,
+            date_from=date_from,
+            date_to=date_to,
+            limit=limit,
+        )
+
     # ------------------------------------------------------------------
     # EventBus subscriptions
     # ------------------------------------------------------------------
