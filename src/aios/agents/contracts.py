@@ -14,6 +14,8 @@ No agent may return "loose" free-text output outside the contract: structured
 results always travel inside an ``AgentResult``.
 """
 
+from __future__ import annotations
+
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -71,7 +73,7 @@ class AgentValidationError(Exception):
     """Raised when an ``AgentTask`` violates the input contract."""
 
 
-def coerce_task(task: Task | "AgentTask") -> "AgentTask":
+def coerce_task(task: Task | AgentTask) -> AgentTask:
     """Return an ``AgentTask`` regardless of whether a Task or AgentTask arrives."""
     if isinstance(task, AgentTask):
         return task
@@ -94,7 +96,7 @@ class AgentTask:
     correlation_id: str = ""
 
     @classmethod
-    def from_task(cls, task: Task | "AgentTask", **overrides) -> "AgentTask":
+    def from_task(cls, task: Task | AgentTask, **overrides) -> AgentTask:
         """Build an AgentTask from a scheduler Task, applying any overrides."""
         if isinstance(task, AgentTask):
             for key, value in overrides.items():
@@ -173,7 +175,7 @@ class AgentCapabilities:
     permissions: tuple[str, ...] = ()
 
     @classmethod
-    def from_list(cls, permissions: list[str]) -> "AgentCapabilities":
+    def from_list(cls, permissions: list[str]) -> AgentCapabilities:
         return cls(permissions=tuple(dict.fromkeys(permissions)))
 
     def has(self, permission: str) -> bool:
