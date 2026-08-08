@@ -31,6 +31,7 @@ from aios.learning import LearningEngine
 from aios.memory import MemoryEngine
 from aios.retrieval.providers import OllamaEmbeddingProvider
 from aios.retrieval.selector import ContextBudget
+from aios.routing.engine import RuleBasedRouter
 from aios.runtime import RuntimeEngine
 from aios.scheduler import KanbanEngine
 from aios.security import SecurityEngine
@@ -211,7 +212,16 @@ def _create_kernel(project_path: Path) -> Kernel:
     executor = AgentExecutor(capabilities_enforcer=security._enforcer)
     executor.set_event_bus(events.bus)
     kernel.set_executor(executor)
-    runtime = RuntimeEngine()
+
+    config_engine = kernel.get_engine("config")
+    routing_config = (
+        config_engine.config.routing if config_engine and config_engine.config else None
+    )
+    router = None
+    if routing_config and routing_config.enabled:
+        router = RuleBasedRouter(routing_config)
+
+    runtime = RuntimeEngine(router=router, bus=events.bus)
     kernel.register(runtime)
 
     assembler = _build_skill_assembler(project_path, kernel)

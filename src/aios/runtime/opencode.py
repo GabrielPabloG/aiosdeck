@@ -74,15 +74,25 @@ class OpenCodeAdapter:
             self._resolved_command = "opencode"
             logger.warning("ai-jail not found. Running OpenCode without sandbox.")
 
-    def execute(
+    def execute(  # noqa: PLR0913
         self,
         prompt: str,
         skills: list[str],
         capabilities: list[str] | None = None,
         permissions: EffectivePermissions | None = None,
+        *,
+        model: str = "",
+        variant: str = "",
     ) -> str:
         args = self._resolved_command.split()
-        args.extend(["run", prompt, "--auto"])
+        args.extend(["run", prompt])
+
+        if model:
+            args.extend(["-m", model])
+        if variant:
+            args.extend(["--variant", variant])
+
+        args.append("--auto")
 
         if not self._opencode_installed:
             raise RuntimeError(f"Runtime not available: {self._resolved_command}")

@@ -69,4 +69,4 @@ class TestEventBusAcceptsNewTopics:
         assert event.topic == "learning.observation_recorded"
 
     def test_all_topics_count(self) -> None:
-        assert len(ALL_TOPICS) == 57
+        assert len(ALL_TOPICS) == 58
