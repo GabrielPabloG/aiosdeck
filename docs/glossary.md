@@ -172,9 +172,9 @@ The pub/sub infrastructure that routes messages between components. Topics are h
 
 ### Skill
 
-A reusable knowledge fragment loaded by OpenCode's native skill tool. Skills teach agents how to work with specific technologies, patterns, or conventions. AiosDeck ships core Skills; project-specific Skills live in `.opencode/skills/`.
+A reusable knowledge fragment — an AiosDeck abstraction for modular knowledge — loaded by the active runtime's native skill mechanism. Skills teach agents how to work with specific technologies, patterns, or conventions. AiosDeck ships core Skills; project-specific Skills live in the runtime's skill directory (`.opencode/skills/` for the OpenCode adapter).
 
-**First used in**: `agents/` documentation. **Introduced**: v0.1 (via OpenCode).
+**First used in**: `agents/` documentation. **Introduced**: v0.1 (via the OpenCode adapter).
 
 ### Capability
 

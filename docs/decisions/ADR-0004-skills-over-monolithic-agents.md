@@ -17,7 +17,7 @@ We evaluated three approaches to agent knowledge:
 
 ## Decision
 
-**Use Skills as the mechanism for agent knowledge.** Each Skill is a small, self-contained `SKILL.md` file that teaches one specific domain. Skills are loaded on-demand by the Runtime Adapter before each agent task. AiosDeck does not create its own skill system — it uses OpenCode's native skill mechanism.
+**Use Skills as the mechanism for agent knowledge.** Each Skill is a small, self-contained `SKILL.md` file that teaches one specific domain. Skills are an AiosDeck abstraction for modular knowledge — they are defined by AiosDeck, not by any runtime. Skills are loaded on-demand by the Runtime Adapter before each agent task. Runtimes may implement Skills differently: the Runtime Adapter maps each Skill into the active runtime's native context-loading mechanism. OpenCode is the first implementation of this mapping, not the definition of the concept.
 
 The Coder does not know everything. It learns by loading Skills: `project-dna` (identity and architecture), `coding-style` (conventions), `bash-style` (shell conventions), `docker-lifecycle` (container patterns).
 
@@ -28,8 +28,8 @@ The Coder does not know everything. It learns by loading Skills: `project-dna` (
 - **Modularity**: Adding a new technology to the project means adding a Skill, not rewriting a prompt.
 - **Reusability**: Skills are shared between agents. The `project-dna` skill is loaded by Planner, Coder, Reviewer, and Documentation agent.
 - **Separation of concerns**: Knowledge is separated from agent logic. Agents are execution engines. Skills are knowledge.
-- **Project-specific**: Skills can be project-level (`.opencode/skills/`), user-level (`~/.config/opencode/skills/`), or core (shipped with AiosDeck).
-- **Alignment with OpenCode**: Skills are an OpenCode feature. AiosDeck uses them, does not reinvent them.
+- **Project-specific**: Skills can be project-level, user-level, or core (shipped with AiosDeck). In the OpenCode adapter these map to `.opencode/skills/`, `~/.config/opencode/skills/`, and the AiosDeck skill bundle respectively.
+- **Runtime-agnostic**: Skills are defined by AiosDeck. The OpenCode adapter loads them through OpenCode's native skill tool — the first implementation, not the definition of the concept.
 
 ### Negative
 
@@ -41,3 +41,7 @@ The Coder does not know everything. It learns by loading Skills: `project-dna` (
 
 - Skills do not replace agents. They augment them. The architecture still has specialized agents — the Coder loads coding skills, the Reviewer loads review skills.
 - The first two core skills (`project-dna`, `coding-style`) are enough for v0.1. Additional skills are born when a problem demands them.
+
+## Philosophy Alignment
+
+Supports **Principle 8 — The Runtime Is Replaceable**: Skills are an AiosDeck abstraction, decoupled from any specific runtime by the Runtime Adapter. Supports **Composable Everything**: skills are pluggable knowledge, shared across agents and runtimes.

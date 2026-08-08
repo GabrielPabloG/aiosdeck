@@ -27,7 +27,7 @@ OpenCode Adapter (implementation)
    │
    ├── Invokes: ai-jail opencode
    ├── Communicates: via OpenCode CLI/stdin/stdout
-   └── Loads Skills: via OpenCode skill tool
+   └── Loads Skills: via OpenCode skill tool (maps AiosDeck Skills into the runtime-native mechanism)
 ```
 
 ### Runtime Protocol
@@ -93,7 +93,7 @@ async def _resolve_runtime_command(self) -> list[str]:
 
 ### Skill Loading
 
-The adapter uses OpenCode's native skill system. Skills are loaded before each task:
+The OpenCode adapter maps AiosDeck Skills into OpenCode's native skill system. Skills are loaded before each task:
 
 ```python
 async def _load_skill(self, skill_name: str) -> None:

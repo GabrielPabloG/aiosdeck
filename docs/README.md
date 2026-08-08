@@ -417,7 +417,7 @@ Each agent is documented in detail under [agents/](agents/). Every agent has its
 
 ## Skills
 
-Agents learn by loading Skills — small knowledge fragments that teach them how to work with specific technologies, patterns, or conventions. AiosDeck uses OpenCode's native Skill system rather than reinventing it.
+Agents learn by loading Skills — small knowledge fragments that teach them how to work with specific technologies, patterns, or conventions. Skills are an AiosDeck abstraction for modular knowledge; the active runtime's native mechanism loads them. OpenCode's Skill system is the first implementation.
 
 ### Core Skills (v0.1)
 

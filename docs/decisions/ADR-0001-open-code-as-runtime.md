@@ -27,7 +27,7 @@ OpenCode is not the only runtime — it is the first. The Runtime Adapter patter
 ### Positive
 
 - **Delegation of complexity**: AiosDeck does not need to implement tool execution, model abstraction, or skill loading. OpenCode already does this well.
-- **Skill system alignment**: OpenCode's native skill system is used directly, not wrapped. AiosDeck skills are OpenCode skills.
+- **Skill system alignment**: AiosDeck Skills map into OpenCode's native skill system, which is used directly, not wrapped.
 - **Ecosystem compatibility**: Skills written for OpenCode work in AiosDeck. Skills written for AiosDeck work in standalone OpenCode.
 - **Focus**: AiosDeck remains focused on orchestration — not on reinventing a runtime.
 

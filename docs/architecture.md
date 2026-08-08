@@ -53,8 +53,8 @@ The architecture follows a **hub-and-spoke** model: the Kernel is the hub, dispa
                ▼                ▼                  ▼
             Planner          Coder            Reviewer
                │                │                  │
-               │  (loads Skills from OpenCode      │
-               │   skill tool on-demand)           │
+               │  (loads Skills via the active     │
+               │   runtime's native skill mechanism│
                │                │                  │
                └────────────────┼──────────────────┘
                                 │
@@ -300,6 +300,27 @@ the workflow is the single source of the pipeline.
 │  Invoked by: OpenCode                            │
 └──────────────────────────────────────────────────┘
 ```
+
+### Skill Contract
+
+Skills are an AiosDeck abstraction for modular knowledge, not a runtime feature. The contract between agents and runtimes:
+
+```
+Agent ──► Skill Contract ──► Runtime Adapter ──► Runtime
+   │              │                 │               │
+   │ declares     │ resolved by     │ maps Skill    │ native
+   │ required_    │ manifest +      │ into runtime  │ context
+   │ skills       │ agent config    │ mechanism     │ loading
+```
+
+Contract rules:
+
+1. **Agents never load Skills directly.** They declare `required_skills` in the manifest or agent configuration.
+2. **The Runtime Adapter resolves every Skill** against the active runtime's native context-loading mechanism before each task.
+3. **Runtimes may implement Skills differently.** The OpenCode adapter maps Skills to its skill tool (`SKILL.md` discovery). A future adapter maps them through a different mechanism — no agent code changes.
+4. **Core Skills shipped by AiosDeck are runtime-agnostic** markdown knowledge fragments. Runtime-specific behavior lives in the adapter, not in the Skill content.
+
+> **TODO (technical)**: Define a `SkillResolver` interface in `runtime/base.py` so future adapters implement `resolve(skill) -> runtime-native handle` without touching agents or the manifest.
 
 ### Phase-Based Implementation Strategy
 

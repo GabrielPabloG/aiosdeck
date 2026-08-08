@@ -5,9 +5,9 @@
 
 ## Context
 
-OpenCode is the primary agent runtime for AiosDeck. It provides: a CLI interface for agent interaction, a native skill system for loading reusable knowledge, tool execution (file operations, shell commands), and model provider abstraction (Ollama, OpenAI, Anthropic, Google).
+OpenCode is the active agent runtime for AiosDeck today (see ADR-0001). It provides: a CLI interface for agent interaction, a native skill system for loading reusable knowledge, tool execution (file operations, shell commands), and model provider abstraction (Ollama, OpenAI, Anthropic, Google).
 
-AiosDeck does not compete with OpenCode. It extends it. OpenCode is the execution engine; AiosDeck is the orchestration layer above it.
+AiosDeck does not compete with OpenCode. It extends it. OpenCode is the execution engine; AiosDeck is the orchestration layer above it. The Runtime Is Replaceable: when a different runtime becomes active, only the adapter changes.
 
 ## Decision
 
@@ -29,7 +29,7 @@ The Runtime Adapter (`runtime/opencode.py`) handles this. If ai-jail is not inst
 
 ### Skill Loading
 
-AiosDeck uses OpenCode's native skill system. Skills are loaded before each agent task:
+When OpenCode is the active runtime, the Runtime Adapter maps AiosDeck Skills into OpenCode's native skill system. Skills are loaded before each agent task:
 
 ```
 Agent executes task
@@ -43,7 +43,7 @@ Agent executes task
    └── Runtime Adapter parses result
 ```
 
-Skills are discovered by OpenCode from:
+When OpenCode is the active runtime, Skills are discovered by OpenCode from:
 - `.opencode/skills/<name>/SKILL.md` (project-level)
 - `~/.config/opencode/skills/<name>/SKILL.md` (user-level)
 - `.claude/skills/<name>/SKILL.md` (Claude-compatible)
@@ -65,7 +65,7 @@ OpenCode provides tools that agents use:
 - Web fetching (`webfetch` tool)
 - Git operations (if configured)
 
-AiosDeck does not wrap these tools. It delegates to OpenCode's native tool system.
+When OpenCode is the active runtime, AiosDeck does not wrap these tools. It delegates to OpenCode's native tool system.
 
 ### Configuration
 
@@ -110,9 +110,9 @@ Permissions are cached by capabilities set in the adapter, avoiding repeated JSO
 
 ## Consequences
 
-- OpenCode is a runtime dependency. Without it, AiosDeck cannot execute agents.
-- AiosDeck does not reimplement OpenCode features (tools, skills, model abstraction).
-- If OpenCode evolves, only the Runtime Adapter needs updating.
+- OpenCode is a runtime dependency of the current adapter. Without OpenCode (or another compatible runtime adapter), AiosDeck cannot execute agents.
+- AiosDeck does not reimplement OpenCode features (tools, skill loading, model abstraction) — the adapter maps to them.
+- If OpenCode evolves, only the Runtime Adapter needs updating. If a different runtime becomes primary, the adapter is the only thing that changes.
 
 ## Implementation Notes
 

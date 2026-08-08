@@ -23,7 +23,7 @@ aios memory add convention "Use snake_case"
 aios plan "add OAuth2 login" --run  # Plan and run the central workflow pipeline
 ```
 
-Requirements: **OpenCode** (agent runtime) and **ai-jail** (security sandbox).
+Requirements: an agent runtime (currently **OpenCode**) and **ai-jail** (security sandbox).
 [ProjDesk](docs/integrations/projdesk.md) is optional but recommended.
 
 ## Documentation
