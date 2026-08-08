@@ -27,6 +27,7 @@ from aios.integrations.projdesk import (
     ProjectNotFound,
 )
 from aios.knowledge import KnowledgeEngine
+from aios.learning import LearningEngine
 from aios.memory import MemoryEngine
 from aios.retrieval.providers import OllamaEmbeddingProvider
 from aios.retrieval.selector import ContextBudget
@@ -189,6 +190,12 @@ def _create_kernel(project_path: Path) -> Kernel:
     kernel.register(ConfigEngine(project_path=project_path))
     kernel.register(ContextEngine(project_path=project_path))
     kernel.register(MemoryEngine(project_path=project_path))
+    kernel.register(
+        LearningEngine(
+            project_path=project_path,
+            memory=kernel.get_engine("memory"),
+        )
+    )
     kernel.register(KanbanEngine(project_path=project_path))
     events = EventsEngine()
     kernel.register(events)

@@ -32,6 +32,7 @@ from aios.knowledge.cli import (
     cmd_knowledge_search,
     cmd_knowledge_sources,
 )
+from aios.learning.cli import _cmd_learning
 from aios.memory.models import ProjectKnowledge
 from aios.quality.cli import cmd_quality_stats
 from aios.research.schema import research_result_from_dict, research_result_to_json
@@ -542,6 +543,7 @@ def _print_help() -> None:
     print("  aios security stats    Show security allow/deny audit trail")
     print("  aios knowledge <cmd>   Manage knowledge store (index/search/sources)")
     print("  aios skills <cmd>     Discover skills and view lifecycle stats")
+    print("  aios learning <cmd>   Manage learning governance (candidates, approval)")
     print("  aios help             Show this help")
     print()
     print("Commands:")
@@ -893,6 +895,35 @@ COMMANDS: dict[str, Command] = {
                 execute=cmd_skills_stats,
             ),
         },
+    ),
+    "learning": Command(
+        name="learning",
+        description="Manage learning governance — candidates, approval, ingestion",
+        aliases=["learn"],
+        subcommands={
+            "candidates": Command(
+                name="candidates",
+                description="List learning candidates",
+                aliases=["ls"],
+            ),
+            "approve": Command(
+                name="approve",
+                description="Approve a learning candidate",
+            ),
+            "reject": Command(
+                name="reject",
+                description="Reject a learning candidate (--reason required)",
+            ),
+            "ingest": Command(
+                name="ingest",
+                description="Ingest an approved candidate into memory",
+            ),
+            "export": Command(
+                name="export",
+                description="Export approved/ingested candidates to file",
+            ),
+        },
+        execute=_cmd_learning,
     ),
     "exit": Command(
         name="exit",
