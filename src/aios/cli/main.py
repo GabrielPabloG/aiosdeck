@@ -17,6 +17,7 @@ from aios.agents.reviewer import ReviewerAgent
 from aios.agents.tester import TesterAgent
 from aios.cli.commands import COMMANDS, _error, _print_command_help, _print_help
 from aios.config import ConfigEngine
+from aios.config.loader import ConfigLoader
 from aios.context import ContextAssembler, ContextEngine
 from aios.core import Kernel
 from aios.events import EventsEngine
@@ -213,10 +214,7 @@ def _create_kernel(project_path: Path) -> Kernel:
     executor.set_event_bus(events.bus)
     kernel.set_executor(executor)
 
-    config_engine = kernel.get_engine("config")
-    routing_config = (
-        config_engine.config.routing if config_engine and config_engine.config else None
-    )
+    routing_config = ConfigLoader(project_path=project_path).load().routing
     router = None
     if routing_config and routing_config.enabled:
         router = RuleBasedRouter(routing_config)
