@@ -121,13 +121,9 @@ context_size). Overrides are for operators and CLI tooling only.
 
 ### Ranker
 
-`ModelRanker` is a pluggable `Protocol` for ordering routing candidates:
-
-- `HeuristicRanker` — fixed weights (agent match, complexity, cost). Always
-  available and deterministic.
-- `TelemetryRanker` — post-1.0 fast-follow (data-driven: fail rate, latency,
-  cost per 1k tokens from the telemetry store). Contract stub present, not
-  implemented in v1.0.
+`ModelRanker` is a pluggable `Protocol` for ordering routing candidates.
+The ranker implementations (HeuristicRanker, TelemetryRanker) are post-1.0;
+in v1.0, routing is driven exclusively by policy rules in `RuleBasedRouter`.
 
 ### CLI
 
