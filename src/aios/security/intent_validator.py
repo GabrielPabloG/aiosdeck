@@ -9,7 +9,6 @@ valid against agent capabilities is made here.
 All functions are deterministic, pure, and testable in isolation.
 """
 
-from aios.security.actions import expand
 from aios.security.contracts import EffectivePermissions, IntentPolicy, SecurityDecision
 
 
@@ -30,6 +29,8 @@ def validate_intent(intent: IntentPolicy, capabilities: object) -> SecurityDecis
         An auditable SecurityDecision. Callers consume ``decision.allowed``
         and ``decision.effective_permissions``.
     """
+    from aios.security.actions import expand  # noqa: PLC0415 — deferred to avoid circular import
+
     granted = expand(capabilities)
     effective = (intent.actions - intent.deny) & granted
     intent_name = intent.name or "unknown"
