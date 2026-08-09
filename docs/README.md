@@ -484,6 +484,12 @@ aios review --output file     # write report to reviewer_report.json
 # Run diagnostics
 aios doctor
 
+# Process a backlog of tasks sequentially
+aios backlog run --source=board:backlog
+aios backlog list board:backlog
+aios backlog add "feat(api): add health endpoint"
+aios backlog stats
+
 # Show help
 aios help
 ```

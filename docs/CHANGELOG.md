@@ -28,6 +28,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `format_skill_header()` shared between retrieval and PromptBuilder;
     CLI restructured into `cli/commands/` package (core/exec_cmds/memory)
     with central registry.
+  - **S4 Docs & Product Parity** — CHANGELOG restructured (one section per
+    version); Status blocks on README/vision/philosophy/architecture; ADR
+    metadata standardized; false claims fixed (Coder→developer.py, Reviewer CLI,
+    workflows implemented, `.aios/memory.db` path); phase/agent statuses
+    updated; stabilization roadmap (S0-S5) replaces rigid plans;
+    `docs/migration-1.0.md` guide.
+  - **S5 RC/GA** — Backlog Runner integrated (v0.9.13 feature brought forward;
+    CLI now has 20 top-level commands); `docs/release-checklist.md`; version
+    bumped to `1.0.0-rc1`; v1.0 labeling documented in `docs/architecture.md`.
 
 ### Changed
 
