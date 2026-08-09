@@ -177,6 +177,26 @@ CREATE INDEX IF NOT EXISTS idx_trouting_agent ON telemetry_routing(agent);
 CREATE INDEX IF NOT EXISTS idx_trouting_model ON telemetry_routing(model);
 CREATE INDEX IF NOT EXISTS idx_trouting_timestamp ON telemetry_routing(timestamp);
 CREATE INDEX IF NOT EXISTS idx_trouting_correlation ON telemetry_routing(correlation_id);
+
+CREATE TABLE IF NOT EXISTS telemetry_backlog (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id TEXT NOT NULL DEFAULT '',
+    task_index INTEGER NOT NULL DEFAULT 0,
+    task_title TEXT NOT NULL DEFAULT '',
+    task_type TEXT NOT NULL DEFAULT '',
+    task_scope TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT '',
+    commit_sha TEXT NOT NULL DEFAULT '',
+    duration_ms REAL,
+    error TEXT NOT NULL DEFAULT '',
+    source TEXT NOT NULL DEFAULT '',
+    timestamp TEXT NOT NULL DEFAULT '',
+    project_id TEXT NOT NULL DEFAULT ''
+);
+
+CREATE INDEX IF NOT EXISTS idx_tb_run_id ON telemetry_backlog(run_id);
+CREATE INDEX IF NOT EXISTS idx_tb_status ON telemetry_backlog(status);
+CREATE INDEX IF NOT EXISTS idx_tb_timestamp ON telemetry_backlog(timestamp);
 """
 
 
@@ -1294,6 +1314,99 @@ class TelemetryStore:
                 "delta": round(float(row[3] or 0) - float(row[2] or 0), 6),
                 "correlation_id": row[4],
                 "timestamp": row[5],
+            }
+            for row in rows
+        ]
+
+    # ------------------------------------------------------------------
+    # Backlog telemetry
+    # ------------------------------------------------------------------
+
+    def insert_backlog_run(self, record: dict) -> None:
+        if not self._conn:
+            return
+        try:
+            self._conn.execute(
+                """INSERT INTO telemetry_backlog
+                   (run_id, task_index, task_title, task_type, task_scope,
+                    status, commit_sha, duration_ms, error, source,
+                    timestamp, project_id)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    record.get("run_id", ""),
+                    record.get("task_index", 0),
+                    record.get("task_title", ""),
+                    record.get("task_type", ""),
+                    record.get("task_scope", ""),
+                    record.get("status", ""),
+                    record.get("commit_sha", ""),
+                    record.get("duration_ms"),
+                    record.get("error", ""),
+                    record.get("source", ""),
+                    record.get("timestamp", _now()),
+                    self._project_id,
+                ),
+            )
+            self._conn.commit()
+        except sqlite3.Error as exc:
+            logger.warning("insert_backlog_run failed: %s", exc)
+
+    def query_backlog_stats(
+        self,
+        *,
+        run_id: str | None = None,
+        status: str | None = None,
+        date_from: str | None = None,
+        date_to: str | None = None,
+        limit: int = 100,
+    ) -> list[dict]:
+        if not self._conn:
+            return []
+
+        conditions = ["project_id = ?"]
+        params: list = [self._project_id]
+
+        if run_id:
+            conditions.append("run_id = ?")
+            params.append(run_id)
+        if status:
+            conditions.append("status = ?")
+            params.append(status)
+        if date_from:
+            conditions.append("timestamp >= ?")
+            params.append(date_from)
+        if date_to:
+            conditions.append("timestamp <= ?")
+            params.append(date_to)
+
+        where = " AND ".join(conditions)
+        try:
+            rows = self._conn.execute(
+                f"""SELECT run_id, task_index, task_title, task_type, task_scope,
+                    status, commit_sha, duration_ms, error, source, timestamp
+                FROM telemetry_backlog
+                WHERE {where}
+                ORDER BY timestamp DESC
+                LIMIT ?""",
+                params + [limit],
+            ).fetchall()
+        except sqlite3.Error as exc:
+            logger.warning("query_backlog_stats failed: %s", exc)
+            return []
+
+        return [
+            {
+                "run_id": row[0],
+                "task_index": row[1],
+                "task_title": row[2],
+                "task_type": row[3],
+                "task_scope": row[4],
+                "status": row[5],
+                "commit_sha": row[6],
+                "duration_ms": row[7],
+                "error": row[8],
+                "source": row[9],
+                "timestamp": row[10],
             }
             for row in rows
         ]

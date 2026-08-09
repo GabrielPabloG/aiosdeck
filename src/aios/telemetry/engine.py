@@ -194,7 +194,8 @@ class TelemetryEngine:
         self._bus.subscribe("quality.*", self._on_gate_event)
         self._bus.subscribe("security.*", self._on_security_event)
         self._bus.subscribe("runtime.route_selected", self._on_routing_event)
-        self._subscription_count += 5
+        self._bus.subscribe("backlog.*", self._on_backlog_event)
+        self._subscription_count += 6
 
     def _unsubscribe(self) -> None:
         if self._bus is None or self._subscription_count == 0:
@@ -204,6 +205,7 @@ class TelemetryEngine:
         self._bus.unsubscribe("quality.*", self._on_gate_event)
         self._bus.unsubscribe("security.*", self._on_security_event)
         self._bus.unsubscribe("runtime.route_selected", self._on_routing_event)
+        self._bus.unsubscribe("backlog.*", self._on_backlog_event)
         self._subscription_count = 0
 
     # ------------------------------------------------------------------
@@ -400,3 +402,47 @@ class TelemetryEngine:
         cost = self._pricing.resolve(provider, model, input_tokens, output_tokens)
         cost["execution_id"] = event_payload.get("execution_id", "")
         self._store.insert_cost(cost)
+
+    # ------------------------------------------------------------------
+    # Backlog event handlers
+    # ------------------------------------------------------------------
+
+    def _on_backlog_event(self, event) -> None:
+        if self._store is None:
+            return
+        payload = event.payload if hasattr(event, "payload") else event
+        if not isinstance(payload, dict):
+            return
+        record = {
+            "run_id": payload.get("run_id", ""),
+            "task_index": payload.get("task_index", 0),
+            "task_title": payload.get("task_title", ""),
+            "task_type": payload.get("task_type", ""),
+            "task_scope": payload.get("task_scope", ""),
+            "status": payload.get("status", ""),
+            "commit_sha": payload.get("commit_sha", ""),
+            "duration_ms": payload.get("duration_ms"),
+            "error": payload.get("error", ""),
+            "source": payload.get("source", ""),
+            "timestamp": payload.get("timestamp", _now()),
+        }
+        self._store.insert_backlog_run(record)
+
+    def query_backlog_stats(
+        self,
+        *,
+        run_id: str | None = None,
+        status: str | None = None,
+        date_from: str | None = None,
+        date_to: str | None = None,
+        limit: int = 100,
+    ) -> list[dict]:
+        if self._store is None:
+            return []
+        return self._store.query_backlog_stats(
+            run_id=run_id,
+            status=status,
+            date_from=date_from,
+            date_to=date_to,
+            limit=limit,
+        )
