@@ -46,6 +46,10 @@ class LoggingConfig:
 
 @dataclass
 class UIConfig:
+    theme: str = "ocean"
+    accent_intensity: float = 0.8
+    compact: bool = False
+    refresh_interval: float = 2.0
     backlog_mode: str = "text"
 
 
