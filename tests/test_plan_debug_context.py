@@ -6,7 +6,7 @@ import io
 import sys
 from unittest.mock import MagicMock
 
-from aios.cli.commands import _cmd_plan
+from aios.cli.commands_exec import cmd_plan as _cmd_plan
 from aios.context.assembly import assemble_layers
 from aios.context.cli import render_layer_tree
 from aios.context.layers import Layer, LayerType
