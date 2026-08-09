@@ -125,8 +125,9 @@ context_size). Overrides are for operators and CLI tooling only.
 
 - `HeuristicRanker` — fixed weights (agent match, complexity, cost). Always
   available and deterministic.
-- `TelemetryRanker` — data-driven (fail rate, latency, cost per 1k tokens from
-  the telemetry store). Defined as a contract; implemented as a fast-follow.
+- `TelemetryRanker` — post-1.0 fast-follow (data-driven: fail rate, latency,
+  cost per 1k tokens from the telemetry store). Contract stub present, not
+  implemented in v1.0.
 
 ### CLI
 

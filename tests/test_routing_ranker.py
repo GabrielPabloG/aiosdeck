@@ -1,6 +1,6 @@
 """Tests for pluggable model rankers."""
 
-from aios.routing.ranker import HeuristicRanker, TelemetryRanker
+from aios.routing.ranker import HeuristicRanker
 
 
 class TestHeuristicRanker:
@@ -49,37 +49,5 @@ class TestHeuristicRanker:
         assert results[0][1] == score
 
 
-class TestTelemetryRanker:
-    def test_falls_back_to_heuristic_without_telemetry(self):
-        ranker = TelemetryRanker()
-        candidates = [
-            {"rule_ref": "0", "agent": "planner", "complexity": "high", "estimated_cost": 0.0},
-            {"rule_ref": "1", "agent": "developer", "complexity": "medium", "estimated_cost": 0.0},
-        ]
-        results = ranker.score("planner", candidates)
-        assert results[0][0] == "0"
-
-    def test_with_mock_telemetry(self):
-        class FakeStore:
-            def is_open(self):
-                return True
-
-        class FakeTelemetry:
-            _store = FakeStore()
-
-        ranker = TelemetryRanker()
-        candidates = [
-            {"rule_ref": "0", "agent": "planner", "model": "gpt-4o", "provider": "openai"}
-        ]
-        results = ranker.score("planner", candidates, telemetry=FakeTelemetry())
-        assert len(results) == 1
-        assert isinstance(results[0][1], float)
-
-    def test_telemetry_without_store(self):
-        class FakeTelemetry:
-            pass
-
-        ranker = TelemetryRanker()
-        candidates = [{"rule_ref": "0", "agent": "planner"}]
-        results = ranker.score("planner", candidates, telemetry=FakeTelemetry())
-        assert len(results) == 1
+# TelemetryRanker tests removed (post-1.0 fast-follow).
+# HeuristicRanker remains the only stable, deterministic ranker for v1.0.

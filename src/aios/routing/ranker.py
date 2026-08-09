@@ -48,59 +48,11 @@ class HeuristicRanker:
         return mapping.get(complexity, 0.5)
 
 
-class TelemetryRanker:
-    """Data-driven ranker that queries TelemetryStore for historical data.
-
-    Scoring weights are configurable; defaults balance fail_rate, latency, and cost.
-    Returns the same ``list[tuple[str, float]]`` contract as HeuristicRanker.
-    """
-
-    def __init__(
-        self,
-        weight_fail_rate: float = 1.5,
-        weight_latency: float = 0.8,
-        weight_cost: float = 1.0,
-    ) -> None:
-        self.weight_fail_rate = weight_fail_rate
-        self.weight_latency = weight_latency
-        self.weight_cost = weight_cost
-
-    def score(
-        self, agent: str, candidates: list[dict], telemetry: object | None = None
-    ) -> list[tuple[str, float]]:
-        if telemetry is None:
-            return HeuristicRanker().score(agent, candidates)
-
-        results: list[tuple[str, float]] = []
-        for candidate in candidates:
-            model = candidate.get("model", "")
-            provider = candidate.get("provider", "")
-            stats = self._query_stats(telemetry, agent, model, provider)
-            fail_rate = stats.get("fail_rate", 0.0)
-            avg_duration_ms = stats.get("avg_duration_ms", 10000.0)
-            avg_cost = stats.get("avg_cost_per_1k", 0.01)
-
-            s = (
-                self.weight_fail_rate * (1.0 - fail_rate)
-                + self.weight_latency * (1.0 / max(avg_duration_ms, 1.0))
-                + self.weight_cost * (1.0 / max(avg_cost, 0.0001))
-            )
-            results.append((candidate.get("rule_ref", ""), round(s, 4)))
-        results.sort(key=lambda x: x[1], reverse=True)
-        return results
-
-    @staticmethod
-    def _query_stats(telemetry: object, agent: str, model: str, provider: str) -> dict:
-        try:
-            store = getattr(telemetry, "_store", None)
-            if store is None:
-                return {}
-            if not store.is_open():
-                return {}
-        except Exception:
-            return {}
-        return {
-            "fail_rate": 0.0,
-            "avg_duration_ms": 5000.0,
-            "avg_cost_per_1k": 0.001,
-        }
+# ──────────────────────────────────────────────────────────
+# TelemetryRanker — post-1.0 (fast-follow)
+#
+# Data-driven ranker that queries TelemetryStore for historical
+# fail_rate, latency, and cost data.  The contract is defined here
+# so the Routing domain knows a model ranker may carry telemetry
+# awareness, but the implementation lives post-1.0.
+# ──────────────────────────────────────────────────────────
