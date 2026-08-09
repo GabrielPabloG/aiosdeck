@@ -116,16 +116,22 @@ def _extract_skill_name(source_path: str) -> str | None:
     return None
 
 
-def _format_skill_section(scored: ScoredSkill, chunks: list[ScoredResult]) -> str:
+def format_skill_header(scored: ScoredSkill) -> str:
+    """Single skill header line — reused by _format_skill_section and _smart_skills_section."""
     skill = scored.skill
-    lines = ["## Relevant Skills"]
     trigger_info = (
         f" [triggers: {', '.join(scored.trigger_matches)}]" if scored.trigger_matches else ""
     )
     scope_info = f" [scope: {', '.join(scored.scope_matches)}]" if scored.scope_matches else ""
-    lines.append(f"- **{skill.name}** (score={scored.score:.2f}){trigger_info}{scope_info}")
+    lines = [f"- **{skill.name}** (score={scored.score:.2f}){trigger_info}{scope_info}"]
     if skill.description:
         lines.append(f"  {skill.description}")
+    return "\n".join(lines)
+
+
+def _format_skill_section(scored: ScoredSkill, chunks: list[ScoredResult]) -> str:
+    lines = ["## Relevant Skills"]
+    lines.append(format_skill_header(scored))
     for ch in chunks:
         lines.append("")
         lines.append(ch.result.content)
