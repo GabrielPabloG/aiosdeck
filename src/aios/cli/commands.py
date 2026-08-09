@@ -18,6 +18,12 @@ from pathlib import Path
 
 from aios import __version__
 from aios.agents.contracts import AgentTask
+from aios.backlog.cli import (
+    cmd_backlog_add,
+    cmd_backlog_list,
+    cmd_backlog_run,
+    cmd_backlog_stats,
+)
 from aios.core.console import (
     ProgressSpinner,
     log_step,
@@ -993,6 +999,37 @@ COMMANDS: dict[str, Command] = {
             "forget": memory_forget,
             "list": memory_list,
             "search": memory_search,
+        },
+    ),
+    "backlog": Command(
+        name="backlog",
+        description="Run, list, add, or inspect backlog tasks",
+        aliases=["bl"],
+        subcommands={
+            "run": Command(
+                name="run",
+                description="Execute backlog tasks sequentially",
+                aliases=["r"],
+                execute=cmd_backlog_run,
+            ),
+            "list": Command(
+                name="list",
+                description="List pending tasks from a source",
+                aliases=["ls"],
+                execute=cmd_backlog_list,
+            ),
+            "add": Command(
+                name="add",
+                description="Add a task to the kanban backlog board",
+                aliases=["a"],
+                execute=cmd_backlog_add,
+            ),
+            "stats": Command(
+                name="stats",
+                description="Show backlog run telemetry",
+                aliases=["s"],
+                execute=cmd_backlog_stats,
+            ),
         },
     ),
 }

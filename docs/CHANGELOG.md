@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Backlog Runner (v0.9.13)** — process N tasks from a backlog automatically.
+  - **Models** — `BacklogTask` and `BacklogRunResult` with conventional commit
+    parsing (`type(scope): subject (vX.Y.Z)`).
+  - **Parser** — `parse_conventional`, `load_tasks_from_kanban(board)`,
+    `load_tasks_from_file(path)`.
+  - **Runner** — `BacklogRunner` executes tasks sequentially through
+    `Kernel.run(mode="plan-run")` with per-task commit factories,
+    `create_branch=False`, and kanban `InProgress` → `Done`/`blocked` flow.
+  - **CLI** — `aios backlog run/list/add/stats` with `--continue`, `--from N`,
+    `--source=board:NAME | file:PATH`.
+  - **Telemetry** — `telemetry_backlog` table, `insert_backlog_run`,
+    `query_backlog_stats`, and `backlog.*` events in `ALL_TOPICS`.
+  - **Workflow** — additive `commit_factory` and `create_branch` params on
+    `WorkflowEngine.execute` and `Kernel.run` (defaults byte-idéntico).
+
 - **Ocean Console (v0.9.12)** — a dark, marine dashboard for `aios ocean`,
   rendered entirely through semantic design tokens.
   - **Theme** — `Theme`/`ColorResolver`/`ColorMode` (`COLOR`/`256`/`MONO`)

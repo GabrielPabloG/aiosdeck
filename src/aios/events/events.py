@@ -155,6 +155,20 @@ LEARNING_CANDIDATE_APPROVED = "learning.candidate.approved"
 LEARNING_CANDIDATE_REJECTED = "learning.candidate.rejected"
 LEARNING_INGESTED = "learning.ingested"
 
+BACKLOG_TOPICS = [
+    "backlog.run_started",
+    "backlog.task_started",
+    "backlog.task_succeeded",
+    "backlog.task_failed",
+    "backlog.run_completed",
+]
+
+BACKLOG_RUN_STARTED = "backlog.run_started"
+BACKLOG_TASK_STARTED = "backlog.task_started"
+BACKLOG_TASK_SUCCEEDED = "backlog.task_succeeded"
+BACKLOG_TASK_FAILED = "backlog.task_failed"
+BACKLOG_RUN_COMPLETED = "backlog.run_completed"
+
 ALL_TOPICS = (
     SYSTEM_TOPICS
     + SESSION_TOPICS
@@ -171,4 +185,5 @@ ALL_TOPICS = (
     + TELEMETRY_TOPICS
     + RESEARCH_TOPICS
     + LEARNING_TOPICS
+    + BACKLOG_TOPICS
 )

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "aiosdeck"
-version = "0.9.12"
+version = "0.9.13"
 description = "The AI Operating System for Developers"
 readme = "docs/README.md"
 license = { file = "LICENSE" }

@@ -156,8 +156,11 @@ class WorkflowEngine:
         task: Task,
         context,
         on_stage: Callable[[WorkflowStage], None] | None = None,
+        commit_factory: Callable[[_WorkflowContext], str] | None = None,
+        create_branch: bool = True,
     ) -> WorkflowResult:
         notify = on_stage or (lambda stage: None)
+        cf = commit_factory or self._commit_factory
         ctx = _WorkflowContext(
             task=task,
             run_id=self._run_ids.next(),
@@ -192,7 +195,7 @@ class WorkflowEngine:
         notify(ctx.stages[-1])
 
         # 2. Git — create the run branch before any scheduler persistence
-        if agents["git"] is not None:
+        if agents["git"] is not None and create_branch:
             branch = self._build_branch(ctx.run_id, ctx.goal)
             git_result = self._run_agent(
                 agents["git"],
@@ -391,7 +394,7 @@ class WorkflowEngine:
                 AgentTask(
                     description="commit changes",
                     task_type="commit",
-                    params={"message": self._commit_factory(ctx)},
+                    params={"message": cf(ctx)},
                 ),
             )
             ctx.commit = self._git_operation(commit_result)
