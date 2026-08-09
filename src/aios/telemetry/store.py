@@ -1,4 +1,18 @@
-"""SQLite storage backend for telemetry. Implementation detail of TelemetryEngine."""
+"""SQLite storage backend for telemetry — single-responsibility module.
+
+Owns all SQLite operations for the telemetry domain: schema creation
+(9 tables: executions, tokens, costs, events, routing, skills, quality,
+security, generic), write paths (record + aggregate), read paths (query,
+stats, accuracy), and connection lifecycle (open, close, migrate).
+
+This file intentionally stays as one module — splitting the SQLite
+orchestration across multiple files would spread schema coupling and
+transaction management without benefit. The 9 tables share a single
+connection, a single migration path, and a single data directory.
+
+Post-1.0: consider extracting the individual table repositories into
+separate modules when schema migration complexity warrants it.
+"""
 
 import json
 import logging
