@@ -1,43 +1,65 @@
 """Command Registry — single source of truth for the CLI surface.
 
 Every command: the parser, help text, autocomplete, and eventual plugins —
-all consume this registry. Adding a command means one entry, not changes
-across five files.
+all consume this registry.
 
 Command implementations are organized by domain:
-- cli/commands_exec.py — plan, research, review (execution commands)
-- cli/commands_memory.py — memory add/list/forget/search
-- <domain>/cli.py — each domain's own CLI commands
+- cli/commands/core.py — dashboard, doctor, init, help, exit, completion
+- cli/commands/exec_cmds.py — plan, research, review
+- cli/commands/memory.py — memory add/list/forget/search
+- <domain>/cli.py — each domain's own CLI commands (knowledge, routing, ...)
 """
 
 from __future__ import annotations
 
-import json
-import logging
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from pathlib import Path
 
 from aios import __version__
-from aios.cli.commands_exec import (
+from aios.cli.commands.core import (
+    cmd_complete,
+    cmd_dashboard,
+    cmd_doctor,
+    cmd_exit,
+    cmd_help,
+    cmd_init,
+)
+from aios.cli.commands.exec_cmds import (
+    _gate_label as _gate_label,
+)
+from aios.cli.commands.exec_cmds import (
+    _gates_json as _gates_json,
+)
+from aios.cli.commands.exec_cmds import (
+    _render_gate_trail as _render_gate_trail,
+)
+from aios.cli.commands.exec_cmds import (
+    _render_plan_list as _render_plan_list,
+)
+from aios.cli.commands.exec_cmds import (
+    _render_run_result as _render_run_result,
+)
+from aios.cli.commands.exec_cmds import (
+    _render_stage as _render_stage,
+)
+from aios.cli.commands.exec_cmds import (
+    _run_result_to_json as _run_result_to_json,
+)
+from aios.cli.commands.exec_cmds import (
     cmd_plan as _cmd_plan,
 )
-from aios.cli.commands_exec import (
+from aios.cli.commands.exec_cmds import (
     cmd_research as _cmd_research,
 )
-from aios.cli.commands_exec import (
+from aios.cli.commands.exec_cmds import (
     cmd_review as _cmd_review,
 )
-from aios.cli.commands_memory import (
+from aios.cli.commands.memory import (
     cmd_memory_add,
     cmd_memory_forget,
     cmd_memory_list,
     cmd_memory_search,
-)
-from aios.core.console import (
-    render_row,
-    render_section,
 )
 from aios.knowledge.cli import (
     cmd_knowledge_index,
@@ -60,8 +82,6 @@ from aios.skills.cli import (
 from aios.telemetry.cli import cmd_usage
 from aios.ui.cli import _cmd_ocean
 
-VERSION_TEXT = f"AiosDeck v{__version__}"
-
 
 @dataclass
 class Command:
@@ -78,143 +98,31 @@ def _error(msg: str) -> None:
     sys.exit(1)
 
 
-# ---------------------------------------------------------------------------
-# Core command implementations
-# ---------------------------------------------------------------------------
+def _print_command_list(commands: dict, indent: int = 0) -> None:
+    prefix = " " * indent
+    for name, cmd in commands.items():
+        if cmd.hidden:
+            continue
+        print(f"{prefix}{name:<20} {cmd.description}")
+        if cmd.aliases:
+            print(f"{prefix}  aliases: {', '.join(cmd.aliases)}")
+        if cmd.subcommands:
+            _print_command_list(cmd.subcommands, indent=indent + 2)
 
 
-def _cmd_dashboard(raw_args: list[str], project_path: Path, kernel_factory: Callable) -> None:
-    kernel = kernel_factory(project_path)
-    kernel.start(render_dashboard=False)
-
-    from aios.ui import (  # noqa: PLC0415
-        PAGE_NAMES,
-        ColorResolver,
-        RenderContext,
-        detect_color_mode,
-        ocean_theme,
-        overview_data,
-        render_page,
-        run_tui,
-    )
-
-    mode = detect_color_mode()
-    resolver = ColorResolver(ocean_theme, mode)
-
-    def _render(page_name: str) -> str:
-        data = overview_data(kernel)
-        return render_page(page_name, data, RenderContext(resolver=resolver))
-
-    run_tui(_render, PAGE_NAMES)
-
-
-def _cmd_doctor(raw_args: list[str], project_path: Path, kernel_factory: Callable) -> None:
-    as_json = "--json" in (raw_args or [])
-
-    kernel = kernel_factory(project_path)
-    kernel.start()
-
-    status = kernel.status()
-
-    if as_json:
-        context = kernel.get_context()
-        if context:
-            status["context"] = {
-                "language": context.project.language,
-                "linter": context.tools.linter,
-                "formatter": context.tools.formatter,
-                "test_runner": context.tools.test_runner,
-                "git_branch": context.git.branch,
-                "git_status": context.git.status,
-                "opencode": context.runtime.opencode,
-                "ai_jail": context.runtime.ai_jail,
-            }
-        print(json.dumps(status, indent=2))
-        return
-
-    logger = logging.getLogger("aios")
-    context = kernel.get_context()
-    if context:
-        logger.info(render_section("Doctor"))
-        logger.info(render_row("Language", context.project.language))
-        logger.info(render_row("Tools", context.tools.linter or "none"))
-        logger.info(render_row("Git", f"{context.git.branch} ({context.git.status})"))
-        logger.info(
-            render_row(
-                "OpenCode",
-                "installed" if context.runtime.opencode else "not found",
-            )
-        )
-        logger.info(render_row("ai-jail", "installed" if context.runtime.ai_jail else "not found"))
-
-    errors = status.get("errors", [])
-    if errors:
-        logger.warning("\nWarnings:")
-        for err in errors:
-            logger.warning(f"  {err}")
-
-
-def _cmd_init(raw_args: list[str], project_path: Path, kernel_factory: Callable) -> None:
-    aios_dir = project_path / ".aios"
-    aios_dir.mkdir(parents=True, exist_ok=True)
-
-    yaml_path = aios_dir / "project.yaml"
-    if not yaml_path.exists():
-        yaml_path.write_text(
-            "# .aios/project.yaml — Project manifest for AiosDeck\n"
-            "# ProjDesk prepares the development environment.\n"
-            "# AiosDeck prepares the intelligence environment.\n"
-            "\n"
-            f"name: {project_path.name}\n"
-            "runtime: opencode\n"
-            "sandbox: ai-jail\n"
-            "\n"
-            "skills:\n"
-            "  - project-dna\n"
-            "  - coding-style\n"
-        )
-
-    GITIGNORE_RULES = [".aios/memory.db"]
-
-    gitignore_path = project_path / ".gitignore"
-    existing_text = gitignore_path.read_text() if gitignore_path.exists() else ""
-    existing_lines = existing_text.splitlines()
-
-    new_lines = [rule for rule in GITIGNORE_RULES if rule not in existing_lines]
-    if new_lines:
-        with gitignore_path.open("a") as f:
-            if existing_text and not existing_text.endswith("\n"):
-                f.write("\n")
-            for rule in new_lines:
-                f.write(f"{rule}\n")
-
-    print(f"Project initialized at {aios_dir}")
-
-
-def _cmd_help(raw_args: list[str], project_path: Path, kernel_factory: Callable) -> None:
-    _print_help()
-
-
-def _cmd_complete(raw_args: list[str], project_path: Path, kernel_factory: Callable) -> None:
-    from aios.cli.completion import complete  # noqa: PLC0415
-
-    suggestions = complete(raw_args)
-    for s in suggestions:
-        print(s)
-
-
-def _cmd_exit(raw_args: list[str], project_path: Path, kernel_factory: Callable) -> None:
-    kernel = kernel_factory(project_path)
-    kernel.shutdown()
-
-
-# ---------------------------------------------------------------------------
-# Help output helpers
-# ---------------------------------------------------------------------------
+def _print_command_help(cmd: Command) -> None:
+    print(f"{cmd.name} — {cmd.description}")
+    if cmd.aliases:
+        print(f"Aliases: {', '.join(cmd.aliases)}")
+    if cmd.subcommands:
+        print()
+        print("Subcommands:")
+        _print_command_list(cmd.subcommands, indent=2)
 
 
 def _print_help() -> None:
-    print(f"{VERSION_TEXT}")
+    """Print the full help text (used directly by main.py dispatch)."""
+    print(f"AiosDeck v{__version__}")
     print("The AI Operating System for Developers.")
     print()
     print("Usage:")
@@ -246,30 +154,8 @@ def _print_help() -> None:
     print("Project: https://github.com/GabrielPabloG/aiosdeck")
 
 
-def _print_command_list(commands: dict, indent: int = 0) -> None:
-    prefix = " " * indent
-    for name, cmd in commands.items():
-        if cmd.hidden:
-            continue
-        print(f"{prefix}{name:<20} {cmd.description}")
-        if cmd.aliases:
-            print(f"{prefix}  aliases: {', '.join(cmd.aliases)}")
-        if cmd.subcommands:
-            _print_command_list(cmd.subcommands, indent=indent + 2)
-
-
-def _print_command_help(cmd: Command) -> None:
-    print(f"{cmd.name} — {cmd.description}")
-    if cmd.aliases:
-        print(f"Aliases: {', '.join(cmd.aliases)}")
-    if cmd.subcommands:
-        print()
-        print("Subcommands:")
-        _print_command_list(cmd.subcommands, indent=2)
-
-
 # ---------------------------------------------------------------------------
-# Memory subcommands (registered inline, functions from commands_memory)
+# Memory subcommands
 # ---------------------------------------------------------------------------
 
 memory_add = Command(
@@ -315,17 +201,17 @@ COMMANDS: dict[str, Command] = {
         name="dashboard",
         description="Show dashboard",
         aliases=["start", "status"],
-        execute=_cmd_dashboard,
+        execute=cmd_dashboard,
     ),
     "doctor": Command(
         name="doctor",
         description="Run diagnostics",
-        execute=_cmd_doctor,
+        execute=cmd_doctor,
     ),
     "init": Command(
         name="init",
         description="Initialize AiosDeck in the current project",
-        execute=_cmd_init,
+        execute=cmd_init,
     ),
     "plan": Command(
         name="plan",
@@ -347,7 +233,7 @@ COMMANDS: dict[str, Command] = {
     "help": Command(
         name="help",
         description="Show help",
-        execute=_cmd_help,
+        execute=cmd_help,
     ),
     "usage": Command(
         name="usage",
@@ -500,13 +386,13 @@ COMMANDS: dict[str, Command] = {
         name="exit",
         description="Shut down gracefully",
         hidden=True,
-        execute=_cmd_exit,
+        execute=cmd_exit,
     ),
     "__complete": Command(
         name="__complete",
         description="Autocomplete hook",
         hidden=True,
-        execute=_cmd_complete,
+        execute=cmd_complete,
     ),
     "memory": Command(
         name="memory",

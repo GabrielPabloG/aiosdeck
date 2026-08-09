@@ -17,7 +17,7 @@ from aios.agents.developer import DeveloperAgent
 from aios.agents.models import AgentResult
 from aios.agents.planner import PlannerAgent
 from aios.agents.reviewer import ReviewerAgent
-from aios.cli.commands_exec import cmd_plan as _cmd_plan
+from aios.cli.commands.exec_cmds import cmd_plan as _cmd_plan
 from aios.cli.main import _create_kernel
 from aios.context import ContextEngine
 from aios.context.packet import ContextPacket, GitInfo, ProjectInfo, ToolsInfo

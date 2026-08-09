@@ -54,7 +54,7 @@ AGENT_CONSTANT_NAMES = {
 
 ORCHESTRATION_FILES = [
     "src/aios/workflow/engine.py",
-    "src/aios/cli/commands.py",
+    "src/aios/cli/commands/__init__.py",
     "src/aios/cli/main.py",
     "src/aios/core/kernel.py",
 ]

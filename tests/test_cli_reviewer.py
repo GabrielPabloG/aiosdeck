@@ -9,7 +9,7 @@ import pytest
 from aios.agents.executor import AgentExecutor
 from aios.agents.reviewer import ReviewerAgent
 from aios.cli.commands import COMMANDS
-from aios.cli.commands_exec import cmd_review as _cmd_review
+from aios.cli.commands.exec_cmds import cmd_review as _cmd_review
 from aios.core import Kernel
 
 FIXTURE = Path(__file__).parent / "fixtures" / "simple_repo"
