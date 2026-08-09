@@ -25,6 +25,16 @@ class _RenderCapture:
         return f"<<{name}>>"
 
 
+class _RefreshCapture:
+    """Records every refresh call."""
+
+    def __init__(self) -> None:
+        self.count = 0
+
+    def __call__(self) -> None:
+        self.count += 1
+
+
 PAGE_NAMES = [
     "overview",
     "workflows",
@@ -116,3 +126,73 @@ def test_non_tty_fallback_renders_once_returns_string(
     result = run_tui(capture, PAGE_NAMES)
     assert result == "<<overview>>"
     assert capture.pages == ["overview"]
+
+
+class TestStartIndex:
+    """Tests for the ``start_index`` parameter."""
+
+    def test_starts_on_specified_page(self) -> None:
+        capture = _RenderCapture()
+        result = run_tui(capture, PAGE_NAMES, input_keys=["q"], start_index=3)
+        assert result is None
+        assert capture.pages == ["skills"]
+
+    def test_start_index_on_last_page(self) -> None:
+        capture = _RenderCapture()
+        result = run_tui(capture, PAGE_NAMES, input_keys=["q"], start_index=7)
+        assert result is None
+        assert capture.pages == ["settings"]
+
+    def test_invalid_start_index_raises(self) -> None:
+        capture = _RenderCapture()
+        with pytest.raises(ValueError, match="start_index=99"):
+            run_tui(capture, PAGE_NAMES, start_index=99)
+
+    def test_negative_start_index_raises(self) -> None:
+        capture = _RenderCapture()
+        with pytest.raises(ValueError, match="start_index=-1"):
+            run_tui(capture, PAGE_NAMES, start_index=-1)
+
+
+class TestRefresh:
+    """Tests for the ``refresh`` callback parameter."""
+
+    def test_refresh_not_called_without_r_key(self) -> None:
+        capture = _RenderCapture()
+        refresh = _RefreshCapture()
+        result = run_tui(
+            capture, PAGE_NAMES, input_keys=["q"], refresh=refresh
+        )
+        assert result is None
+        assert refresh.count == 0
+
+    def test_refresh_called_once_when_r_pressed(self) -> None:
+        capture = _RenderCapture()
+        refresh = _RefreshCapture()
+        result = run_tui(
+            capture, PAGE_NAMES, input_keys=["r", "q"], refresh=refresh
+        )
+        assert result is None
+        assert refresh.count == 1
+
+    def test_refresh_called_on_each_r_keypress(self) -> None:
+        capture = _RenderCapture()
+        refresh = _RefreshCapture()
+        result = run_tui(
+            capture, PAGE_NAMES, input_keys=["r", "r", "q"], refresh=refresh
+        )
+        assert result is None
+        assert refresh.count == 2
+
+    def test_refresh_called_after_page_navigation(self) -> None:
+        capture = _RenderCapture()
+        refresh = _RefreshCapture()
+        result = run_tui(
+            capture,
+            PAGE_NAMES,
+            input_keys=["3", "r", "q"],
+            refresh=refresh,
+        )
+        assert result is None
+        assert refresh.count == 1
+        assert capture.pages == ["overview", "agents", "agents"]

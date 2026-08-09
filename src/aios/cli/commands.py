@@ -48,6 +48,7 @@ from aios.skills.cli import (
     cmd_skills_stats,
 )
 from aios.telemetry.cli import cmd_usage
+from aios.ui.cli import _cmd_ocean
 
 VERSION_TEXT = f"AiosDeck v{__version__}"
 
@@ -565,6 +566,7 @@ def _print_help() -> None:
     print("  aios knowledge <cmd>   Manage knowledge store (index/search/sources)")
     print("  aios skills <cmd>     Discover skills and view lifecycle stats")
     print("  aios learning <cmd>   Manage learning governance (candidates, approval)")
+    print("  aios ocean [opts]     Open the ocean dashboard (interactive TUI)")
     print("  aios route <cmd>      Explain or inspect model routing decisions")
     print("  aios help             Show this help")
     print()
@@ -964,6 +966,11 @@ COMMANDS: dict[str, Command] = {
             ),
         },
         execute=_cmd_learning,
+    ),
+    "ocean": Command(
+        name="ocean",
+        description="Open the ocean dashboard (interactive TUI)",
+        execute=_cmd_ocean,
     ),
     "exit": Command(
         name="exit",

@@ -81,6 +81,8 @@ def run_tui(
     page_names: Sequence[str],
     *,
     input_keys: list[str] | None = None,
+    start_index: int = 0,
+    refresh: Callable[[], None] | None = None,
 ) -> str | None:
     """Run the interactive TUI loop.
 
@@ -93,6 +95,11 @@ def run_tui(
     input_keys:
         When provided (testing), the loop reads from this list instead of
         stdin.  An empty list signals immediate EOF.
+    start_index:
+        Page index to start on (default 0).  Must be in ``range(len(page_names))``.
+    refresh:
+        Optional callback invoked before re-rendering when the user presses
+        ``r``.  Useful for reloading underlying data.
 
     Returns
     -------
@@ -104,12 +111,16 @@ def run_tui(
     Raises
     ------
     ValueError
-        When ``page_names`` is empty.
+        When ``page_names`` is empty or ``start_index`` is out of range.
     """
     if not page_names:
         raise ValueError("page_names must not be empty")
+    if not 0 <= start_index < len(page_names):
+        raise ValueError(
+            f"start_index={start_index} out of range for {len(page_names)} pages"
+        )
 
-    index = 0
+    index = start_index
     if input_keys is not None:
         read_keys: Callable[[], list[str]] = functools.partial(
             _read_keys_test, input_keys
@@ -124,7 +135,12 @@ def run_tui(
     sys.stderr.write("\n")
     sys.stderr.flush()
 
+    should_refresh = False
+
     while True:
+        if should_refresh and refresh is not None:
+            refresh()
+            should_refresh = False
         rendered = render(page_names[index])
         sys.stdout.write(rendered)
         sys.stdout.write("\n")
@@ -139,6 +155,8 @@ def run_tui(
             new_index = _dispatch_key(key, index, len(page_names))
             if new_index is None:
                 return None
+            if key == _CMD_REFRESH:
+                should_refresh = True
             index = new_index
         lines = rendered.count("\n") + 1
         sys.stdout.write(f"\033[{lines}F\033[J")
