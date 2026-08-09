@@ -1,6 +1,8 @@
 # Phase 01 — Kernel
 
-**Status**: Accepted
+**Status**: Implemented
+**Level**: Architecture
+**Review date**: 2026-08-09
 **Date**: 2026-08-02
 **Target Version**: v0.1
 

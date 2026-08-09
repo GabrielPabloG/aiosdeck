@@ -1,6 +1,7 @@
 # Planner Agent
 
-**Status**: Accepted (Implemented in v0.6)
+**Status**: Implemented
+**Review date**: 2026-08-09 (Implemented in v0.6)
 **Date**: 2026-08-04
 **Introduced**: v0.6
 

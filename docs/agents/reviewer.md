@@ -1,6 +1,7 @@
 # Reviewer Agent
 
-**Status**: Proposed
+**Status**: Implemented
+**Review date**: 2026-08-09
 **Date**: 2026-08-02
 **Introduced**: v0.5
 
