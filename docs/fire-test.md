@@ -1,312 +1,166 @@
-# Fire Test Manual — Model Router v0.9.11
+# Fire Test Manual — Stabilization v1.0
 
-Guia prático para testar a v0.9.11 **"Model Router"** num projeto descartável,
-sem depender da suíte de testes. Testa o fluxo real ponta a ponta: `aios route
-explain` (dry-run da policy, sem agente), roteamento por policy YAML
-(regras por agent/complexity, `cost_cap`, `context_limits`,
-`fallback_providers`) e a telemetria de decisões (`telemetry_routing`).
+Guia para validar o núcleo estável do AiosDeck em um projeto limpo.
+Testa telemetria mínima obrigatória (executions, tokens, cost), a CLI
+essencial (`aios ocean`, `help`, `completion`) e a saúde do Kernel.
 
 ## Pré-requisitos
 
 - Python 3.12+ com o pacote instalado (`pip install -e .` no repo)
-- **OpenCode** e **ai-jail** instalados (a `aios doctor` confirma) — apenas
-  para o Passo 5 (`plan --run` real)
-- **Ollama** com `llama3` puxado — apenas para o Passo 5 (fallback real)
+- **OpenCode** e **ai-jail** instalados (`aios doctor` confirma)
+- **Ollama** com modelo local puxado (ex: `llama3`) — necessário para
+  execuções reais
 - Shell no Linux
 
 ## Passo 0 — Instalar a branch
 
 ```bash
 cd <seu-repo-aiosdeck>
-git checkout feature/model-router
-python -m venv .venv && source .venv/bin/activate
+git checkout feature/stable-1.0
 pip install -e .
 ```
 
-## Passo 1 — Criar um projeto de teste descartável
+## Passo 1 — Criar projeto de teste descartável
 
 ```bash
-mkdir -p /tmp/firetest-routing && cd /tmp/firetest-routing
+mkdir -p /tmp/firetest-stable && cd /tmp/firetest-stable
 git init -q
 git config user.email "you@test.com" && git config user.name "You"
 touch README.md && git add . && git commit -qm "init"
 aios init
 ```
 
-## Passo 2 — Sanidade: dashboard e doctor
+## Passo 2 — Sanidade: doctor e help
 
 ```bash
+# Doctor confirma infraestrutura
 aios doctor
+
+# Help mostra todos os comandos (sem traceback)
+aios help
+
+# Completion funciona (bash e zsh)
+aios completion --bash | head -5
+aios completion --zsh | head -5
 ```
 
-Confira que o `doctor` está saudável. O router **não** aparece como engine no
-dashboard: ele é injetado dentro do `RuntimeEngine` a partir do `RouteConfig`.
+Esperado: `doctor` saudável, `help` lista todos os comandos, `completion`
+gera scripts de shell válidos. Nenhum traceback Python escapa.
 
-Sem subcomando, `aios route` mostra o usage (sem traceback):
+## Passo 3 — Ocean dashboard (mínimo de CLI)
 
 ```bash
+# Visão geral (overview)
+aios ocean
+
+# Página única com saída
+aios ocean --once
+
+# JSON para consumo programático
+aios ocean --json
+
+# Páginas individuais navegáveis
+aios ocean --page overview
+aios ocean --page security
+aios ocean --page routing
+aios ocean --page learning
+```
+
+Esperado: cada página renderiza sem erro. `--json` retorna JSON válido.
+Nenhum traceback.
+
+## Passo 4 — Execução real (telemetria mínima obrigatória)
+
+Com Ollama rodando localmente:
+
+```bash
+# Execução mínima: planner + developer
+aios plan "add a hello world endpoint" --run
+```
+
+Esperado: pipeline completa (planner → developer → reviewer → tester →
+documentation → git). A saída contém os stages.
+
+## Passo 5 — Validar telemetria obrigatória (executions + tokens + cost)
+
+As 3 tabelas mínimas obrigatórias devem existir e ter dados:
+
+```bash
+# Execuções registradas
+sqlite3 .aios/memory.db "SELECT COUNT(*) FROM telemetry_executions;"
+
+# Tokens consumidos
+sqlite3 .aios/memory.db "SELECT COUNT(*) FROM telemetry_tokens;"
+
+# Custos calculados
+sqlite3 .aios/memory.db "SELECT COUNT(*) FROM telemetry_costs;"
+```
+
+Esperado: pelo menos 1 registro em cada tabela após uma execução.
+
+Uso visível:
+
+```bash
+# Resumo de uso (tokens + custo)
+aios usage
+
+# Com filtro de limit
+aios usage --limit 5
+```
+
+## Passo 6 — Validar eventos mínimos obrigatórios
+
+Os tópicos de evento obrigatórios para cada execução:
+
+```bash
+sqlite3 .aios/memory.db "SELECT DISTINCT topic FROM telemetry_events ORDER BY topic;"
+```
+
+Esperado: os tópicos `agent.lifecycle.changed`, `agent.execution.*` (started,
+completed/failed), `workflow.started`, `workflow.completed` estão presentes.
+
+## Passo 7 — Caminhos de erro
+
+```bash
+# Subcomando inválido → Usage + exit 1
+aios bogus
+
+# Comando sem argumento obrigatório → Error + exit 1
 aios route
+
+# Fora de repo → Error informativo
+cd /tmp && aios ocean
 ```
 
-## Passo 3 — `aios route explain` — decisão default (dry-run, sem agente)
+Esperado: mensagens de erro formatadas, sem traceback Python, exit code 1.
 
-O router está **ativo por padrão** (`RouteConfig.enabled = True`). Com a config
-default (sem regras), qualquer entrada cai no fallback determinístico:
+## Passo 8 — Verificação de arquitetura (o que a v1.0 garante)
 
-```bash
-aios route explain --agent planner
-```
-
-Esperado:
-
-```
-Provider:       ollama
-Model:          ollama/llama3
-Reason:         heuristic:default
-Estimated cost: $0.000000
-Source:         router
-```
-
-Sem regras e sem override, o modelo é sempre `ollama/llama3` — custo zero e
-determinístico. Isso significa que, em execuções reais, o runtime passa
-`-m ollama/llama3` ao opencode (comportamento novo da v0.9.11; o caminho
-legacy sem `-m` só existe com `AIOS_ROUTING_ENABLED=0`, veja o Passo 4).
-
-`--json` é útil para validar o schema:
-
-```bash
-aios route explain --agent planner --task-type plan --complexity high --json
-```
-
-Valide o schema:
-
-```bash
-python - <<'EOF'
-import json, subprocess
-out = subprocess.run(
-    ["aios", "route", "explain", "--agent", "planner", "--json"],
-    capture_output=True, text=True, check=True,
-).stdout
-d = json.loads(out)
-assert set(d) == {"provider", "model", "variant", "reason",
-                  "estimated_cost", "source", "fallback_chain"}
-assert d["model"] == "ollama/llama3"
-print("schema ok — decisão default determinística")
-EOF
-```
-
-## Passo 4 — Policy YAML (regras, cost_cap, fallback)
-
-Configure o roteamento no config do usuário:
-
-```bash
-mkdir -p ~/.config/aiosdeck
-cat > ~/.config/aiosdeck/config.yaml <<'EOF'
-routing:
-  enabled: true
-  default_provider: ollama
-  default_model: llama3
-  rules:
-    - agent: documentation
-      complexity: low
-      provider: ollama
-      model: llama3
-    - agent: research
-      complexity: medium
-      provider: anthropic
-      model: claude-haiku
-    - agent: planner
-      complexity: high
-      provider: anthropic
-      model: claude-sonnet
-    - agent: developer
-      complexity: high
-      provider: anthropic
-      model: claude-sonnet
-  context_limits:
-    planner: 8000
-    developer: 16000
-  cost_cap: 5.0
-  fallback_providers:
-    - provider: ollama
-      model: llama3
-EOF
-```
-
-Agora `aios route explain` reflete a policy (sem executar agente nenhum):
-
-```bash
-aios route explain --agent planner --task-type plan --complexity high
-```
-
-Esperado:
-
-```
-Provider:       anthropic
-Model:          anthropic/claude-sonnet
-Variant:        high
-Reason:         policy:0
-Estimated cost: $...
-Source:         router
-Fallback chain:
-  - ollama/llama3
-```
-
-Pontos críticos:
-- `reason: policy:0` — a decisão é rastreável à regra exata (não mágica).
-- `fallback_chain` — contém `ollama/llama3` vindo de `fallback_providers`.
-- `documentation + low` → `ollama/llama3` (local, custo zero):
-
-```bash
-aios route explain --agent documentation --task-type documentation --complexity low
-```
-
-- `context_limits` — `planner` acima de 8000 tokens não bate na regra e cai na
-  default:
-
-```bash
-aios route explain --agent planner --complexity high --context-size 12000
-```
-
-Esperado: `Reason: heuristic:default` (a regra de planner foi descartada).
-
-**Desligar o router** restaura o caminho legacy (sem `-m` no opencode):
-
-```bash
-AIOS_ROUTING_ENABLED=0 aios route explain --agent planner --json
-```
-
-## Passo 5 — Execução real com fallback (requer opencode + ollama)
-
-Com a policy do Passo 4, o planner tentaria `anthropic/claude-sonnet`. Para
-testar o fallback sem chave de API, aponte uma regra para um modelo que falha:
-
-```bash
-cat > ~/.config/aiosdeck/config.yaml <<'EOF'
-routing:
-  enabled: true
-  default_provider: ollama
-  default_model: llama3
-  rules:
-    - agent: developer
-      complexity: medium
-      provider: anthropic
-      model: claude-opus
-  fallback_providers:
-    - provider: ollama
-      model: llama3
-EOF
-```
-
-Rode uma execução real:
-
-```bash
-aios plan "add a health endpoint" --run
-```
-
-Esperado: o pipeline completa — o runtime tenta `anthropic/claude-opus` (falha
-sem chave → `unavailable`), registra o fallback e cai no `ollama/llama3`.
-A saída do workflow normal não é bloqueada pela falha do modelo primário.
-
-Confira a decisão e o fallback na telemetria (Passo 6).
-
-## Passo 6 — `aios route stats` e `--records`
-
-Depois de pelo menos uma execução real, as decisões aparecem em
-`telemetry_routing`:
-
-```bash
-aios route stats
-```
-
-Esperado — grupos por `agent`/`model` com contagem de rotas, fallbacks, custo
-médio e contexto médio:
-
-```
-Routing stats (N groups):
-  developer   ollama/llama3            routes=1    fallbacks=1 ...
-```
-
-Linhas individuais mostram a decisão + fallback:
-
-```bash
-aios route stats --records
-```
-
-Esperado: `[FALLBACK]` no registro cujo modelo primário falhou:
-
-```
-[<timestamp>] developer     ollama/llama3                   $0.000000 (policy:0) [FALLBACK]
-```
-
-Filtros e JSON:
-
-```bash
-aios route stats --agent developer --json
-aios route stats --model ollama/llama3 --limit 50
-```
-
-Conferir direto no store:
-
-```bash
-sqlite3 .aios/memory.db "SELECT agent, model, reason, fallback_used FROM telemetry_routing;"
-```
-
-## Passo 7 — `aios route stats --accuracy`
-
-Compara o custo estimado do routing com o custo real de `telemetry_costs`
-(JOIN por `correlation_id` + `model`):
-
-```bash
-aios route stats --accuracy
-```
-
-Esperado: `est=$... act=$...` quando ambos existem; caso contrário a query
-retorna **vazio** (sem erro) — backward-compatible antes do v0.9.11 não há
-linhas de routing.
-
-## Passo 8 — Override auditável
-
-`model=` explícito é um contrato interno do `RuntimeEngine.execute` —
-`source="override"`, `reason="explicit_override"`, pula o router. Não há flag
-CLI dedicada: agentes **nunca** escolhem modelo fixo (passam contexto:
-`agent`/`task_type`/`complexity`/`context_size`). O override é coberto pela
-suíte:
-
-```bash
-pytest tests/test_routing_integration.py::TestRuntimeEngineRoutingIntegration::test_explicit_model_override_skips_router -q
-```
-
-## Passo 9 — Caminhos de erro
-
-```bash
-aios route                          # sem subcomando → Usage + exit 1
-aios route bogus                    # subcomando desconhecido → Error + exit 1
-aios route explain --bogus          # opção desconhecida → Error + exit 1
-```
-
-Nenhum traceback Python escapa.
-
-## Verificação da arquitetura (o que a v0.9.11 muda)
-
-- `RouteConfig` no schema (`src/aios/config/schema.py`) com `enabled`,
-  `default_provider/model/variant`, `rules`, `cost_cap`, `context_limits`,
-  `fallback_providers`; env `AIOS_ROUTING_ENABLED` / `AIOS_ROUTING_COST_CAP`.
-- Agentes passam **contexto**, nunca `model=` fixo
-  (`grep -n "model=" src/aios/agents/` não deve achar chamada com modelo hardcoded).
-- Decisões determinísticas: heurística de preço fixa, `reason` rastreável
-  (`policy:N` | `heuristic:default` | `explicit_override`).
-- Fallback com prevenção de loop: se todos os modelos da chain falharem →
-  `RouteFallbackExhausted` (nunca repete infinitamente).
-- Tabela `telemetry_routing` aditiva (adicionada via `CREATE TABLE IF NOT EXISTS`);
-  sem dados de routing o comportamento é idêntico ao anterior.
-- `runtime.route_selected` → `telemetry_routing`; `route_accuracy` JOIN só é
-  computada quando `telemetry_costs` existe.
+- Agentes são executor-free: `grep -n "AgentExecutor" src/aios/agents/planner.py src/aios/agents/developer.py src/aios/agents/reviewer.py src/aios/agents/tester.py src/aios/agents/documentation.py src/aios/agents/git.py src/aios/agents/research.py` não deve achar match.
+- `AgentTask` e `AgentResult` são o único contrato de entrada/saída de agentes.
+- `HeuristicRanker` é o único ranker implementado (TelemetryRanker é post-1.0).
+- Tabelas de telemetria são aditivas (`CREATE TABLE IF NOT EXISTS`).
+- `RunResult` + `StageSummary` são a única interface CLI ↔ execução.
 
 ## Limpeza
 
 ```bash
-rm -rf /tmp/firetest-routing
-# opcional: restaurar config do usuário
-rm ~/.config/aiosdeck/config.yaml
+rm -rf /tmp/firetest-stable
 ```
+
+## Critérios de aceite
+
+| # | Critério | Verificação |
+|---|----------|-------------|
+| 1 | `aios help` lista todos os comandos | Passo 2 |
+| 2 | `aios doctor` saudável | Passo 2 |
+| 3 | `aios ocean` renderiza sem erro | Passo 3 |
+| 4 | Pipeline executa sem crash | Passo 4 |
+| 5 | `telemetry_executions` tem registros | Passo 5 |
+| 6 | `telemetry_tokens` tem registros | Passo 5 |
+| 7 | `telemetry_costs` tem registros | Passo 5 |
+| 8 | Eventos `agent.lifecycle.*` e `agent.execution.*` publicados | Passo 6 |
+| 9 | `aios usage` mostra dados | Passo 5 |
+| 10 | Erros não vazam traceback | Passo 7 |
+| 11 | Agentes executor-free | Passo 8 |
+| 12 | Completion shell funciona | Passo 2 |

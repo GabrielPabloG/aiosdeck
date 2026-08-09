@@ -25,7 +25,7 @@ from aios.agents.executor import AgentExecutor
 from aios.agents.models import AgentResult
 from aios.agents.planner import PlannerAgent
 from aios.agents.reviewer import ReviewerAgent
-from aios.cli.commands import _cmd_plan
+from aios.cli.commands.exec_cmds import cmd_plan as _cmd_plan
 from aios.context import ContextEngine
 from aios.core import Kernel
 from aios.events import EventsEngine

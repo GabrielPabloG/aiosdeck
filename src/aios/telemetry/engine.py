@@ -65,10 +65,26 @@ class TelemetryEngine:
             self._store.close()
             self._store = None
 
-    def query(self, **filters) -> dict:
+    def query(  # noqa: PLR0913 - filters are the telemetry audit contract
+        self,
+        *,
+        agent: str | None = None,
+        model: str | None = None,
+        workflow_id: str | None = None,
+        date_from: str | None = None,
+        date_to: str | None = None,
+        limit: int = 10000,
+    ) -> dict:
         if self._store is None:
             return {"totals": {}, "by_agent": {}, "by_model": {}, "records": [], "cost_records": []}
-        return self._store.aggregate_usage(**filters)
+        return self._store.aggregate_usage(
+            agent=agent,
+            model=model,
+            workflow_id=workflow_id,
+            date_from=date_from,
+            date_to=date_to,
+            limit=limit,
+        )
 
     def record_retrieval(self, metrics: dict) -> None:
         if self._store is None:

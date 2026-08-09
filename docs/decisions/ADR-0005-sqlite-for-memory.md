@@ -1,6 +1,8 @@
 # ADR-0005 — SQLite for Memory Persistence
 
-**Status**: Accepted
+**Status**: Implemented
+**Level**: Implementation
+**Review date**: 2026-08-09
 **Date**: 2026-08-02
 
 ## Context
@@ -20,7 +22,12 @@ We evaluated four storage options:
 
 **Use SQLite for memory persistence.** SQLite is a single file. It requires no server, no configuration, no network access. It is available in Python's standard library (`sqlite3`). It supports full-text search (FTS5) for convention and decision lookup. It supports structured queries for filtering by category, status, and project.
 
-The database file lives at `~/.local/share/aiosdeck/memory.db`. One file, one project's accumulated knowledge.
+The database file resolves in this order:
+1. `./.aios/memory.db` — project-scoped, the default.
+2. `~/.local/share/aiosdeck/memory.db` — global fallback when the project is
+   outside a writable `.aios` directory.
+
+One file, one project's accumulated knowledge.
 
 ## Consequences
 

@@ -1,6 +1,8 @@
 # Phase 06 — Integrations
 
-**Status**: Proposed
+**Status**: Partial
+**Level**: Implementation
+**Review date**: 2026-08-09
 **Date**: 2026-08-02
 **Target Version**: v0.9–v1.0
 

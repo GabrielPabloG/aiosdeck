@@ -1,6 +1,7 @@
 # Architecture
 
-**Status**: Accepted
+**Status**: Implemented — the hub-and-spoke architecture (Kernel + engines) is
+the shipping design of v1.0.
 **Date**: 2026-08-04
 
 ## Context
@@ -49,9 +50,9 @@ The architecture follows a **hub-and-spoke** model: the Kernel is the hub, dispa
                                                │
                                      Documentation Review
                                │
-               ┌────────────────┼─────────────────┐
-               ▼                ▼                  ▼
-            Planner          Coder            Reviewer
+                ┌────────────────┼─────────────────┐
+                ▼                ▼                  ▼
+             Planner        Developer           Reviewer
                │                │                  │
                │  (loads Skills via the active     │
                │   runtime's native skill mechanism│
@@ -166,13 +167,16 @@ aiosdeck/
 ├── agents/                      # Agent implementations
 │   ├── __init__.py
 │   ├── base.py                  # Agent protocol, lifecycle hooks
-│   ├── developer.py             # v0.2: single general-purpose agent
+│   ├── contracts.py             # AgentTask, AgentResult, AgentError, capabilities
+│   ├── executor.py              # AgentExecutor — the single execution boundary
+│   ├── lifecycle.py             # AgentLifecycle state machine
+│   ├── developer.py             # v0.2: implementation agent
 │   ├── planner.py               # v0.4: task decomposition
-│   ├── coder.py                 # v0.8: specialized coding agent
 │   ├── reviewer.py              # v0.5: critique and review
 │   ├── tester.py                # v0.6: test execution
 │   ├── documentation.py         # v0.6: documentation updates
-│   └── git.py                   # v0.7: version control operations
+│   ├── git.py                   # v0.7: version control operations
+│   └── research.py              # v0.9: research agent
 │
 ├── quality/                     # Quality Pipeline
 │   ├── __init__.py
@@ -315,6 +319,38 @@ Invariants enforced by the architecture test suite:
 4. `agent.lifecycle.*` / `agent.execution.*` events: only `AgentExecutor`
    publishes them.
 5. The legacy `agent.execution.finished` vocabulary is removed.
+
+### v1.0 Labeling — What Ships, What Is Deferred
+
+v1.0 is a **stabilization release**: contracts frozen, security closed, dead
+code removed. The following labeling documents what is in the v1.0 core and
+what is explicitly deferred. This is documentation, not code — nothing here is
+guarded by a feature flag.
+
+#### v1.0 Core
+
+- **Learning governance** — the approval-gated pipeline: observation →
+  extraction → human review → ingestion. Deterministic `RulesAdvisor`;
+  no automatic ingestion without review.
+- **`RuleBasedRouter`** — deterministic, policy-driven model routing
+  (`policy:<index>` | `heuristic:default` | `explicit_override`). No
+  telemetry-driven ranking in v1.0.
+- **Basic console** — `aios ocean` overview with semantic design tokens, and
+  the standard CLI (help, completion, doctor, plan, review, research, memory,
+  knowledge, skills, learning, security, policy, quality, route, usage,
+  backlog).
+
+#### Beta-flag / Deferred (post-1.0)
+
+- **Auto-optimization** — automatic learning-ingestion without human review.
+- **TelemetryRanker** — data-driven model ranking. Removed in v1.0; the
+  `ModelRanker` protocol remains in `routing/contracts.py` as a stub contract.
+- **Advanced widgets / forms** — complex TUI widgets beyond the ocean overview.
+- **Plugin system** — dynamic extension loading.
+- **Concurrent execution queue** — parallel agent dispatch.
+- **Desktop / web integrations** — ProjDesk remains the only integration.
+- **Real cost tracking** — `route_accuracy` via parsing opencode
+  `--format json` output.
 
 ### Division of Responsibility Across Ecosystem
 

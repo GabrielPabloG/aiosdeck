@@ -135,21 +135,11 @@ class PromptBuilder:
 
     @staticmethod
     def _smart_skills_section(skill_contexts: list[SkillContext]) -> str:
+        from aios.skills.retrieval import format_skill_header  # noqa: PLC0415
+
         lines = ["## Relevant Skills"]
         for sc in skill_contexts:
-            scored = sc.skill
-            skill = scored.skill
-            trigger_info = (
-                f" [triggers: {', '.join(scored.trigger_matches)}]"
-                if scored.trigger_matches
-                else ""
-            )
-            scope_info = (
-                f" [scope: {', '.join(scored.scope_matches)}]" if scored.scope_matches else ""
-            )
-            lines.append(f"- **{skill.name}** (score={scored.score:.2f}){trigger_info}{scope_info}")
-            if skill.description:
-                lines.append(f"  {skill.description}")
+            lines.append(format_skill_header(sc.skill))
 
         lines.append("")
         for sc in skill_contexts:

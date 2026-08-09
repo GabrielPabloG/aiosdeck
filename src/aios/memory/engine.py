@@ -3,9 +3,9 @@
 SQLite is an implementation detail. This is the public abstraction.
 
 Storage priority:
-1. AIOS_MEMORY_PATH (env — no silent fallback)
-2. ./.aios/memory.db (project-scoped, default)
-3. ~/.local/share/aiosdeck/memory.db (global fallback)
+1. explicit override (via constructor)
+2. AIOS_MEMORY_PATH (env — no silent fallback)
+3. ./.aios/memory.db (project-scoped, default)
 """
 
 from __future__ import annotations

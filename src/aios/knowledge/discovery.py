@@ -36,49 +36,31 @@ def discover_sources(project_path: Path) -> list[SourceCandidate]:
 
 
 def _discover_skills(root: Path) -> list[SourceCandidate]:
-    skills_dir = root / ".opencode" / "skills"
-    if not skills_dir.is_dir():
-        return []
+    """Discover skill sources via SkillRegistry (single source of truth).
+
+    Delegates directory walking and frontmatter parsing to SkillRegistry,
+    avoiding duplicated filesystem scanning logic. Also discovers nested
+    .md files inside skill directories (documentation pages).
+    """
+    from aios.skills.registry import SkillRegistry
+
     results: list[SourceCandidate] = []
-    for entry in sorted(skills_dir.iterdir()):
-        if not entry.is_dir():
-            continue
-        skill_file = entry / "SKILL.md"
-        if skill_file.is_file():
-            stype = "project_dna" if entry.name == "project-dna" else "skill"
-            metadata = _parse_skill_frontmatter(skill_file)
-            results.append(
-                SourceCandidate(
-                    type=stype,
-                    path=_rel(root, skill_file),
-                    metadata=metadata,
-                )
+    registry = SkillRegistry(root)
+    for meta in registry.load(include_deprecated=True):
+        skill_dir = registry._project_path / ".opencode" / "skills" / meta.name
+        stype = "project_dna" if meta.name == "project-dna" else "skill"
+        results.append(
+            SourceCandidate(
+                type=stype,
+                path=_rel(root, skill_dir / "SKILL.md"),
+                metadata=meta.to_dict(),
             )
-        for md_file in sorted(entry.rglob("*.md")):
-            if md_file == skill_file or md_file.parent == entry:
+        )
+        for md_file in sorted(skill_dir.rglob("*.md")):
+            if md_file.name == "SKILL.md":
                 continue
-            results.append(
-                SourceCandidate(
-                    type=stype,
-                    path=_rel(root, md_file),
-                )
-            )
+            results.append(SourceCandidate(type=stype, path=_rel(root, md_file)))
     return results
-
-
-def _parse_skill_frontmatter(skill_file: Path) -> dict:
-    try:
-        text = skill_file.read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        return {}
-    try:
-        from aios.skills.metadata import SkillMetadata
-
-        meta = SkillMetadata.from_frontmatter(text)
-        return meta.to_dict()
-    except Exception:
-        logger.debug("Could not parse frontmatter from %s", skill_file)
-        return {}
 
 
 def _discover_adrs(root: Path) -> list[SourceCandidate]:

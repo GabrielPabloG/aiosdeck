@@ -1,6 +1,7 @@
 # Plugin System
 
-**Status**: Proposed
+**Status**: Planned (post-1.0)
+**Review date**: 2026-08-09
 **Date**: 2026-08-02
 
 ## Context

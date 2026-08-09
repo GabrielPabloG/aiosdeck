@@ -1,6 +1,7 @@
 # Vision
 
-**Status**: Accepted
+**Status**: Implemented — the orchestration vision is realized in the v1.0 core
+(coordinated agents, kernel governance, security boundaries, memory).
 **Date**: 2026-08-02
 
 ## Context

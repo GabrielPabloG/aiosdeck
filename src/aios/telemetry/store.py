@@ -1,4 +1,18 @@
-"""SQLite storage backend for telemetry. Implementation detail of TelemetryEngine."""
+"""SQLite storage backend for telemetry — single-responsibility module.
+
+Owns all SQLite operations for the telemetry domain: schema creation
+(9 tables: executions, tokens, costs, events, routing, skills, quality,
+security, generic), write paths (record + aggregate), read paths (query,
+stats, accuracy), and connection lifecycle (open, close, migrate).
+
+This file intentionally stays as one module — splitting the SQLite
+orchestration across multiple files would spread schema coupling and
+transaction management without benefit. The 9 tables share a single
+connection, a single migration path, and a single data directory.
+
+Post-1.0: consider extracting the individual table repositories into
+separate modules when schema migration complexity warrants it.
+"""
 
 import json
 import logging
@@ -556,7 +570,7 @@ class TelemetryStore:
             for row in rows
         ]
 
-    def aggregate_usage(
+    def aggregate_usage(  # noqa: PLR0913 - filters are the telemetry audit contract
         self,
         *,
         agent: str | None = None,
@@ -564,6 +578,7 @@ class TelemetryStore:
         workflow_id: str | None = None,
         date_from: str | None = None,
         date_to: str | None = None,
+        limit: int = 10000,
     ) -> dict:
         usage_rows = self.query_usage(
             agent=agent,
@@ -571,7 +586,7 @@ class TelemetryStore:
             workflow_id=workflow_id,
             date_from=date_from,
             date_to=date_to,
-            limit=10000,
+            limit=limit,
         )
         cost_rows = self.query_costs(
             agent=agent,
@@ -579,7 +594,7 @@ class TelemetryStore:
             workflow_id=workflow_id,
             date_from=date_from,
             date_to=date_to,
-            limit=10000,
+            limit=limit,
         )
 
         total_input = sum(r["input_tokens"] or 0 for r in usage_rows)
