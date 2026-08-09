@@ -4,7 +4,7 @@ import logging
 from collections.abc import Callable
 from contextlib import suppress
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from aios.agents.contracts import coerce_task
 from aios.agents.executor import make_request
@@ -154,12 +154,14 @@ class Kernel:
     def get_engine(self, name: str):
         return self._engines.get(name)
 
-    def run(
+    def run(  # noqa: PLR0913, PLR0917
         self,
         task: Task,
         context,
         mode: Literal["plan", "plan-run"] = "plan",
         on_stage: Callable[[StageSummary], None] | None = None,
+        commit_factory: Callable[[Any], str] | None = None,
+        create_branch: bool = True,
     ) -> RunResult:
         """Canonical task entry point.
 
@@ -168,9 +170,12 @@ class Kernel:
         callers never reach into individual agents. Failures are normalized into
         ``RunResult.errors`` with a friendly message. Agent work always routes
         through the single AgentExecutor boundary.
+
+        ``commit_factory`` and ``create_branch`` are forwarded to the workflow
+        engine when mode is ``plan-run``.
         """
         if mode == "plan-run":
-            return self._run_workflow(task, context, on_stage)
+            return self._run_workflow(task, context, on_stage, commit_factory, create_branch)
         return self._run_plan(task, context)
 
     def run_agent(self, name: str, task: Task, context=None) -> RunResult:
@@ -210,6 +215,8 @@ class Kernel:
         task: Task,
         context,
         on_stage: Callable[[StageSummary], None] | None,
+        commit_factory: Callable[[Any], str] | None = None,
+        create_branch: bool = True,
     ) -> RunResult:
         workflow = self._engines.get("workflow")
         if workflow is None:
@@ -218,7 +225,11 @@ class Kernel:
         if on_stage is not None:
             wrapped = lambda stage: on_stage(stage_to_summary(stage))  # noqa: E731
         try:
-            result = workflow.execute(task, context, on_stage=wrapped)
+            result = workflow.execute(
+                task, context, on_stage=wrapped,
+                commit_factory=commit_factory,
+                create_branch=create_branch,
+            )
         except Exception as exc:  # noqa: BLE001 - surface a friendly message
             return RunResult(success=False, errors=(f"Workflow failed: {exc}",))
         return RunResult.from_workflow(result)
