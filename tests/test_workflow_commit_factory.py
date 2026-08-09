@@ -57,9 +57,7 @@ def test_kernel_run_positional_compatible() -> None:
 
 def test_commit_factory_derived_from_title() -> None:
     """Backlog runner will derive commit_factory from parsed title."""
-    typ, scope, subject, version = parse_conventional(
-        "feat(backlog): add task models (v0.9.13)"
-    )
+    typ, scope, subject, version = parse_conventional("feat(backlog): add task models (v0.9.13)")
     scope_part = f"({scope})" if scope else ""
     version_part = f" ({version})" if version else ""
     message = f"{typ}{scope_part}: {subject}{version_part}"

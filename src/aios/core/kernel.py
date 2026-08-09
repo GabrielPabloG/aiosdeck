@@ -226,7 +226,9 @@ class Kernel:
             wrapped = lambda stage: on_stage(stage_to_summary(stage))  # noqa: E731
         try:
             result = workflow.execute(
-                task, context, on_stage=wrapped,
+                task,
+                context,
+                on_stage=wrapped,
                 commit_factory=commit_factory,
                 create_branch=create_branch,
             )

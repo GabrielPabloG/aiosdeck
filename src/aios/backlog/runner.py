@@ -25,9 +25,7 @@ class BacklogRunner:
         results: list[BacklogRunResult] = []
         for i, task in enumerate(tasks):
             if i < from_index:
-                results.append(
-                    BacklogRunResult(task=task, status="skipped", duration_ms=0.0)
-                )
+                results.append(BacklogRunResult(task=task, status="skipped", duration_ms=0.0))
                 continue
 
             if on_task_start:
