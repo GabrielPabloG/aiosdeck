@@ -320,6 +320,38 @@ Invariants enforced by the architecture test suite:
    publishes them.
 5. The legacy `agent.execution.finished` vocabulary is removed.
 
+### v1.0 Labeling — What Ships, What Is Deferred
+
+v1.0 is a **stabilization release**: contracts frozen, security closed, dead
+code removed. The following labeling documents what is in the v1.0 core and
+what is explicitly deferred. This is documentation, not code — nothing here is
+guarded by a feature flag.
+
+#### v1.0 Core
+
+- **Learning governance** — the approval-gated pipeline: observation →
+  extraction → human review → ingestion. Deterministic `RulesAdvisor`;
+  no automatic ingestion without review.
+- **`RuleBasedRouter`** — deterministic, policy-driven model routing
+  (`policy:<index>` | `heuristic:default` | `explicit_override`). No
+  telemetry-driven ranking in v1.0.
+- **Basic console** — `aios ocean` overview with semantic design tokens, and
+  the standard CLI (help, completion, doctor, plan, review, research, memory,
+  knowledge, skills, learning, security, policy, quality, route, usage,
+  backlog).
+
+#### Beta-flag / Deferred (post-1.0)
+
+- **Auto-optimization** — automatic learning-ingestion without human review.
+- **TelemetryRanker** — data-driven model ranking. Removed in v1.0; the
+  `ModelRanker` protocol remains in `routing/contracts.py` as a stub contract.
+- **Advanced widgets / forms** — complex TUI widgets beyond the ocean overview.
+- **Plugin system** — dynamic extension loading.
+- **Concurrent execution queue** — parallel agent dispatch.
+- **Desktop / web integrations** — ProjDesk remains the only integration.
+- **Real cost tracking** — `route_accuracy` via parsing opencode
+  `--format json` output.
+
 ### Division of Responsibility Across Ecosystem
 
 ```
