@@ -9,6 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Ocean Console (v0.9.12)** — a dark, marine dashboard for `aios ocean`,
+  rendered entirely through semantic design tokens.
+  - **Theme** — `Theme`/`ColorResolver`/`ColorMode` (`COLOR`/`256`/`MONO`)
+    with `detect_color_mode` (`NO_COLOR` kill switch) and the deep-water
+    `ocean_theme`; widgets consume tokens via the resolver, never raw ANSI.
+  - **Components** — `render_panel`, `render_progress`, `render_status_pill`,
+    `render_metric_card`, `render_section_header`, `render_table`, driven by
+    `RenderContext` (`width`/`height`/`compact`); collapsible when the
+    terminal is under 80 columns or 24 rows.
+  - **Overview** — data-driven `render_page` composed from
+    `datasources.py` (`overview_data`, `workflows_data`, `agents_data`,
+    `skills_data`, `knowledge_data`, `usage_data`, `quality_data`,
+    `settings_data`), with safe empty states.
+  - **TUI** — interactive loop (keys `1..8`, `tab`, `Shift+tab`, `r`, `q`)
+    that blocks on input and redraws per key; static fallback when not a TTY;
+    `aios ocean [--page NAME] [--once] [--json] [--refresh N]`.
+  - **Settings `--save`** — `settings_io` (`load_ui_section` /
+    `save_ui_section`) persists only the `ui:` section of
+    `~/.config/aiosdeck/config.yaml` atomically; PyYAML is a soft dependency
+    (no-op when absent); never writes without `--save`.
+  - **Routing pricing** — `_MODEL_PRICING` now prices openrouter models
+    (`deepseek-v4-flash` 0.068, `qwen3-coder` 0.22, `gpt-5-mini` 0.30,
+    `claude-sonnet-4-5` 3.0 per 1M input tokens); `_estimate_cost` super-
+    estimates output (3× input, fail-closed) and `cost_cap` forces the cheap
+    fallback when a primary exceeds the budget.
+
 - **Model Router (v0.9.11)** — separates model decision from agent execution.
   Policy rules (and, later, telemetry data) pick the model; agents only describe
   what they are doing.

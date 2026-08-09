@@ -201,3 +201,73 @@ class TestRuleBasedRouter:
         decision = router.route(RouteInput(agent="planner"))
         providers = [f["provider"] for f in decision.fallback_chain]
         assert providers.count("ollama") == 1
+
+
+_OPENROUTER_SLUGS = [
+    "openrouter/deepseek/deepseek-v4-flash",
+    "openrouter/qwen/qwen3-coder",
+    "openrouter/openai/gpt-5-mini",
+    "openrouter/anthropic/claude-sonnet-4-5",
+]
+
+
+class TestOpenRouterPricing:
+    """OpenRouter models are priced (estimated_cost > 0) and cappable."""
+
+    @pytest.mark.parametrize("slug", _OPENROUTER_SLUGS)
+    def test_openrouter_slug_has_cost(self, slug: str) -> None:
+        config = RouteConfig(
+            default_provider="ollama",
+            default_model="llama3",
+            rules=[{"agent": "planner", "model": slug}],
+        )
+        decision = RuleBasedRouter(config).route(
+            RouteInput(agent="planner", complexity="medium", context_size=10000)
+        )
+        assert decision.estimated_cost > 0
+
+    def test_cost_cap_forces_cheap_openrouter_fallback(self) -> None:
+        config = RouteConfig(
+            default_provider="ollama",
+            default_model="llama3",
+            cost_cap=0.001,
+            rules=[
+                {
+                    "agent": "planner",
+                    "complexity": "high",
+                    "provider": "anthropic",
+                    "model": "openrouter/anthropic/claude-sonnet-4-5",
+                },
+            ],
+            fallback_providers=[{"provider": "ollama", "model": "llama3"}],
+        )
+        decision = RuleBasedRouter(config).route(
+            RouteInput(agent="planner", complexity="high", context_size=20000)
+        )
+        assert decision.provider == "ollama"
+        assert decision.model == "ollama/llama3"
+        assert decision.reason == "policy:0+cost_cap"
+        assert decision.estimated_cost <= config.cost_cap
+
+    def test_openrouter_explicit_variant_preserved(self) -> None:
+        config = RouteConfig(
+            default_provider="ollama",
+            default_model="llama3",
+            rules=[
+                {
+                    "agent": "planner",
+                    "model": "openrouter/qwen/qwen3-coder",
+                    "variant": "official",
+                },
+            ],
+        )
+        decision = RuleBasedRouter(config).route(RouteInput(agent="planner"))
+        assert decision.variant == "official"
+        assert decision.model == "openrouter/qwen/qwen3-coder"
+        assert decision.estimated_cost > 0
+
+    def test_default_ollama_llama3_still_free(self) -> None:
+        config = RouteConfig(default_provider="ollama", default_model="llama3")
+        decision = RuleBasedRouter(config).route(RouteInput(agent="planner"))
+        assert decision.model == "ollama/llama3"
+        assert decision.estimated_cost == 0.0

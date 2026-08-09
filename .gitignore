@@ -19,5 +19,7 @@ venv/
 .coverage
 htmlcov/
 **/.aios/memory.db
+**/.aios/memory.db-shm
+**/.aios/memory.db-wal
 .ai-jail
 TODO.md

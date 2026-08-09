@@ -60,6 +60,10 @@ class ConfigLoader:
             "AIOS_PROJECTS_DIR": "project.directory",
             "AIOS_ROUTING_ENABLED": "routing.enabled",
             "AIOS_ROUTING_COST_CAP": "routing.cost_cap",
+            "AIOS_UI_THEME": "ui.theme",
+            "AIOS_UI_ACCENT_INTENSITY": "ui.accent_intensity",
+            "AIOS_UI_COMPACT": "ui.compact",
+            "AIOS_UI_REFRESH_INTERVAL": "ui.refresh_interval",
         }
         for env_var, field_path in env_map.items():
             value = os.environ.get(env_var)
@@ -120,6 +124,12 @@ class ConfigLoader:
                 "fallback_providers": "routing.fallback_providers",
             },
             "project": {"name": "project.name", "directory": "project.directory"},
+            "ui": {
+                "theme": "ui.theme",
+                "accent_intensity": "ui.accent_intensity",
+                "compact": "ui.compact",
+                "refresh_interval": "ui.refresh_interval",
+            },
         }
         source = str(config_path)
         self._apply_mapped(data, config, user_map, source)
@@ -182,8 +192,8 @@ class ConfigLoader:
 
     @staticmethod
     def _coerce(value: str, field_path: str) -> Any:
-        if field_path.endswith(".enabled"):
+        if field_path.endswith((".enabled", ".compact")):
             return value.lower() in ("true", "1", "yes")
-        if field_path.endswith(".cost_cap"):
+        if field_path.endswith((".cost_cap", ".accent_intensity", ".refresh_interval")):
             return float(value)
         return value

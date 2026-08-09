@@ -48,7 +48,8 @@ class TestRouteConfig:
 
 
 class TestConfigLoaderRouting:
-    def test_env_routing_enabled(self):
+    def test_env_routing_enabled(self, monkeypatch, tmp_path):
+        monkeypatch.setattr(Path, "home", lambda: tmp_path)
         old = os.environ.get("AIOS_ROUTING_ENABLED")
         try:
             os.environ["AIOS_ROUTING_ENABLED"] = "0"

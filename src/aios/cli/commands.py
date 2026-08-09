@@ -48,6 +48,7 @@ from aios.skills.cli import (
     cmd_skills_stats,
 )
 from aios.telemetry.cli import cmd_usage
+from aios.ui.cli import _cmd_ocean
 
 VERSION_TEXT = f"AiosDeck v{__version__}"
 
@@ -74,7 +75,27 @@ def _error(msg: str) -> None:
 
 def _cmd_dashboard(raw_args: list[str], project_path: Path, kernel_factory: Callable) -> None:
     kernel = kernel_factory(project_path)
-    kernel.start()
+    kernel.start(render_dashboard=False)
+
+    from aios.ui import (  # noqa: PLC0415
+        PAGE_NAMES,
+        ColorResolver,
+        RenderContext,
+        detect_color_mode,
+        ocean_theme,
+        overview_data,
+        render_page,
+        run_tui,
+    )
+
+    mode = detect_color_mode()
+    resolver = ColorResolver(ocean_theme, mode)
+
+    def _render(page_name: str) -> str:
+        data = overview_data(kernel)
+        return render_page(page_name, data, RenderContext(resolver=resolver))
+
+    run_tui(_render, PAGE_NAMES)
 
 
 def _cmd_doctor(raw_args: list[str], project_path: Path, kernel_factory: Callable) -> None:
@@ -545,6 +566,7 @@ def _print_help() -> None:
     print("  aios knowledge <cmd>   Manage knowledge store (index/search/sources)")
     print("  aios skills <cmd>     Discover skills and view lifecycle stats")
     print("  aios learning <cmd>   Manage learning governance (candidates, approval)")
+    print("  aios ocean [opts]     Open the ocean dashboard (interactive TUI)")
     print("  aios route <cmd>      Explain or inspect model routing decisions")
     print("  aios help             Show this help")
     print()
@@ -944,6 +966,11 @@ COMMANDS: dict[str, Command] = {
             ),
         },
         execute=_cmd_learning,
+    ),
+    "ocean": Command(
+        name="ocean",
+        description="Open the ocean dashboard (interactive TUI)",
+        execute=_cmd_ocean,
     ),
     "exit": Command(
         name="exit",

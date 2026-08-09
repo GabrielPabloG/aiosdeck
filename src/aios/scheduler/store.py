@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from aios.scheduler.models import COLUMNS, KanbanBoard, KanbanCard, KanbanError, KanbanSubtask
+from aios.storage.threadsafe import ThreadSafeConnection, connect_threadsafe
 
 logger = logging.getLogger("aios.scheduler.store")
 
@@ -48,7 +49,7 @@ class KanbanStore:
     def __init__(self, db_path: Path, project_id: str) -> None:
         self._db_path = db_path
         self._project_id = project_id
-        self._conn: sqlite3.Connection | None = None
+        self._conn: ThreadSafeConnection | None = None
 
     def open(self) -> None:
         try:
@@ -57,7 +58,7 @@ class KanbanStore:
             raise KanbanError(f"Cannot create directory: {self._db_path.parent}") from exc
 
         try:
-            self._conn = sqlite3.connect(str(self._db_path))
+            self._conn = connect_threadsafe(self._db_path)
             self._conn.execute("PRAGMA journal_mode=WAL")
             self._conn.execute("PRAGMA foreign_keys = ON")
             self._conn.executescript(SCHEMA)
