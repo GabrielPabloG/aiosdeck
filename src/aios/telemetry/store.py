@@ -564,6 +564,7 @@ class TelemetryStore:
         workflow_id: str | None = None,
         date_from: str | None = None,
         date_to: str | None = None,
+        limit: int = 10000,
     ) -> dict:
         usage_rows = self.query_usage(
             agent=agent,
@@ -571,7 +572,7 @@ class TelemetryStore:
             workflow_id=workflow_id,
             date_from=date_from,
             date_to=date_to,
-            limit=10000,
+            limit=limit,
         )
         cost_rows = self.query_costs(
             agent=agent,
@@ -579,7 +580,7 @@ class TelemetryStore:
             workflow_id=workflow_id,
             date_from=date_from,
             date_to=date_to,
-            limit=10000,
+            limit=limit,
         )
 
         total_input = sum(r["input_tokens"] or 0 for r in usage_rows)
