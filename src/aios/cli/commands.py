@@ -74,7 +74,27 @@ def _error(msg: str) -> None:
 
 def _cmd_dashboard(raw_args: list[str], project_path: Path, kernel_factory: Callable) -> None:
     kernel = kernel_factory(project_path)
-    kernel.start()
+    kernel.start(render_dashboard=False)
+
+    from aios.ui import (  # noqa: PLC0415
+        PAGE_NAMES,
+        ColorResolver,
+        RenderContext,
+        detect_color_mode,
+        ocean_theme,
+        overview_data,
+        render_page,
+        run_tui,
+    )
+
+    mode = detect_color_mode()
+    resolver = ColorResolver(ocean_theme, mode)
+
+    def _render(page_name: str) -> str:
+        data = overview_data(kernel)
+        return render_page(page_name, data, RenderContext(resolver=resolver))
+
+    run_tui(_render, PAGE_NAMES)
 
 
 def _cmd_doctor(raw_args: list[str], project_path: Path, kernel_factory: Callable) -> None:

@@ -15,6 +15,7 @@ from aios.ui.components import (
     render_panel,
     render_section_header,
     render_status_pill,
+    render_table,
 )
 
 
@@ -62,24 +63,16 @@ def _render_overview(data: dict[str, Any], ctx: RenderContext) -> str:
     ready_count = sum(1 for s in engines.values() if s == "ready")
     errors = status.get("errors", [])
     health_tone = "danger" if errors else "success" if ready_count == len(engines) else "warning"
-    health_label = (
-        f"{ready_count}/{len(engines)} ready"
-        if engines
-        else "no engines"
-    )
+    health_label = f"{ready_count}/{len(engines)} ready" if engines else "no engines"
     metrics.append(render_metric_card(ctx, "Engines", health_label, tone=health_tone))
 
     if runtime:
         runtime_tone = "success" if runtime.get("healthy") else "danger"
         runtime_label = "Runtime OK" if runtime.get("healthy") else "Runtime Down"
-        metrics.append(
-            render_status_pill(ctx, runtime_label, tone=runtime_tone)
-        )
+        metrics.append(render_status_pill(ctx, runtime_label, tone=runtime_tone))
         sandbox_tone = "info" if runtime.get("has_sandbox") else "warning"
         sandbox_label = "Sandbox" if runtime.get("has_sandbox") else "No Sandbox"
-        metrics.append(
-            render_status_pill(ctx, sandbox_label, tone=sandbox_tone)
-        )
+        metrics.append(render_status_pill(ctx, sandbox_label, tone=sandbox_tone))
 
     sections.extend(metrics)
 
@@ -104,6 +97,165 @@ def _render_overview(data: dict[str, Any], ctx: RenderContext) -> str:
     return "\n".join(lines)
 
 
+def _render_workflows(data: dict[str, Any], ctx: RenderContext) -> str:
+    lines: list[str] = []
+    sections = []
+
+    sections.append(render_section_header(ctx, "Workflows", tone="info"))
+
+    healthy = data.get("healthy", False)
+    sections.append(
+        render_status_pill(
+            ctx,
+            "Healthy" if healthy else "Unhealthy",
+            tone="success" if healthy else "danger",
+        )
+    )
+
+    agents: dict = data.get("agents", {})
+    optional: list = data.get("optional", [])
+    if agents:
+        rows = [
+            [name, "✓" if avail else "—", "(opt)" if name in optional else ""]
+            for name, avail in agents.items()
+        ]
+        sections.append(render_table(ctx, ["Agent", "Available", ""], rows, tone="info"))
+
+    lines = [s for s in sections if s]
+    return "\n".join(lines)
+
+
+def _render_agents(data: dict[str, Any], ctx: RenderContext) -> str:
+    sections = []
+    sections.append(render_section_header(ctx, "Agents", tone="info"))
+
+    if not data:
+        sections.append(render_metric_card(ctx, "Agents", "no data", tone="warning"))
+    else:
+        rows = [[agent, str(count)] for agent, count in data.items()]
+        sections.append(render_table(ctx, ["Agent", "Executions"], rows, tone="info"))
+
+    return "\n".join(s for s in sections if s)
+
+
+def _render_skills(data: dict[str, Any], ctx: RenderContext) -> str:
+    sections = []
+    sections.append(render_section_header(ctx, "Skills", tone="info"))
+
+    if isinstance(data, list) and data:
+        rows = [
+            [
+                s.get("name", ""),
+                str(s.get("invocations", 0)),
+                f"{s.get('avg_duration_ms', 0):.0f}ms",
+            ]
+            for s in data
+        ]
+        sections.append(
+            render_table(ctx, ["Skill", "Invocations", "Avg Duration"], rows, tone="info")
+        )
+    else:
+        sections.append(render_metric_card(ctx, "Skills", "no data", tone="warning"))
+
+    return "\n".join(s for s in sections if s)
+
+
+def _render_knowledge(data: dict[str, Any], ctx: RenderContext) -> str:
+    sections = []
+    sections.append(render_section_header(ctx, "Knowledge", tone="info"))
+
+    if isinstance(data, list) and data:
+        rows = [
+            [s.get("source", ""), str(s.get("retrievals", 0)), f"{s.get('confidence', 0):.2f}"]
+            for s in data
+        ]
+        sections.append(
+            render_table(ctx, ["Source", "Retrievals", "Confidence"], rows, tone="info")
+        )
+    else:
+        sections.append(render_metric_card(ctx, "Knowledge", "no data", tone="warning"))
+
+    return "\n".join(s for s in sections if s)
+
+
+def _render_usage(data: dict[str, Any], ctx: RenderContext) -> str:
+    sections = []
+    sections.append(render_section_header(ctx, "Usage", tone="info"))
+
+    totals: dict = data.get("totals", {})
+    if totals:
+        for key, value in totals.items():
+            sections.append(render_metric_card(ctx, key.capitalize(), str(value), tone="success"))
+
+    by_agent: dict = data.get("by_agent", {})
+    if by_agent:
+        sections.append(render_section_header(ctx, "Per Agent", tone="info"))
+        rows = [[agent, str(count)] for agent, count in by_agent.items()]
+        sections.append(render_table(ctx, ["Agent", "Calls"], rows, tone="info"))
+
+    by_model: dict = data.get("by_model", {})
+    if by_model:
+        sections.append(render_section_header(ctx, "Per Model", tone="info"))
+        rows = [[model, str(count)] for model, count in by_model.items()]
+        sections.append(render_table(ctx, ["Model", "Calls"], rows, tone="info"))
+
+    costs: list = data.get("cost_records", [])
+    if costs:
+        sections.append(render_section_header(ctx, "Costs", tone="info"))
+        rows = [
+            [c.get("agent", ""), c.get("model", ""), f"${c.get('cost', 0):.4f}"] for c in costs[:10]
+        ]
+        sections.append(render_table(ctx, ["Agent", "Model", "Cost"], rows, tone="info"))
+
+    return "\n".join(s for s in sections if s)
+
+
+def _render_quality(data: dict[str, Any], ctx: RenderContext) -> str:
+    sections = []
+    sections.append(render_section_header(ctx, "Quality Gates", tone="info"))
+
+    if isinstance(data, list) and data:
+        rows = [
+            [g.get("gate", ""), g.get("status", ""), str(g.get("duration_ms", 0))] for g in data
+        ]
+        sections.append(render_table(ctx, ["Gate", "Status", "Duration (ms)"], rows, tone="info"))
+    else:
+        sections.append(render_metric_card(ctx, "Quality", "no data", tone="warning"))
+
+    return "\n".join(s for s in sections if s)
+
+
+def _render_settings(data: dict[str, Any], ctx: RenderContext) -> str:
+    sections = []
+    sections.append(render_section_header(ctx, "Settings", tone="info"))
+
+    if isinstance(data, list) and data:
+        rows = [[s.get("provider", ""), s.get("model", ""), s.get("status", "")] for s in data]
+        sections.append(render_table(ctx, ["Provider", "Model", "Status"], rows, tone="info"))
+    else:
+        sections.append(render_metric_card(ctx, "Settings", "no data", tone="warning"))
+
+    return "\n".join(s for s in sections if s)
+
+
+PAGE_NAMES = [
+    "overview",
+    "workflows",
+    "agents",
+    "skills",
+    "knowledge",
+    "usage",
+    "quality",
+    "settings",
+]
+
 _PAGES: dict[str, Any] = {
     "overview": _render_overview,
+    "workflows": _render_workflows,
+    "agents": _render_agents,
+    "skills": _render_skills,
+    "knowledge": _render_knowledge,
+    "usage": _render_usage,
+    "quality": _render_quality,
+    "settings": _render_settings,
 }

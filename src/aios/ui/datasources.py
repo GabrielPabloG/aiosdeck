@@ -27,8 +27,8 @@ def overview_data(kernel: Kernel) -> dict[str, Any]:
     """
     status = kernel.status()
 
-    workflow = _workflow_data(kernel)
-    usage_today = _usage_data(kernel)
+    workflow = workflows_data(kernel)
+    usage_today = usage_data(kernel)
     runtime = _runtime_data(kernel)
 
     return {
@@ -39,7 +39,7 @@ def overview_data(kernel: Kernel) -> dict[str, Any]:
     }
 
 
-def _workflow_data(kernel: Kernel) -> dict[str, Any]:
+def workflows_data(kernel: Kernel) -> dict[str, Any]:
     engine = kernel.get_engine("workflow")
     if engine is None:
         return {"healthy": False, "agents": {}, "optional": []}
@@ -54,12 +54,47 @@ def _workflow_data(kernel: Kernel) -> dict[str, Any]:
     }
 
 
-def _usage_data(kernel: Kernel) -> dict[str, Any]:
+def usage_data(kernel: Kernel) -> dict[str, Any]:
     engine = kernel.get_engine("telemetry")
     if engine is None:
         return {"totals": {}, "by_agent": {}, "by_model": {}, "records": [], "cost_records": []}
     today = datetime.now(UTC).strftime("%Y-%m-%d")
     return engine.query(date_from=today, date_to=today)
+
+
+def agents_data(kernel: Kernel) -> dict[str, Any]:
+    engine = kernel.get_engine("telemetry")
+    if engine is None:
+        return {}
+    return engine.query().get("by_agent", {})
+
+
+def skills_data(kernel: Kernel) -> list[dict[str, Any]]:
+    engine = kernel.get_engine("telemetry")
+    if engine is None:
+        return []
+    return engine.query_skill_stats()
+
+
+def knowledge_data(kernel: Kernel) -> list[dict[str, Any]]:
+    engine = kernel.get_engine("telemetry")
+    if engine is None:
+        return []
+    return engine.query_retrieval()
+
+
+def quality_data(kernel: Kernel) -> list[dict[str, Any]]:
+    engine = kernel.get_engine("telemetry")
+    if engine is None:
+        return []
+    return engine.query_gate_stats()
+
+
+def settings_data(kernel: Kernel) -> list[dict[str, Any]]:
+    engine = kernel.get_engine("telemetry")
+    if engine is None:
+        return []
+    return engine.query_routing_stats()
 
 
 def _runtime_data(kernel: Kernel) -> dict[str, Any]:

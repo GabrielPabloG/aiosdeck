@@ -52,14 +52,15 @@ class Kernel:
         """Attach the single AgentExecutor execution boundary."""
         self._executor = executor
 
-    def start(self) -> None:
+    def start(self, render_dashboard: bool = True) -> None:
         logging.basicConfig(level=logging.INFO, format="%(message)s")
 
         self._print_banner()
         self._initialize_engines()
         self._wire_event_bus()
         self._enrich_context_with_memory()
-        self._render_dashboard()
+        if render_dashboard:
+            self._render_dashboard()
 
         if self._errors:
             logger.warning("\n Warnings:")
