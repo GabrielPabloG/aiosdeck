@@ -196,3 +196,73 @@ class TestRefresh:
         assert result is None
         assert refresh.count == 1
         assert capture.pages == ["overview", "agents", "agents"]
+
+
+class TestStdioRegression:
+    """Regressão: o loop bloqueia em input (sem polling de 0.3s)."""
+
+    def test_stdio_renders_once_then_quits(self, monkeypatch, capsys) -> None:
+        monkeypatch.setattr("aios.ui.tui._is_tty", lambda: True)
+
+        capture = _RenderCapture()
+
+        def fake_read_keys(timeout=None) -> list[str]:
+            return ["q"]
+
+        monkeypatch.setattr("aios.ui.tui._read_keys_stdio", fake_read_keys)
+        result = run_tui(capture, PAGE_NAMES)
+        assert result is None
+        assert capture.pages == ["overview"]  # 1 render, sem loop
+        assert "<<overview>>" in capsys.readouterr().out
+
+    def test_stdio_no_keys_does_not_redraw(self, monkeypatch, capsys) -> None:
+        monkeypatch.setattr("aios.ui.tui._is_tty", lambda: True)
+        capture = _RenderCapture()
+        calls = {"n": 0}
+
+        def fake_read_keys(timeout=None) -> list[str]:
+            calls["n"] += 1
+            return ["q"] if calls["n"] >= 3 else []
+
+        monkeypatch.setattr("aios.ui.tui._read_keys_stdio", fake_read_keys)
+        result = run_tui(capture, PAGE_NAMES)
+        assert result is None
+        assert capture.pages == ["overview"]  # NÃO re-renderiza no vazio
+
+    def test_stdio_r_key_redraws(self, monkeypatch, capsys) -> None:
+        monkeypatch.setattr("aios.ui.tui._is_tty", lambda: True)
+        capture = _RenderCapture()
+        keys = iter(["r", "q"])
+
+        def fake_read_keys(timeout=None) -> list[str]:
+            return [next(keys)]
+
+        monkeypatch.setattr("aios.ui.tui._read_keys_stdio", fake_read_keys)
+        result = run_tui(capture, PAGE_NAMES)
+        assert result is None
+        assert capture.pages == ["overview", "overview"]
+
+    def test_stdio_shows_footer_once(self, monkeypatch, capsys) -> None:
+        monkeypatch.setattr("aios.ui.tui._is_tty", lambda: True)
+        capture = _RenderCapture()
+        keys = iter(["r", "q"])
+
+        def fake_read_keys(timeout=None) -> list[str]:
+            return [next(keys)]
+
+        monkeypatch.setattr("aios.ui.tui._read_keys_stdio", fake_read_keys)
+        run_tui(capture, PAGE_NAMES)
+        out = capsys.readouterr().out
+        assert out.count("q quit") == 1  # rodapé só na 1ª render
+        assert out.count("<<overview>>") == 2
+
+    def test_cmd_ocean_prints_non_tty_fallback(self, monkeypatch, capsys, tmp_path) -> None:
+        from types import SimpleNamespace
+
+        import aios.ui
+        from aios.ui import cli as ui_cli
+
+        fake_kernel = SimpleNamespace(start=lambda render_dashboard=None: None)
+        monkeypatch.setattr(aios.ui, "run_tui", lambda *a, **k: "<<overview>>")
+        ui_cli._cmd_ocean([], tmp_path, lambda project: fake_kernel)
+        assert "<<overview>>" in capsys.readouterr().out

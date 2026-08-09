@@ -22,18 +22,19 @@ _CMD_REFRESH = "r"
 _CMD_NEXT = "\t"
 _CMD_PREV = "\x1b[Z"  # shift+tab
 
-_FALLBACK_DURATION_S = 0.3
 _MAX_KEYS = 16
+
+_FOOTER = "q quit \u00b7 r refresh \u00b7 tab next"
 
 _BACKUP = 100
 
 
-def _read_keys_stdio(timeout_s: float = _FALLBACK_DURATION_S) -> list[str]:
-    """Read available keypresses from stdin using termios/select.
+def _read_keys_stdio(timeout: float | None = None) -> list[str]:
+    """Block and read keypresses from stdin using termios/select.
 
-    Returns a list of key strings (normally one, but multiple keys may arrive
-    between polls).  Returns ``[]`` when no data is available within the
-    timeout.
+    With ``timeout=None`` this blocks indefinitely until at least one key is
+    pressed (no polling).  Returns a list of key strings (normally one, but
+    multiple keys may arrive between reads).
     """
     fd = sys.stdin.fileno()
     try:
@@ -41,8 +42,8 @@ def _read_keys_stdio(timeout_s: float = _FALLBACK_DURATION_S) -> list[str]:
     except termios.error:
         return []
     try:
-        tty.setraw(fd)
-        readable, _, _ = select.select([fd], [], [], timeout_s)
+        tty.setcbreak(fd)
+        readable, _, _ = select.select([fd], [], [], timeout)
         if not readable:
             return []
         raw = os.read(fd, _MAX_KEYS)
@@ -74,6 +75,44 @@ def _dispatch_key(key: str, index: int, page_count: int) -> int | None:
     if key == _CMD_QUIT:
         return None  # signal quit
     return index  # refresh (r) or unknown
+
+
+def _draw(
+    render: Callable[[str], str],
+    index: int,
+    page_names: Sequence[str],
+    first: bool,
+    footer: str | None,
+) -> None:
+    """Render the current page to stdout, clearing on redraws."""
+    rendered = render(page_names[index])
+    if not first:
+        sys.stdout.write("\033[2J\033[H")
+    text = f"{rendered}\n{footer}" if first and footer else rendered
+    sys.stdout.write(text)
+    sys.stdout.write("\n")
+    sys.stdout.flush()
+
+
+def _process_keys(
+    keys: Sequence[str],
+    index: int,
+    page_count: int,
+    refresh: Callable[[], None] | None,
+) -> tuple[bool, int, bool]:
+    """Dispatch a key batch, returning ``(quit, index, redraw)``."""
+    quit_loop = False
+    redraw = False
+    for key in keys:
+        new_index = _dispatch_key(key, index, page_count)
+        if new_index is None:
+            quit_loop = True
+            break
+        if key == _CMD_REFRESH and refresh is not None:
+            refresh()
+        index = new_index
+        redraw = True
+    return quit_loop, index, redraw
 
 
 def run_tui(
@@ -125,8 +164,10 @@ def run_tui(
         read_keys: Callable[[], list[str]] = functools.partial(
             _read_keys_test, input_keys
         )
+        footer = None
     else:
         read_keys = _read_keys_stdio
+        footer = _FOOTER
     interactive = (input_keys is not None) or _is_tty()
 
     if not interactive:
@@ -135,29 +176,23 @@ def run_tui(
     sys.stderr.write("\n")
     sys.stderr.flush()
 
-    should_refresh = False
+    first = True
+    redraw = True
 
     while True:
-        if should_refresh and refresh is not None:
-            refresh()
-            should_refresh = False
-        rendered = render(page_names[index])
-        sys.stdout.write(rendered)
-        sys.stdout.write("\n")
-        sys.stdout.flush()
+        if redraw:
+            _draw(render, index, page_names, first, footer)
+            first = False
+            redraw = False
 
         keys = read_keys()
         if not keys:
             if input_keys is not None:
                 break
             continue
-        for key in keys:
-            new_index = _dispatch_key(key, index, len(page_names))
-            if new_index is None:
-                return None
-            if key == _CMD_REFRESH:
-                should_refresh = True
-            index = new_index
-        lines = rendered.count("\n") + 1
-        sys.stdout.write(f"\033[{lines}F\033[J")
-        sys.stdout.flush()
+
+        quit_loop, index, redraw = _process_keys(
+            keys, index, len(page_names), refresh
+        )
+        if quit_loop:
+            return None

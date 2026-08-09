@@ -151,12 +151,14 @@ def _cmd_ocean(
         print(_render(page))
         return
 
-    run_tui(
+    result = run_tui(
         _render,
         PAGE_NAMES,
         start_index=start_index,
         refresh=None if refresh_interval is None else _noop_refresh,
     )
+    if result is not None:
+        print(result)
 
 
 def _noop_refresh() -> None:
