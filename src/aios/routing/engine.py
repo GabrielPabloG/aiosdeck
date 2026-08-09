@@ -12,6 +12,10 @@ _MODEL_PRICING: dict[str, float] = {
     "anthropic/claude-opus": 15.0,
     "openai/gpt-4o-mini": 0.15,
     "openai/gpt-4o": 2.5,
+    "openrouter/deepseek/deepseek-v4-flash": 0.068,
+    "openrouter/qwen/qwen3-coder": 0.22,
+    "openrouter/openai/gpt-5-mini": 0.30,
+    "openrouter/anthropic/claude-sonnet-4-5": 3.0,
 }
 
 _COMPLEXITY_VARIANT: dict[str, str] = {
