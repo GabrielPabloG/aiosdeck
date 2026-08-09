@@ -12,9 +12,12 @@
   <img src="https://img.shields.io/badge/platform-linux-blue">
   <img src="https://img.shields.io/badge/license-MIT-green">
   <img src="https://img.shields.io/badge/python-3.12+-blue">
-  <img src="https://img.shields.io/badge/status-alpha-yellow">
+  <img src="https://img.shields.io/badge/status-implemented-green">
   <img src="https://github.com/GabrielPabloG/aiosdeck/actions/workflows/ci.yml/badge.svg">
 </p>
+
+**Status: Implemented** — core orchestration, agents, workflows, security, and
+telemetry are implemented and covered by the test suite (1300+ tests).
 
 AiosDeck is an intelligent orchestration platform that transforms AI-assisted development from isolated conversations into **collaborative software engineering**.
 
@@ -126,7 +129,26 @@ The contract between them is a **project manifest** (`aios/project.yaml`) — a 
 
 ## Roadmaps
 
-AiosDeck maintains three roadmaps. Only one is active.
+AiosDeck maintains one active roadmap: the v1.0 stabilization. Everything else
+is directional context.
+
+### Stabilization Roadmap — The Active Plan
+
+Short, shippable milestones toward a stable, predictable v1.0. Each phase is
+atomic and verified (`pytest tests/ -q` + `ruff`).
+
+| Phase | Focus | Status |
+|-------|-------|--------|
+| S0 | Contracts freeze (agent input/output/error codes) | **Implemented** |
+| S1 | Reliability (timeout/retry/error mapping, fire test) | **Implemented** |
+| S2 | Security closure (intent enforcement, event audit) | **Implemented** |
+| S3 | Simplification & dedup (dead code, skills, CLI) | **Implemented** |
+| S4 | Docs & product parity (CHANGELOG, status, ADRs) | **In progress** |
+| S5 | RC/GA (release candidate, regression, tag v1.0.0) | Planned |
+
+**v1.0 core** — learning governance (approval pipeline), `RuleBasedRouter`
+(deterministic model routing), and the basic console. Everything else is a
+documented post-1.0 extension, not a v1.0 commitment.
 
 ### Vision Roadmap — Where We Are Going
 
@@ -138,9 +160,9 @@ The destination. No dates. No versions. Pure direction.
 - **Cloud Sync** — Shared memory, shared policies, per-team agents (local-first, cloud-optional)
 - **IDE Integration** — In-editor agent panels, inline reviews, side-by-side context
 
-### Architecture Roadmap — What We Know Will Exist
+### Implemented Phases
 
-All planned phases. Documented, specified, but not all implemented.
+The following phases are shipped and verified by the test suite.
 
 | Phase | Status | Components |
 |-------|--------|------------|
@@ -150,13 +172,14 @@ All planned phases. Documented, specified, but not all implemented.
 | v0.4 PromptBuilder | **Implemented** | Structured prompt assembly with context, memory, skills |
 | v0.5 AgentExecutor + DX | **Implemented** | Execution guardrail, CLI redesign, autocomplete, ProjDesk integration |
 | v0.6 Planner | **Implemented** | Task decomposition, prioritization, headless security hardening |
-| v0.7 Reviewer | Component (no CLI yet) | Architecture critique, convention enforcement |
+| v0.7 Reviewer | **Implemented** | Architecture critique, convention enforcement, `aios review` CLI |
 | v0.8 Scheduler (Kanban/Scrum) | **Implemented** | Persistent board, TDD gate, terminal DX (spinners, TODO.md backlog) |
-| v0.9 Workflows + Plugins | Specified | Multi-agent pipelines, quality gates, extension points for Runtimes, Agents, Skills, Workflows |
-| v1.0 AI OS | Specified | Full ProjDesk integration, status dashboard |
+| v0.9 Workflows + Agents | **Implemented** | Multi-agent pipeline (planner→developer→reviewer→tester→docs→git), quality gates, skills, research, learning governance |
+| v1.0 Stabilization | **In progress** | Contract freeze, reliability, security closure, docs parity |
 
-> The Reviewer component ships tested in v0.9 but is not yet exposed via `aios`
-> commands or the Kernel — CLI integration is planned for a future release.
+> Workflows, the quality pipeline, skills, research, learning governance, and
+> all agents are **implemented and tested** — not merely specified. The plugin
+> system, advanced TUI widgets, and concurrent execution are post-1.0.
 
 ### Implementation Roadmap — What We Are Building Now
 
@@ -164,21 +187,8 @@ The only roadmap that matters day to day. Everything else is blocked.
 
 | Component | Version | Task |
 |-----------|---------|------|
-| CLI (`aios`) | v0.6.1 | Dashboard, doctor, plan, memory commands, help, autocomplete |
-| Command Registry | v0.6.1 | Single source of truth for CLI + help + completion |
-| Configuration | v0.1 | Detection > manifest > user config > env > defaults |
-| Context Engine | v0.1 | Language detection, tool detection, Git/Docker/OpenCode status |
-| Memory Engine | v0.3 | SQLite-backed CRUD for conventions, decisions, patterns, mistakes |
-| Scheduler (Kanban) | v0.8 | KanbanEngine: persistent boards/cards/subtasks, TDD gate, textual TODO.md backlog |
-| PromptBuilder | v0.4 | Structured prompt assembly (task, context, git, memory, skills) |
-| AgentExecutor | v0.5 | Execution guardrail (Event Bus, metrics, logging) shared by all agents |
-| Developer Agent | v0.2 | Builds prompt, delegates to AgentExecutor, interprets outcome |
-| Runtime Adapter | v0.6.1 | OpenCode invocation via ai-jail, skill loading, headless tool permission enforcement |
-| Event Bus | v0.1 | In-process pub/sub, topics, audit logging |
-| Shell Completion | v0.5 | bash and zsh scripts delegating to `aios __complete` |
-| ProjDesk Client | v0.5 | `resolve(name)` → Path, domain exceptions |
-| Security (skeleton) | v0.1 | Policy loading, audit logging. Headless hardening in v0.6.1. Full enforcement in v0.7 |
-| Logger | v0.1 | Structured logging, session audit trail |
+| Stabilization S4 | v1.0 | Docs & product parity (CHANGELOG, status blocks, ADRs) |
+| Stabilization S5 | v1.0 | RC checklist, regression, tag v1.0.0 |
 
 **Rule**: Every abstraction must solve an existing problem. Never an anticipated one. If a component is not in this table, it has not earned its existence yet.
 
@@ -237,7 +247,7 @@ v0.9  Research     ░░░░░░░░░░░░░░░░░░░░�
                           │
              ┌────────────┼─────────────┐
              ▼            ▼             ▼
-          Planner      Coder      Reviewer
+           Planner      Developer   Reviewer
              │            │             │
              │    (loads Skills from    │
              │     OpenCode skill       │
@@ -359,7 +369,7 @@ agents:
     git: false
     shell: false
 
-  coder:
+  developer:
     filesystem: write
     shell: true
     git: false

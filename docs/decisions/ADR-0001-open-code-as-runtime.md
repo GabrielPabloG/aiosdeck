@@ -1,6 +1,8 @@
 # ADR-0001 — OpenCode as Runtime
 
-**Status**: Accepted
+**Status**: Implemented
+**Level**: Architecture
+**Review date**: 2026-08-09
 **Date**: 2026-08-02
 
 ## Context

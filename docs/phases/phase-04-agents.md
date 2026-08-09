@@ -67,18 +67,17 @@ Every agent:
 
 ### Agent Registry
 
-Agents are registered with the Scheduler by type:
+Agents are registered with the Kernel by type:
 
 ```python
 AGENT_REGISTRY = {
     "developer": DeveloperAgent,  # v0.2
     "planner": PlannerAgent,  # v0.6
     "reviewer": ReviewerAgent,  # v0.5
-    "coder": CoderAgent,  # v0.8
     "tester": TesterAgent,  # v0.6
     "documentation": DocumentationAgent,  # v0.6
     "git": GitAgent,  # v0.7
-    "researcher": ResearcherAgent,  # v0.8
+    "research": ResearchAgent,  # v0.9
 }
 ```
 
@@ -111,14 +110,13 @@ Every agent declares its minimum capabilities. The Security Manager enforces the
 
 | Agent | filesystem_read | filesystem_write | shell | internet | git | docker |
 |-------|:---:|:---:|:---:|:---:|:---:|:---:|
-| Developer | + | + | + | - | + | - |
+| Developer | + | + | + | - | - | - |
 | Planner | + | - | - | - | - | - |
 | Reviewer | + | - | - | - | - | - |
-| Coder | + | + | + | - | - | - |
-| Tester | + | + | + | - | - | - |
+| Tester | + | - | + | - | - | - |
 | Documentation | + | + | - | - | - | - |
 | Git | + | - | + | - | + | - |
-| Researcher | + | - | - | + | - | - |
+| Researcher | + | - | - | - | - | - |
 
 ### Agent Evolution
 
@@ -129,15 +127,19 @@ v0.2: Developer (does everything)
        │
 v0.4: Developer → Developer + Planner (task decomposition split off)
        │
-v0.5: Developer → Coder + Reviewer (review split off)
+v0.5: Developer → Developer + Reviewer (review split off)
        │
-v0.6: Developer → Coder + Tester + Documentation (testing and docs split off)
+v0.6: Developer → Developer + Tester + Documentation (testing and docs split off)
        │
-v0.7: Developer → Coder + Git (version control split off)
+v0.7: Developer → Developer + Git (version control split off)
        │
-v0.8: Coder remains. Planner, Reviewer, Tester, Documentation, Git, Researcher
-       all specialized agents. Developer retired.
+v0.9: Developer + Planner + Reviewer + Tester + Documentation + Git + Research
+      all specialized agents.
 ```
+
+The implementation agent remains `developer.py`; there is no separate "Coder"
+agent. The Developer agent executes tasks through the runtime and, like every
+agent, is executor-free.
 
 The Developer agent is the only agent that violates "one agent, one job." It exists as a temporary bootstrap until specialization is warranted.
 

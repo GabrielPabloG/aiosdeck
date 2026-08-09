@@ -1,6 +1,8 @@
 # ADR-0006 — Kanban with Scrum for Scheduler Persistence
 
-**Status**: Accepted
+**Status**: Implemented
+**Level**: Architecture (borders on Implementation — includes SQL schema and spinner terminal DX details)
+**Review date**: 2026-08-09
 **Date**: 2026-08-05
 
 ## Context

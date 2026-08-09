@@ -1,6 +1,7 @@
 # Philosophy
 
-**Status**: Accepted
+**Status**: Implemented — the ten principles actively govern the codebase and
+every stabilized decision in v1.0.
 **Date**: 2026-08-02
 
 ## Context
@@ -38,7 +39,7 @@ This is the same principle that makes Unix tools composable: `grep` finds text, 
 | Agent | One Job |
 |-------|---------|
 | Planner | Decompose tasks |
-| Coder | Write code |
+| Developer | Write code |
 | Reviewer | Critique output |
 | Tester | Verify behavior |
 | Git | Manage version control |
@@ -51,7 +52,7 @@ Infrastructure shared by multiple agents (timeout, metrics, Event Bus publishing
 
 Communication between system components happens through an event bus, never through direct function calls or imports.
 
-When the Planner creates a task, it emits a `task.created` event. The Scheduler picks it up. When the Coder completes work, it emits `code.written`. The Reviewer subscribes. No module imports another module's internals. The bus is the backbone — everything else plugs into it.
+When the Planner creates a task, it emits a `task.created` event. The Scheduler picks it up. When the Developer completes work, it emits `code.written`. The Reviewer subscribes. No module imports another module's internals. The bus is the backbone — everything else plugs into it.
 
 **What this means in practice**: Every module exposes two interfaces: the events it emits and the events it consumes. Internal implementation is invisible to the rest of the system.
 

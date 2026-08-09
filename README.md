@@ -7,7 +7,9 @@ Instead of talking to a single language model, you work with a coordinated team
 of specialized agents — each with one responsibility, governed by a kernel that
 manages context, memory, scheduling, workflows, and security.
 
-- **Status**: alpha
+- **Status**: Implemented — core orchestration, agents, workflows, security,
+  and telemetry are shipped and tested (1300+ tests). v1.0 stabilization in
+  progress; see [docs/README.md](docs/README.md).
 - **Platform**: Linux
 - **Language**: Python 3.12+ (zero runtime dependencies)
 

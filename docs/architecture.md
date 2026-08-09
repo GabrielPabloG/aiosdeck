@@ -1,6 +1,7 @@
 # Architecture
 
-**Status**: Accepted
+**Status**: Implemented — the hub-and-spoke architecture (Kernel + engines) is
+the shipping design of v1.0.
 **Date**: 2026-08-04
 
 ## Context
@@ -49,9 +50,9 @@ The architecture follows a **hub-and-spoke** model: the Kernel is the hub, dispa
                                                │
                                      Documentation Review
                                │
-               ┌────────────────┼─────────────────┐
-               ▼                ▼                  ▼
-            Planner          Coder            Reviewer
+                ┌────────────────┼─────────────────┐
+                ▼                ▼                  ▼
+             Planner        Developer           Reviewer
                │                │                  │
                │  (loads Skills via the active     │
                │   runtime's native skill mechanism│
@@ -166,13 +167,16 @@ aiosdeck/
 ├── agents/                      # Agent implementations
 │   ├── __init__.py
 │   ├── base.py                  # Agent protocol, lifecycle hooks
-│   ├── developer.py             # v0.2: single general-purpose agent
+│   ├── contracts.py             # AgentTask, AgentResult, AgentError, capabilities
+│   ├── executor.py              # AgentExecutor — the single execution boundary
+│   ├── lifecycle.py             # AgentLifecycle state machine
+│   ├── developer.py             # v0.2: implementation agent
 │   ├── planner.py               # v0.4: task decomposition
-│   ├── coder.py                 # v0.8: specialized coding agent
 │   ├── reviewer.py              # v0.5: critique and review
 │   ├── tester.py                # v0.6: test execution
 │   ├── documentation.py         # v0.6: documentation updates
-│   └── git.py                   # v0.7: version control operations
+│   ├── git.py                   # v0.7: version control operations
+│   └── research.py              # v0.9: research agent
 │
 ├── quality/                     # Quality Pipeline
 │   ├── __init__.py

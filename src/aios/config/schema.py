@@ -20,7 +20,7 @@ class ModelConfig:
 @dataclass
 class MemoryConfig:
     enabled: bool = True
-    path: str = "~/.local/share/aiosdeck/memory.db"
+    path: str = ".aios/memory.db"
 
 
 @dataclass
