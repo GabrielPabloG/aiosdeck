@@ -9,8 +9,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Ocean Console (v0.9.12)** — a dark, marine dashboard for `aios ocean`,
-  rendered entirely through semantic design tokens.
+- **Stabilization v1.0** — hardening, simplification, and documentation coherence
+  toward the first stable release.
+  - **S0 Contracts Freeze** — contract tests for all 9 agents + base + executor
+    (input/output/error codes stable); `docs/internals/ownership-matrix.md`
+    (domain boundaries + contract freeze table); frozen signatures for
+    `AgentTask`, `AgentResult`, `ExecutionRequest`, `ExecutionOutcome`,
+    `RunResult`, `StageSummary`, `IntentPolicy`, `EffectivePermissions`.
+  - **S1 Reliability** — `stage_to_summary` mapper contract tests
+    (WorkflowStage ↔ StageSummary); timeout/retry/error-mapping freeze;
+    `docs/fire-test.md` generalized to a stabilization fire test (minimal
+    telemetry: executions + tokens + cost; `aios ocean`, help, completion).
+  - **S2 Security Closure** — intent enforcement extracted to
+    `security/intent_validator.py` (auditable allow/deny decision); security
+    event coverage audit; fail-safe resolver defaults reviewed.
+  - **S3 Simplification & Dedup** — `routing/ranker.py` removed (dead code);
+    skills discovery single-sourced in `SkillRegistry`;
+    `format_skill_header()` shared between retrieval and PromptBuilder;
+    CLI restructured into `cli/commands/` package (core/exec_cmds/memory)
+    with central registry.
+
+### Changed
+
+- `docs/internals/ownership-matrix.md` — new; defines the ownership boundaries
+  and the v1.0 contract freeze.
+- `docs/CHANGELOG.md` — restructured into one section per version
+  (v0.9.5..v0.9.13 released, [Unreleased] only carries stabilization work).
+- `docs/fire-test.md` — generalized from a v0.9.11 routing guide to a
+  stabilization fire test.
+
+## [0.9.13] - 2026-08-09
+
+### Added
+
+- **Backlog Runner** — process N tasks from a backlog automatically.
+  - **Models** — `BacklogTask` and `BacklogRunResult` with conventional commit
+    parsing (`type(scope): subject (vX.Y.Z)`).
+  - **Parser** — `parse_conventional`, `load_tasks_from_kanban(board)`,
+    `load_tasks_from_file(path)`.
+  - **Runner** — `BacklogRunner` executes tasks sequentially through
+    `Kernel.run(mode="plan-run")` with per-task commit factories,
+    `create_branch=False`, and kanban `InProgress` → `Done`/`blocked` flow.
+  - **CLI** — `aios backlog run/list/add/stats` with `--continue`, `--from N`,
+    `--source=board:NAME | file:PATH`.
+  - **Telemetry** — `telemetry_backlog` table, `insert_backlog_run`,
+    `query_backlog_stats`, and `backlog.*` events in `ALL_TOPICS`.
+  - **Workflow** — additive `commit_factory` and `create_branch` params on
+    `WorkflowEngine.execute` and `Kernel.run` (defaults byte-idéntico).
+
+## [0.9.12] - 2026-08-09
+
+### Added
+
+- **Ocean Console** — a dark, marine dashboard for `aios ocean`, rendered
+  entirely through semantic design tokens.
   - **Theme** — `Theme`/`ColorResolver`/`ColorMode` (`COLOR`/`256`/`MONO`)
     with `detect_color_mode` (`NO_COLOR` kill switch) and the deep-water
     `ocean_theme`; widgets consume tokens via the resolver, never raw ANSI.
@@ -18,10 +70,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `render_metric_card`, `render_section_header`, `render_table`, driven by
     `RenderContext` (`width`/`height`/`compact`); collapsible when the
     terminal is under 80 columns or 24 rows.
-  - **Overview** — data-driven `render_page` composed from
-    `datasources.py` (`overview_data`, `workflows_data`, `agents_data`,
-    `skills_data`, `knowledge_data`, `usage_data`, `quality_data`,
-    `settings_data`), with safe empty states.
+  - **Overview** — data-driven `render_page` composed from `datasources.py`
+    (`overview_data`, `workflows_data`, `agents_data`, `skills_data`,
+    `knowledge_data`, `usage_data`, `quality_data`, `settings_data`), with safe
+    empty states.
   - **TUI** — interactive loop (keys `1..8`, `tab`, `Shift+tab`, `r`, `q`)
     that blocks on input and redraws per key; static fallback when not a TTY;
     `aios ocean [--page NAME] [--once] [--json] [--refresh N]`.
@@ -35,9 +87,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     estimates output (3× input, fail-closed) and `cost_cap` forces the cheap
     fallback when a primary exceeds the budget.
 
-- **Model Router (v0.9.11)** — separates model decision from agent execution.
-  Policy rules (and, later, telemetry data) pick the model; agents only describe
-  what they are doing.
+## [0.9.11] - 2026-08-08
+
+### Added
+
+- **Model Router** — separates model decision from agent execution. Policy
+  rules (and, later, telemetry data) pick the model; agents only describe what
+  they are doing.
   - **Contracts** — `RouteInput` (agent/task_type/complexity/context_size/
     model_override) and `RouteDecision` (provider/model/variant/reason/
     estimated_cost/fallback_chain/source); `ModelRouter` protocol with
@@ -52,8 +108,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     context_size, model="")`; `OpenCodeAdapter` inserts `-m`/`--variant` before
     `--auto`; fallback loop over the chain with typed `RouteFallbackExhausted`
     (never loops). Byte-identical to v0.9.10 when routing is unconfigured.
-  - **Ranker** — pluggable `ModelRanker` protocol; `HeuristicRanker` default
-    (deterministic), `TelemetryRanker` contract ready as fast-follow.
   - **Telemetry** — `runtime.route_selected` event + `telemetry_routing` table
     (agent, provider, model, reason, estimated_cost, context_size,
     fallback_used/reason, correlation_id); `query_routing_stats/records` and
@@ -65,8 +119,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     [--context-size] [--json]`, `aios route stats [--agent] [--model]
     [--limit] [--records] [--json]`, `aios route stats --accuracy`.
 
-- **Learning Governance (v0.9.10)** — event-driven observation capture,
-  deterministic advisor, and approval-gated ingestion into project memory.
+## [0.9.10] - 2026-08-08
+
+### Added
+
+- **Learning Governance** — event-driven observation capture, deterministic
+  advisor, and approval-gated ingestion into project memory.
   - **Contracts** — `ObservationRecord`, `LearningCandidate`,
     `ConfidenceScore`, `ReviewDecision`, `Advisor` protocol (pluggable for
     future LLM advisors), `ReviewPolicy` with default fail-safe (everything
@@ -94,23 +152,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `confidence_threshold`, `min_evidence`, `recurrence_threshold`, `policy`;
     env `AIOS_LEARNING_ENABLED` + YAML section `learning:`.
 
-- **Context Layers (v0.9.9)** — formalizes context as explicit layers
-  Global→User→Project→Task→Research→Retrieved with deterministic
-  composition and token economy.
+## [0.9.9] - 2026-08-08
+
+### Added
+
+- **Context Layers** — formalizes context as explicit layers
+  Global→User→Project→Task→Research→Retrieved with deterministic composition
+  and token economy.
   - **Layer contracts** — `LayerType` (six layers), `LAYER_PRECEDENCE`
     (operational ordering `TASK > USER > PROJECT > GLOBAL > RESEARCH >
     RETRIEVED`), `GUARDRAIL_LAYERS` (`TASK`), `Layer` (type/content/source/
     guardrail/tokens/trace), and `LayeredContext` with `empty_layers()`
     fallback factory.
   - **Assembly** — `assemble_layers` = order → sha256 dedupe (first-by-
-    precedence wins) → truncate within absolute per-layer caps and the
-    agent budget, reusing `_truncate_to_tokens`. Guardrails are immutable:
-    never truncated or dropped.
+    precedence wins) → truncate within absolute per-layer caps and the agent
+    budget, reusing `_truncate_to_tokens`. Guardrails are immutable: never
+    truncated or dropped.
   - **ContextAssembler** — collects raw layers (project packet, task
     description, research summary, retrieved chunks) within
     `ContextBudget.for_agent(agent)`. Retrieved excludes
-    `_SKILL_SOURCE_TYPES` (skills stay in the SkillAssembler path).
-    Per-layer collection is fail-safe (failure → empty layer).
+    `_SKILL_SOURCE_TYPES` (skills stay in the SkillAssembler path). Per-layer
+    collection is fail-safe (failure → empty layer).
   - **Layered prompts** — `PromptBuilder.build(..., layered=...)` composes
     deterministic sections + an `[Audit]` block; `layered=None` is
     byte-identical to v0.9.8.
@@ -118,11 +180,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     assembler into Developer/Planner agents (SkillAssembler pattern); absent
     assembler keeps the previous prompt.
   - **CLI** — `aios plan --debug-context` renders the layer tree (text or
-    `--json`) with per-layer source/tokens/guardrail/trace and the audit
-    trail.
+    `--json`) with per-layer source/tokens/guardrail/trace and the audit trail.
 
-- **Intent & Policy (v0.9.8)** — granular security policy enforced at the
-  executor and runtime boundaries.
+### Changed
+
+- `docs/internals/context-layers.md` — layer model, precedence, budgets, and
+  wiring documented.
+
+## [0.9.8] - 2026-08-08
+
+### Added
+
+- **Intent & Policy** — granular security policy enforced at the executor and
+  runtime boundaries.
   - **Contracts** — `IntentPolicy` (explicit `actions` + `deny`, frozen,
     deterministic `to_dict()`), `EffectivePermissions` (sorted serialization,
     `allows`), and `SecurityDecision` (auditable verdict). `AgentCapabilities`
@@ -135,9 +205,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     destructive actions (`filesystem.delete`, `git.push`, `git.tag`,
     `network.access`, `release.publish`) are never implicit.
   - **Resolver** — `effective = (intent.actions - intent.deny) ∩
-    expand(capabilities)`; deny = absence, explicit deny always wins, an
-    intent never elevates capabilities. `decide()` returns a full
-    `SecurityDecision` with reason and violations.
+    expand(capabilities)`; deny = absence, explicit deny always wins, an intent
+    never elevates capabilities. `decide()` returns a full `SecurityDecision`
+    with reason and violations.
   - **Executor boundary** — opt-in run-gate: an intent resolves against the
     agent's coarse capabilities; an empty effective set is a structured
     `PERMISSION_DENIED` (never a silent fallback). The intent is attached to
@@ -146,32 +216,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     defaults + `ask_user`), respecting a caller-supplied override on the
     context. Stage details expose the effective permissions and intent.
   - **Runtime mapping** — `OpenCodeAdapter` derives the least-privilege
-    `OPENCODE_PERMISSION` from effective permissions: `question` always
-    denied, `read/glob/grep` ↔ `filesystem.read`, `edit` ↔
-    `filesystem.write`, `webfetch/websearch` ↔ `network.access`, and a bash
-    policy that explicitly denies `git push`, `git tag`, `rm -rf`, `curl`,
-    `wget` while allowing the run's commands (`git branch`, `git commit`,
-    `grep`, `ruff`, `python`, `pytest`) — the denies survive `--auto`.
+    `OPENCODE_PERMISSION` from effective permissions: `question` always denied,
+    `read/glob/grep` ↔ `filesystem.read`, `edit` ↔ `filesystem.write`,
+    `webfetch/websearch` ↔ `network.access`, and a bash policy that explicitly
+    denies `git push`, `git tag`, `rm -rf`, `curl`, `wget` while allowing the
+    run's commands (`git branch`, `git commit`, `grep`, `ruff`, `python`,
+    `pytest`) — the denies survive `--auto`.
   - **Audit trail** — `security.intent.applied` / `security.check.passed` /
     `security.check.denied` events persisted into the additive
     `telemetry_security` table with `insert_security_decision`,
     `query_security_stats`, and `query_security_records`. Zero events without
     an intent.
   - **CLI** — `aios policy show` (canonical capabilities, default intents,
-    expansion table), `aios security stats` (queryable allow/deny trail), and
-    a plan intent summary (`intent: develop (source: default)` with effective
+    expansion table), `aios security stats` (queryable allow/deny trail), and a
+    plan intent summary (`intent: develop (source: default)` with effective
     permissions per stage) on `aios plan --run`.
 
 ### Changed
 
-- `docs/internals/context-layers.md` — layer model, precedence, budgets, and
-  wiring documented (v0.9.9).
-
 - `docs/internals/security.md` — Policy Engine note updated; **Intent vs
-  Capability vs Enforcement** section added (v0.9.8).
+  Capability vs Enforcement** section added.
 
-- **Quality Pipeline / Gates (v0.9.7)** — automated gates enforced by the
-  workflow between agent stages.
+## [0.9.7] - 2026-08-08
+
+### Added
+
+- **Quality Pipeline / Gates** — automated gates enforced by the workflow
+  between agent stages.
   - **Gate contracts** — `GateStatus`, `Severity` (canonical
     `low|medium|high|critical`), `GateInput`, `GateFinding`, `GateResult`
     (structured, never loose text, audit-safe `to_dict()`), and the
@@ -179,67 +250,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Concrete gates** — `CodeGate` (ruff check + format --check),
     `TestGate` (wraps the TesterAgent report; `failed == 0 → passed`),
     `SecurityGate` (deterministic `scan_secrets`/`scan_unsafe` + severity
-    mapper), `DocumentationGate` (CHANGELOG/TODO skeleton), and
-    `ReleaseGate` (skeleton, skipped). All local, deterministic, no network
-    or LLM.
-  - **Policy engine** — `resolve_decision()`: `critical`/`high` always
-    block, `medium` blocks in release / warns in dev, `low` warns, no policy
-    → fail-safe default, unknown environment → block, explicit auditable
+    mapper), `DocumentationGate` (CHANGELOG/TODO skeleton), and `ReleaseGate`
+    (skeleton, skipped). All local, deterministic, no network or LLM.
+  - **Policy engine** — `resolve_decision()`: `critical`/`high` always block,
+    `medium` blocks in release / warns in dev, `low` warns, no policy →
+    fail-safe default, unknown environment → block, explicit auditable
     overrides (gate + environment).
   - **Workflow integration** — gates run as `WorkflowStage`s in the order
     `developer* → code_gate → reviewer → security_gate → tester → test_gate →
-    documentation → documentation_gate → git` (`release_gate` last in
-    release). Fail-fast on block, annotated advance on skip/warn/override.
-    Opt-in via `quality_config`; without it the pipeline is unchanged.
+    documentation → documentation_gate → git` (`release_gate` last in release).
+    Fail-fast on block, annotated advance on skip/warn/override. Opt-in via
+    `quality_config`; without it the pipeline is unchanged.
   - **Event bridge** — `quality.started` / `quality.gate_started` /
     `quality.gate_completed` / `quality.gate_blocked` / `quality.completed`
-    with a canonical payload (gate, status, duration_ms, findings per
-    severity, blocked, overridden, reason) and `correlation_id = run_id`.
-    Emitted only while gates are active.
+    with a canonical payload (gate, status, duration_ms, findings per severity,
+    blocked, overridden, reason) and `correlation_id = run_id`. Emitted only
+    while gates are active.
   - **Gate telemetry** — additive `telemetry_gates` table (findings per
     severity, block decision, overridden, correlation_id, project_id) with
     `query_gate_stats` / `query_gate_records`.
   - **CLI** — `aios plan <intent> --run` renders a PASS/FAIL/SKIP gate trail
-    (with warn/override annotations); `--json` emits full structured
-    findings; new `aios quality stats [--gate|--status|--limit|--records|
-    --json]` read-side.
+    (with warn/override annotations); `--json` emits full structured findings;
+    new `aios quality stats [--gate|--status|--limit|--records|--json]`
+    read-side.
   - **Config** — `QualityConfig` extended with `environment`, `policy`, and
     `overrides`, loadable from the user config YAML.
 
 ### Changed
 
 - `docs/internals/quality-pipeline.md` status moved from **Proposed** to
-  **Implemented** with the gate policy and canonical event contract
-  documented.
+  **Implemented** with the gate policy and canonical event contract documented.
 
-- **Intelligent Skills / Living Skills (v0.9.6)** — skills evolve from static
-  files into measurable, retrievable-by-intent knowledge assets with lifecycle
-  telemetry.
-- **Skill metadata schema** — `SkillMetadata` dataclass with `name`,
-  `description`, `triggers`, `scope`, `dependencies`, `priority`, `status`,
-  `version`, and `schema_version` field. Strict frontmatter validation on load.
-- **SkillRegistry** — loads validated skill metadata from
-  `.opencode/skills/*/SKILL.md`, filtering deprecated skills by default.
-- **SkillDiscoveryService** — deterministic, explainable intent-based skill
-  ranking by trigger match (0.50), scope match (0.30), and priority (0.20).
-  Each `ScoredSkill` carries its own `trigger_matches` and `scope_matches` for
-  audit trails.
-- **SkillRetrievalService** — maps discovered skills to Knowledge Store chunks
-  with per-skill chunk policy (top-N chunks per skill), respecting
-  `ContextBudget` per agent. Generic retriever layer unchanged.
-- **SkillAssembler** — explicit fallback boundary: discovery → retrieval →
-  `SkillContext[]`. Any failure returns `[]`, and agents fall back to the
-  static `required_skills` path (byte-identical prompt to v0.9.5).
-- **PromptBuilder smart skills section** — renders budgeted skill chunks with
-  audit trail (considered/selected/used/dropped, budget consumed). Optional
-  `skill_contexts` parameter; `None`/`[]` preserves the golden path.
-- **Skill telemetry** — `telemetry_skills` table with lifecycle signals
-  (`considered`, `selected`, `used`, `relevance_score`, `tokens_contributed`,
-  raw `downstream_success`). `SkillUsageRecorder` emits one row per skill per
-  invocation.
-- **Skills CLI** — `aios skills discover <intent>` (ranked candidates + score
-  breakdown), `aios skills inspect <name>` (metadata + index status), and
-  `aios skills stats` (per-skill lifecycle metrics).
+## [0.9.6] - 2026-08-08
+
+### Added
+
+- **Intelligent Skills / Living Skills** — skills evolve from static files into
+  measurable, retrievable-by-intent knowledge assets with lifecycle telemetry.
+  - **Skill metadata schema** — `SkillMetadata` dataclass with `name`,
+    `description`, `triggers`, `scope`, `dependencies`, `priority`, `status`,
+    `version`, and `schema_version` field. Strict frontmatter validation on
+    load.
+  - **SkillRegistry** — loads validated skill metadata from
+    `.opencode/skills/*/SKILL.md`, filtering deprecated skills by default.
+  - **SkillDiscoveryService** — deterministic, explainable intent-based skill
+    ranking by trigger match (0.50), scope match (0.30), and priority (0.20).
+    Each `ScoredSkill` carries its own `trigger_matches` and `scope_matches` for
+    audit trails.
+  - **SkillRetrievalService** — maps discovered skills to Knowledge Store chunks
+    with per-skill chunk policy (top-N chunks per skill), respecting
+    `ContextBudget` per agent. Generic retriever layer unchanged.
+  - **SkillAssembler** — explicit fallback boundary: discovery → retrieval →
+    `SkillContext[]`. Any failure returns `[]`, and agents fall back to the
+    static `required_skills` path (byte-identical prompt to v0.9.5).
+  - **PromptBuilder smart skills section** — renders budgeted skill chunks with
+    audit trail (considered/selected/used/dropped, budget consumed). Optional
+    `skill_contexts` parameter; `None`/`[]` preserves the golden path.
+  - **Skill telemetry** — `telemetry_skills` table with lifecycle signals
+    (`considered`, `selected`, `used`, `relevance_score`, `tokens_contributed`,
+    raw `downstream_success`). `SkillUsageRecorder` emits one row per skill per
+    invocation.
+  - **Skills CLI** — `aios skills discover <intent>` (ranked candidates + score
+    breakdown), `aios skills inspect <name>` (metadata + index status), and
+    `aios skills stats` (per-skill lifecycle metrics).
 
 ### Changed
 
@@ -247,30 +320,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   injected by the kernel factory. Skills are only assembled when available;
   otherwise behavior is unchanged.
 
-- **Local Retrieval / RAG (v0.9.5)** — context-aware retrieval with per-agent
-  token budgets, keyword and vector retrievers, and compression metrics.
-- **EmbeddingProvider contract** — protocol-based interface (`embed`, `dimensions`,
-  `available`, `name`) with `OllamaEmbeddingProvider` implementation using
-  Ollama's `/api/embed` endpoint (stdlib-only, zero external deps).
-- **KeywordRetriever** — lexical overlap scoring over FTS5 results. Always
-  active; no external dependencies.
-- **VectorRetriever** — cosine similarity over stored embeddings (opt-in
-  via `--vector` flag). Falls back gracefully to keyword when embeddings are
-  missing or Ollama is unavailable.
-- **ContextSelector** — `retrieve(20) → rank → dedupe → select(≤ budget)`
-  pipeline with source-type boosts, per-source deduplication, token-budget
-  enforcement, and oversized-chunk truncation.
-- **ContextBudget** — per-agent defaults (planner: 3000, research: 5000,
-  reviewer: 2000), overridable at construction.
-- **knowledge_embeddings** table — stores chunk embeddings with
-  `embedding_hash` for incremental re-embed; auto-deleted on source reindex.
-- **Retrieval telemetry** — `telemetry_retrieval` table recording
-  `retrieval_latency_ms`, `chunks_retrieved`, `chunks_selected`,
-  `tokens_before`, `tokens_after`, and `compression_ratio`.
-- **CLI** — `aios knowledge retrieve "<q>" [--agent X] [--vector] [--json]`;
-  `aios knowledge index --embed` for embedding-after-index.
-- **Fallback safe** — missing embeddings or unavailable provider never fail
-  retrieval; keyword path is always available.
+## [0.9.5] - 2026-08-08
+
+### Added
+
+- **Local Retrieval / RAG** — context-aware retrieval with per-agent token
+  budgets, keyword and vector retrievers, and compression metrics.
+  - **EmbeddingProvider contract** — protocol-based interface (`embed`,
+    `dimensions`, `available`, `name`) with `OllamaEmbeddingProvider`
+    implementation using Ollama's `/api/embed` endpoint (stdlib-only, zero
+    external deps).
+  - **KeywordRetriever** — lexical overlap scoring over FTS5 results. Always
+    active; no external dependencies.
+  - **VectorRetriever** — cosine similarity over stored embeddings (opt-in via
+    `--vector` flag). Falls back gracefully to keyword when embeddings are
+    missing or Ollama is unavailable.
+  - **ContextSelector** — `retrieve(20) → rank → dedupe → select(≤ budget)`
+    pipeline with source-type boosts, per-source deduplication, token-budget
+    enforcement, and oversized-chunk truncation.
+  - **ContextBudget** — per-agent defaults (planner: 3000, research: 5000,
+    reviewer: 2000), overridable at construction.
+  - **knowledge_embeddings** table — stores chunk embeddings with
+    `embedding_hash` for incremental re-embed; auto-deleted on source reindex.
+  - **Retrieval telemetry** — `telemetry_retrieval` table recording
+    `retrieval_latency_ms`, `chunks_retrieved`, `chunks_selected`,
+    `tokens_before`, `tokens_after`, and `compression_ratio`.
+  - **CLI** — `aios knowledge retrieve "<q>" [--agent X] [--vector] [--json]`;
+    `aios knowledge index --embed` for embedding-after-index.
+  - **Fallback safe** — missing embeddings or unavailable provider never fail
+    retrieval; keyword path is always available.
 
 ### Changed
 
@@ -303,9 +381,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Telemetry Engine** — observes agent lifecycle/execution events via
-  EventBus and persists execution records, usage (token counts), and cost data
-  into `.aios/memory.db` (tables: `telemetry_executions`, `telemetry_usage`,
+- **Telemetry Engine** — observes agent lifecycle/execution events via EventBus
+  and persists execution records, usage (token counts), and cost data into
+  `.aios/memory.db` (tables: `telemetry_executions`, `telemetry_usage`,
   `telemetry_costs`).
 - **CLI** — `aios usage [--agent X] [--model Y] [--today] [--workflow Z]
   [--from DATE] [--to DATE] [--limit N] [--json]`.
@@ -322,11 +400,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Single execution contract** — `AgentTask` (input), `AgentResult` (output),
-  `AgentError` (standardized error with stable codes:
-  `VALIDATION_ERROR`, `RUNTIME_ERROR`, `PERMISSION_DENIED`, `TIMEOUT`,
-  `CANCELLED`, `UNKNOWN`), `AgentCapabilities`, and `AgentMetadata` (name,
-  version, timeout, retry policy). Every agent implements
-  `execute(task, context) -> AgentResult`. (#6)
+  `AgentError` (standardized error with stable codes: `VALIDATION_ERROR`,
+  `RUNTIME_ERROR`, `PERMISSION_DENIED`, `TIMEOUT`, `CANCELLED`, `UNKNOWN`),
+  `AgentCapabilities`, and `AgentMetadata` (name, version, timeout, retry
+  policy). Every agent implements `execute(task, context) -> AgentResult`. (#6)
 - **AgentExecutor as the single execution boundary** — validates the task,
   enforces capabilities (`PERMISSION_DENIED`), drives the lifecycle, and
   applies timeout, retry (transient errors only, default **no retry**), and
@@ -343,8 +420,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `agent.execution.started/progress/completed/failed/timed_out/retried/
   cancelled`. Every event shares a consistent payload: `event_id`, `agent`,
   `task_id`, `correlation_id`, `executor_id` (per instance), `sequence` (per
-  execution), `attempt`, `status`, `duration_ms`, `error_code`, `message`.
-  The legacy `agent.execution.finished` topic was removed. (#6)
+  execution), `attempt`, `status`, `duration_ms`, `error_code`, `message`. The
+  legacy `agent.execution.finished` topic was removed. (#6)
 - **Capability enforcement** — `CapabilityEnforcer` validates declared
   capabilities against the canonical policy and guards read-only agents
   (Planner/Research/Reviewer) from write/shell/internet. The executor applies
@@ -370,9 +447,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `GitAgent` now expose `execute(task, context)` as their contract method and
   route all work through the AgentExecutor; their deterministic domain methods
   are private.
-- Planner/Developer runtime errors now propagate so the AgentExecutor can
-  retry transient failures centrally; domain failures (e.g., invalid JSON
-  plans) still return a failed `AgentResult`.
+- Planner/Developer runtime errors now propagate so the AgentExecutor can retry
+  transient failures centrally; domain failures (e.g., invalid JSON plans)
+  still return a failed `AgentResult`.
 - The `aios/policies/agent_capabilities.yaml` reference policy now covers all
   seven agents consistently.
 
@@ -395,32 +472,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   returns `status="source_unavailable"` with no fabricated claims; `mixed`
   degrades gracefully to `status="partial"`.
 - **Optional workflow front-gate** — `WorkflowEngine` accepts an optional
-  `researcher`; when injected, research runs before the planner and its
-  result feeds downstream agents via `ContextPacket.research`. When absent,
-  the pipeline is unchanged.
+  `researcher`; when injected, research runs before the planner and its result
+  feeds downstream agents via `ContextPacket.research`. When absent, the
+  pipeline is unchanged.
 - **CLI** — `aios research "<question>" [--scope repo|docs|web|mixed]
   [--json] [--output FILE]`.
 
 ### Changed
 
 - `ResearchAgent.required_capabilities` is now `["filesystem_read"]` only.
-  Internet access is a contextual capability of an injected web source
-  fetcher, not a hard prerequisite of the agent.
+  Internet access is a contextual capability of an injected web source fetcher,
+  not a hard prerequisite of the agent.
 
 ### Notes
 
 - `memory_candidates` are advisory output only. This version never persists
-  candidates into the Memory Engine; a future admission mechanism decides
-  what becomes project knowledge.
+  candidates into the Memory Engine; a future admission mechanism decides what
+  becomes project knowledge.
 - No web provider ships in core. Web research requires injecting a fetcher
   (`Callable[[ResearchTask], list[ResearchSource]]`), keeping the core
   zero-dependency and local-first.
-
-[Unreleased]: https://github.com/GabrielPabloG/aiosdeck/compare/v0.9.4...main
-[0.9.4]: https://github.com/GabrielPabloG/aiosdeck/releases/tag/v0.9.4
-[0.9.3]: https://github.com/GabrielPabloG/aiosdeck/releases/tag/v0.9.3
-[0.9.1]: https://github.com/GabrielPabloG/aiosdeck/releases/tag/v0.9.1
-[0.9.0]: https://github.com/GabrielPabloG/aiosdeck/releases/tag/v0.9.0
 
 ## [0.9.0] - 2026-08-06
 
@@ -460,20 +531,35 @@ they are planned, not yet shipped.
 ### Fixed
 
 - CI resilience when OpenCode/ai-jail are not installed on runners.
-- Console spinner cleanup and ANSI line handling to prevent vertical wrapping. (#8)
+- Console spinner cleanup and ANSI line handling to prevent vertical wrapping.
+  (#8)
 - Runtime timeouts tuned for long planning/execution sessions.
 
 ### Security
 
-- Headless tool permissions are enforced in the RuntimeAdapter (`OPENCODE_PERMISSION`).
+- Headless tool permissions are enforced in the RuntimeAdapter
+  (`OPENCODE_PERMISSION`).
 - OpenCode is always invoked through the ai-jail sandbox, never directly.
 
 ### Notes
 
-- Reviewer is a tested component but is **not** exposed via the CLI or kernel yet.
+- Reviewer is a tested component but is **not** exposed via the CLI or kernel
+  yet.
 - Workflows, the Plugin System, and the v0.9 agents (Tester, Documentation, Git,
-  Research) are documented under `docs/` but **not implemented** in this release.
+  Research) are documented under `docs/` but **not implemented** in this
+  release.
 - Requires Python 3.12+. Status: **Alpha**.
 
-[Unreleased]: https://github.com/GabrielPabloG/aiosdeck/compare/v0.9.0...main
+[Unreleased]: https://github.com/GabrielPabloG/aiosdeck/compare/v0.9.13...main
+[0.9.13]: https://github.com/GabrielPabloG/aiosdeck/releases/tag/v0.9.13
+[0.9.12]: https://github.com/GabrielPabloG/aiosdeck/releases/tag/v0.9.12
+[0.9.11]: https://github.com/GabrielPabloG/aiosdeck/releases/tag/v0.9.11
+[0.9.10]: https://github.com/GabrielPabloG/aiosdeck/releases/tag/v0.9.10
+[0.9.9]: https://github.com/GabrielPabloG/aiosdeck/releases/tag/v0.9.9
+[0.9.8]: https://github.com/GabrielPabloG/aiosdeck/releases/tag/v0.9.8
+[0.9.7]: https://github.com/GabrielPabloG/aiosdeck/releases/tag/v0.9.7
+[0.9.4]: https://github.com/GabrielPabloG/aiosdeck/releases/tag/v0.9.4
+[0.9.3]: https://github.com/GabrielPabloG/aiosdeck/releases/tag/v0.9.3
+[0.9.2]: https://github.com/GabrielPabloG/aiosdeck/releases/tag/v0.9.2
+[0.9.1]: https://github.com/GabrielPabloG/aiosdeck/releases/tag/v0.9.1
 [0.9.0]: https://github.com/GabrielPabloG/aiosdeck/releases/tag/v0.9.0
