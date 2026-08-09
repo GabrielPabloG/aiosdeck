@@ -654,5 +654,7 @@ class WorkflowEngine:
 
     @staticmethod
     def _build_branch(run_id: int, goal: str) -> str:
-        slug = _SLUG_RE.sub("-", goal.lower()).strip("-")
+        slug = _SLUG_RE.sub("-", goal.lower()).strip("-")[:50].strip("-")
+        if not slug:
+            slug = "task"
         return f"feature/{slug}-{run_id}"

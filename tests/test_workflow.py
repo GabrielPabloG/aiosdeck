@@ -430,3 +430,28 @@ def test_workflow_research_front_gate_feeds_planner(tmp_path):
         assert "## Research" in prompt
     finally:
         scheduler.shutdown()
+
+
+def test_build_branch_truncates_long_goal():
+    """A huge goal must not overflow git's 255-char refname limit."""
+    huge = "Implement " + "long-" * 100 + "goal"
+    branch = WorkflowEngine._build_branch(42, huge)
+    assert len(branch) < 255
+    assert branch.startswith("feature/")
+    assert branch.endswith("-42")
+
+
+def test_build_branch_run_id_keeps_uniqueness():
+    """Different runs of the same goal still produce distinct branches."""
+    goal = "Fix " + "b" * 200
+    assert WorkflowEngine._build_branch(1, goal) != WorkflowEngine._build_branch(2, goal)
+
+
+def test_build_branch_short_goal_unchanged():
+    assert (
+        WorkflowEngine._build_branch(1, "Add endpoint /health") == "feature/add-endpoint-health-1"
+    )
+
+
+def test_build_branch_goal_without_words():
+    assert WorkflowEngine._build_branch(7, "!!!") == "feature/task-7"
