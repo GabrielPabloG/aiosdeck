@@ -1,0 +1,77 @@
+"""Data sources for the UI dashboard — overview, health, and usage.
+
+Every function here accepts the :class:`aios.core.kernel.Kernel` and returns
+a plain dict ready for rendering. When an engine or its internal store is
+``None``, the function returns safe empty defaults so the dashboard never
+crashes on a partially-initialized kernel.
+"""
+
+from __future__ import annotations
+
+from datetime import UTC, datetime
+from typing import Any
+
+from aios.core.kernel import Kernel
+
+
+def overview_data(kernel: Kernel) -> dict[str, Any]:
+    """Aggregate top-level dashboard data from the kernel's engines.
+
+    Returns
+    -------
+    dict
+        ``status`` — kernel status (project, engine health, errors).\\
+        ``workflow`` — pipeline agent availability (WorkflowHealth).\\
+        ``usage_today`` — telemetry totals for the current calendar day.\\
+        ``runtime`` — runtime health check and sandbox flag.
+    """
+    status = kernel.status()
+
+    workflow = _workflow_data(kernel)
+    usage_today = _usage_data(kernel)
+    runtime = _runtime_data(kernel)
+
+    return {
+        "status": status,
+        "workflow": workflow,
+        "usage_today": usage_today,
+        "runtime": runtime,
+    }
+
+
+def _workflow_data(kernel: Kernel) -> dict[str, Any]:
+    engine = kernel.get_engine("workflow")
+    if engine is None:
+        return {"healthy": False, "agents": {}, "optional": []}
+    try:
+        health = engine.health_check()
+    except Exception:  # noqa: BLE001
+        return {"healthy": False, "agents": {}, "optional": []}
+    return {
+        "healthy": health.healthy,
+        "agents": dict(health.agents),
+        "optional": list(health.optional),
+    }
+
+
+def _usage_data(kernel: Kernel) -> dict[str, Any]:
+    engine = kernel.get_engine("telemetry")
+    if engine is None:
+        return {"totals": {}, "by_agent": {}, "by_model": {}, "records": [], "cost_records": []}
+    today = datetime.now(UTC).strftime("%Y-%m-%d")
+    return engine.query(date_from=today, date_to=today)
+
+
+def _runtime_data(kernel: Kernel) -> dict[str, Any]:
+    engine = kernel.get_engine("runtime")
+    if engine is None:
+        return {"healthy": False, "has_sandbox": False}
+    try:
+        healthy = engine.health_check()
+    except Exception:  # noqa: BLE001
+        healthy = False
+    try:
+        sandbox = engine.has_sandbox
+    except Exception:  # noqa: BLE001
+        sandbox = False
+    return {"healthy": healthy, "has_sandbox": sandbox}

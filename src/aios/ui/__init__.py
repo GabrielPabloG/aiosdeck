@@ -9,7 +9,9 @@ from aios.ui.components import (
     render_status_pill,
     render_table,
 )
+from aios.ui.datasources import overview_data
 from aios.ui.mode import ColorMode, detect_color_mode
+from aios.ui.pages import render_page
 from aios.ui.render import fit, is_compact, rule, terminal_size
 from aios.ui.resolver import ColorResolver
 from aios.ui.theme import Theme, ocean_theme
@@ -23,8 +25,10 @@ __all__ = [
     "fit",
     "is_compact",
     "ocean_theme",
+    "overview_data",
     "render_metric_card",
     "render_panel",
+    "render_page",
     "render_progress",
     "render_section_header",
     "render_status_pill",
