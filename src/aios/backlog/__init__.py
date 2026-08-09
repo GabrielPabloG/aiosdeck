@@ -6,8 +6,10 @@ from aios.backlog.parser import (
     load_tasks_from_kanban,
     parse_conventional,
 )
+from aios.backlog.runner import BacklogRunner
 
 __all__ = [
+    "BacklogRunner",
     "BacklogTask",
     "BacklogRunResult",
     "load_tasks_from_file",
