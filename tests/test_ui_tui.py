@@ -160,27 +160,21 @@ class TestRefresh:
     def test_refresh_not_called_without_r_key(self) -> None:
         capture = _RenderCapture()
         refresh = _RefreshCapture()
-        result = run_tui(
-            capture, PAGE_NAMES, input_keys=["q"], refresh=refresh
-        )
+        result = run_tui(capture, PAGE_NAMES, input_keys=["q"], refresh=refresh)
         assert result is None
         assert refresh.count == 0
 
     def test_refresh_called_once_when_r_pressed(self) -> None:
         capture = _RenderCapture()
         refresh = _RefreshCapture()
-        result = run_tui(
-            capture, PAGE_NAMES, input_keys=["r", "q"], refresh=refresh
-        )
+        result = run_tui(capture, PAGE_NAMES, input_keys=["r", "q"], refresh=refresh)
         assert result is None
         assert refresh.count == 1
 
     def test_refresh_called_on_each_r_keypress(self) -> None:
         capture = _RenderCapture()
         refresh = _RefreshCapture()
-        result = run_tui(
-            capture, PAGE_NAMES, input_keys=["r", "r", "q"], refresh=refresh
-        )
+        result = run_tui(capture, PAGE_NAMES, input_keys=["r", "r", "q"], refresh=refresh)
         assert result is None
         assert refresh.count == 2
 

@@ -27,7 +27,9 @@ from aios.ui import (
 class FakeWorkflowEngine:
     name = "workflow"
 
-    def __init__(self, agents: dict[str, bool] | None = None, optional: list[str] | None = None) -> None:
+    def __init__(
+        self, agents: dict[str, bool] | None = None, optional: list[str] | None = None
+    ) -> None:
         self._agents = agents or {}
         self._optional = optional or []
 
@@ -265,28 +267,36 @@ def test_overview_data_telemetry_empty_store() -> None:
 # ── render_page("overview", …) tests ─────────────────────────────────────────
 
 
-def test_render_page_shows_system_overview_header(all_healthy_kernel: FakeKernel, mono_ctx: RenderContext) -> None:
+def test_render_page_shows_system_overview_header(
+    all_healthy_kernel: FakeKernel, mono_ctx: RenderContext
+) -> None:
     data = overview_data(all_healthy_kernel)
     output = render_page("overview", data, mono_ctx)
 
     assert "System Overview" in output
 
 
-def test_render_page_shows_project_name(all_healthy_kernel: FakeKernel, mono_ctx: RenderContext) -> None:
+def test_render_page_shows_project_name(
+    all_healthy_kernel: FakeKernel, mono_ctx: RenderContext
+) -> None:
     data = overview_data(all_healthy_kernel)
     output = render_page("overview", data, mono_ctx)
 
     assert "Project" in output
 
 
-def test_render_page_shows_engine_count(all_healthy_kernel: FakeKernel, mono_ctx: RenderContext) -> None:
+def test_render_page_shows_engine_count(
+    all_healthy_kernel: FakeKernel, mono_ctx: RenderContext
+) -> None:
     data = overview_data(all_healthy_kernel)
     output = render_page("overview", data, mono_ctx)
 
     assert "Engines" in output
 
 
-def test_render_page_shows_runtime_ok(all_healthy_kernel: FakeKernel, mono_ctx: RenderContext) -> None:
+def test_render_page_shows_runtime_ok(
+    all_healthy_kernel: FakeKernel, mono_ctx: RenderContext
+) -> None:
     data = overview_data(all_healthy_kernel)
     output = render_page("overview", data, mono_ctx)
 
@@ -318,14 +328,18 @@ def test_render_page_no_sandbox_shows_no_sandbox(mono_ctx: RenderContext) -> Non
     assert "No Sandbox" in output
 
 
-def test_render_page_shows_pipeline_section(all_healthy_kernel: FakeKernel, mono_ctx: RenderContext) -> None:
+def test_render_page_shows_pipeline_section(
+    all_healthy_kernel: FakeKernel, mono_ctx: RenderContext
+) -> None:
     data = overview_data(all_healthy_kernel)
     output = render_page("overview", data, mono_ctx)
 
     assert "Pipeline" in output
 
 
-def test_render_page_shows_agent_names_and_healthy_marker(all_healthy_kernel: FakeKernel, mono_ctx: RenderContext) -> None:
+def test_render_page_shows_agent_names_and_healthy_marker(
+    all_healthy_kernel: FakeKernel, mono_ctx: RenderContext
+) -> None:
     data = overview_data(all_healthy_kernel)
     output = render_page("overview", data, mono_ctx)
 
@@ -364,7 +378,9 @@ def test_render_page_shows_optional_suffix(mono_ctx: RenderContext) -> None:
     assert "(opt)" in output
 
 
-def test_render_page_shows_usage_today_section(all_healthy_kernel: FakeKernel, mono_ctx: RenderContext) -> None:
+def test_render_page_shows_usage_today_section(
+    all_healthy_kernel: FakeKernel, mono_ctx: RenderContext
+) -> None:
     data = overview_data(all_healthy_kernel)
     output = render_page("overview", data, mono_ctx)
 

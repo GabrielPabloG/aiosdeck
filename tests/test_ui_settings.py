@@ -42,13 +42,7 @@ def test_load_ui_section_empty_when_missing(tmp_path: Path) -> None:
 
 def test_save_ui_section_preserves_sibling_sections(tmp_path: Path) -> None:
     path = tmp_path / "config.yaml"
-    path.write_text(
-        "routing:\n"
-        "  default_model: llama3\n"
-        "  cost_cap: 0.05\n"
-        "ui:\n"
-        "  theme: dark\n"
-    )
+    path.write_text("routing:\n  default_model: llama3\n  cost_cap: 0.05\nui:\n  theme: dark\n")
     save_ui_section(path, {"accent_intensity": 0.9, "compact": True, "refresh_interval": 3.0})
 
     text = path.read_text()
@@ -73,9 +67,7 @@ def test_save_without_pyyaml_is_noop(tmp_path: Path, monkeypatch) -> None:
     assert not path.exists()
 
 
-def test_save_does_not_alter_file_when_pyyaml_missing(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_save_does_not_alter_file_when_pyyaml_missing(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr("aios.ui.settings_io.YAML_AVAILABLE", False)
     path = tmp_path / "config.yaml"
     path.write_text("routing:\n  default_model: llama3\n")

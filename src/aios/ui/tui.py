@@ -155,15 +155,11 @@ def run_tui(
     if not page_names:
         raise ValueError("page_names must not be empty")
     if not 0 <= start_index < len(page_names):
-        raise ValueError(
-            f"start_index={start_index} out of range for {len(page_names)} pages"
-        )
+        raise ValueError(f"start_index={start_index} out of range for {len(page_names)} pages")
 
     index = start_index
     if input_keys is not None:
-        read_keys: Callable[[], list[str]] = functools.partial(
-            _read_keys_test, input_keys
-        )
+        read_keys: Callable[[], list[str]] = functools.partial(_read_keys_test, input_keys)
         footer = None
     else:
         read_keys = _read_keys_stdio
@@ -191,8 +187,6 @@ def run_tui(
                 break
             continue
 
-        quit_loop, index, redraw = _process_keys(
-            keys, index, len(page_names), refresh
-        )
+        quit_loop, index, redraw = _process_keys(keys, index, len(page_names), refresh)
         if quit_loop:
             return None
