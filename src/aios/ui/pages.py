@@ -17,6 +17,7 @@ from aios.ui.components import (
     render_status_pill,
     render_table,
 )
+from aios.ui.settings_page import render_settings_page
 
 
 def render_page(name: str, data: dict[str, Any], ctx: RenderContext) -> str:
@@ -226,16 +227,7 @@ def _render_quality(data: dict[str, Any], ctx: RenderContext) -> str:
 
 
 def _render_settings(data: dict[str, Any], ctx: RenderContext) -> str:
-    sections = []
-    sections.append(render_section_header(ctx, "Settings", tone="info"))
-
-    if isinstance(data, list) and data:
-        rows = [[s.get("provider", ""), s.get("model", ""), s.get("status", "")] for s in data]
-        sections.append(render_table(ctx, ["Provider", "Model", "Status"], rows, tone="info"))
-    else:
-        sections.append(render_metric_card(ctx, "Settings", "no data", tone="warning"))
-
-    return "\n".join(s for s in sections if s)
+    return render_settings_page(data, ctx)
 
 
 PAGE_NAMES = [

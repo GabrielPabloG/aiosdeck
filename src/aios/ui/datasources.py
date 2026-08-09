@@ -12,6 +12,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from aios.core.kernel import Kernel
+from aios.ui.settings_io import default_config_path, load_ui_section
 
 
 def overview_data(kernel: Kernel) -> dict[str, Any]:
@@ -90,11 +91,8 @@ def quality_data(kernel: Kernel) -> list[dict[str, Any]]:
     return engine.query_gate_stats()
 
 
-def settings_data(kernel: Kernel) -> list[dict[str, Any]]:
-    engine = kernel.get_engine("telemetry")
-    if engine is None:
-        return []
-    return engine.query_routing_stats()
+def settings_data(kernel: Kernel) -> dict[str, Any]:
+    return load_ui_section(default_config_path())
 
 
 def _runtime_data(kernel: Kernel) -> dict[str, Any]:

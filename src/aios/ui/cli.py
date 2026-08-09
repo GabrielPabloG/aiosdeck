@@ -54,6 +54,7 @@ def _parse_ocean_args(raw_args: list[str] | None) -> tuple[dict[str, Any], int |
         "page": "overview",
         "once": False,
         "json": False,
+        "save": False,
     }
     refresh_interval: int | None = None
 
@@ -64,6 +65,8 @@ def _parse_ocean_args(raw_args: list[str] | None) -> tuple[dict[str, Any], int |
             opts["once"] = True
         elif arg == "--json":
             opts["json"] = True
+        elif arg == "--save":
+            opts["save"] = True
         elif arg == "--page":
             i += 1
             value = raw_args[i] if i < len(raw_args) else ""
@@ -108,15 +111,21 @@ def _cmd_ocean(
     ``--refresh N``
         Enable the refresh callback and re-fetch data every ``N`` seconds
         (parsed for forward compatibility; ``r`` key always reloads).
+    ``--save``
+        Persist the current ``ui`` section to ``~/.config/aiosdeck/config.yaml``.
+        Never writes without this flag.
     """
     from aios.ui import (  # noqa: PLC0415
         PAGE_NAMES,
         ColorResolver,
         RenderContext,
+        default_config_path,
         detect_color_mode,
+        load_ui_section,
         ocean_theme,
         render_page,
         run_tui,
+        save_ui_section,
     )
 
     opts, refresh_interval = _parse_ocean_args(raw_args)
@@ -129,6 +138,9 @@ def _cmd_ocean(
 
     kernel = kernel_factory(project_path)
     kernel.start(render_dashboard=False)
+
+    if opts["save"]:
+        save_ui_section(default_config_path(), load_ui_section(default_config_path()))
 
     mode = detect_color_mode()
     resolver = ColorResolver(ocean_theme, mode)
