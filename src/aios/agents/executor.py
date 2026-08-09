@@ -59,7 +59,7 @@ from aios.events.events import (
     SECURITY_CHECK_PASSED,
     SECURITY_INTENT_APPLIED,
 )
-from aios.security.actions import expand
+from aios.security.intent_validator import validate_intent
 
 logger = logging.getLogger("aios.agent.executor")
 
@@ -147,28 +147,26 @@ class AgentExecutor:
                 )
                 return ExecutionOutcome(status=STATE_FAILED, error=error, attempts=attempt)
 
-        # 2.5 Enforce intent (opt-in) — no intent means previous behavior.
+        # 2.5 Enforce intent (opt-in) — delegates decision to security domain.
         if request.intent is not None:
-            granted = expand(request.agent.capabilities)
-            effective = (request.intent.actions - request.intent.deny) & granted
             intent_name = request.intent.name or "unknown"
-            if not effective:
-                violations = sorted(granted)
+            decision = validate_intent(request.intent, request.agent.capabilities)
+            self._publish_security(
+                execution_id,
+                request,
+                SECURITY_INTENT_APPLIED,
+                action=intent_name,
+                allowed=True,
+                reason=f"intent '{intent_name}' applied to agent '{request.agent.name}'",
+            )
+            if not decision.allowed:
                 error = AgentError(
                     code=PERMISSION_DENIED,
                     message=(
                         f"intent '{intent_name}' grants no action for "
-                        f"agent '{request.agent.name}'; denied: {violations}"
+                        f"agent '{request.agent.name}'; denied: {decision.violations}"
                     ),
                     transient=False,
-                )
-                self._publish_security(
-                    execution_id,
-                    request,
-                    SECURITY_INTENT_APPLIED,
-                    action=intent_name,
-                    allowed=True,
-                    reason=f"intent '{intent_name}' applied to agent '{request.agent.name}'",
                 )
                 self._publish_security(
                     execution_id,
@@ -177,7 +175,7 @@ class AgentExecutor:
                     action=intent_name,
                     allowed=False,
                     reason=error.message,
-                    violations=violations,
+                    violations=decision.violations,
                 )
                 lifecycle.transition(STATE_FAILED)
                 self._publish_lifecycle(execution_id, request, STATE_CREATED, STATE_FAILED)
@@ -188,18 +186,10 @@ class AgentExecutor:
             self._publish_security(
                 execution_id,
                 request,
-                SECURITY_INTENT_APPLIED,
-                action=intent_name,
-                allowed=True,
-                reason=f"intent '{intent_name}' applied to agent '{request.agent.name}'",
-            )
-            self._publish_security(
-                execution_id,
-                request,
                 SECURITY_CHECK_PASSED,
                 action=intent_name,
                 allowed=True,
-                reason=f"intent '{intent_name}' grants actions for agent '{request.agent.name}'",
+                reason=(f"intent '{intent_name}' grants actions for agent '{request.agent.name}'"),
             )
             self._attach_intent(request)
 
