@@ -25,6 +25,8 @@ from aios.agents.models import AgentResult
 
 
 class TesterAgent(BaseAgent):
+    """Executes the project test suite and reports results.  Does not write
+    or fix tests — only runs existing ones."""
     __test__ = False  # pytest: class name matches the Test* collection pattern
 
     name = "tester"

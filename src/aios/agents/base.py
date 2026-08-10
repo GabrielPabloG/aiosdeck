@@ -10,6 +10,10 @@ from aios.agents.models import AgentResult
 
 
 class BaseAgent:
+    """Abstract base for all AiosDeck agents. Defines the contract every agent
+    must fulfill: a unique name, a set of required capabilities and skills, a
+    health check, and an :meth:`execute` method."""
+
     name: str = "base"
     version: str = "1.0"
     timeout: float | None = None
