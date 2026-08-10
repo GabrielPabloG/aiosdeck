@@ -133,24 +133,25 @@ class SQLiteStore:
 
     def upsert_convention(self, rule: str, category: str, source: str) -> None:
         now = _now()
-        existing = self._fetch_one(
-            "SELECT id FROM conventions WHERE rule=? AND project_id=?",
-            (rule, self._project_id),
-        )
-        if existing:
-            self._execute(
-                "UPDATE conventions SET last_seen=?, category=?, source=? WHERE id=?",
-                (now, category, source, existing[0]),
+        if not self._conn:
+            return
+        with self._conn.atomic():
+            existing = self._fetch_one(
+                "SELECT id FROM conventions WHERE rule=? AND project_id=?",
+                (rule, self._project_id),
             )
-        else:
-            self._execute(
-                "INSERT INTO conventions "
-                "(rule, category, source, project_id, created_at, last_seen) "
-                "VALUES (?, ?, ?, ?, ?, ?)",
-                (rule, category, source, self._project_id, now, now),
-            )
-        if self._conn:
-            self._conn.commit()
+            if existing:
+                self._execute(
+                    "UPDATE conventions SET last_seen=?, category=?, source=? WHERE id=?",
+                    (now, category, source, existing[0]),
+                )
+            else:
+                self._execute(
+                    "INSERT INTO conventions "
+                    "(rule, category, source, project_id, created_at, last_seen) "
+                    "VALUES (?, ?, ?, ?, ?, ?)",
+                    (rule, category, source, self._project_id, now, now),
+                )
 
     def add_decision(self, title: str, context: str, decision: str, consequences: str) -> None:
         now = _now()
@@ -165,23 +166,24 @@ class SQLiteStore:
 
     def add_pattern(self, name: str, description: str) -> None:
         now = _now()
-        existing = self._fetch_one(
-            "SELECT id, usage_count FROM patterns WHERE name=? AND project_id=?",
-            (name, self._project_id),
-        )
-        if existing:
-            self._execute(
-                "UPDATE patterns SET usage_count=usage_count+1 WHERE id=?",
-                (existing[0],),
+        if not self._conn:
+            return
+        with self._conn.atomic():
+            existing = self._fetch_one(
+                "SELECT id, usage_count FROM patterns WHERE name=? AND project_id=?",
+                (name, self._project_id),
             )
-        else:
-            self._execute(
-                "INSERT INTO patterns (name, description, usage_count, project_id, created_at) "
-                "VALUES (?, ?, 1, ?, ?)",
-                (name, description, self._project_id, now),
-            )
-        if self._conn:
-            self._conn.commit()
+            if existing:
+                self._execute(
+                    "UPDATE patterns SET usage_count=usage_count+1 WHERE id=?",
+                    (existing[0],),
+                )
+            else:
+                self._execute(
+                    "INSERT INTO patterns (name, description, usage_count, project_id, created_at) "
+                    "VALUES (?, ?, 1, ?, ?)",
+                    (name, description, self._project_id, now),
+                )
 
     def add_mistake(self, description: str, category: str, severity: str) -> None:
         now = _now()
