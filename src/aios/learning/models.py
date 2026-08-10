@@ -3,6 +3,13 @@
 from dataclasses import dataclass, field
 from typing import Literal
 
+from aios.storage.errors import StoreError
+
+
+class LearningStorageError(StoreError):
+    """Domain error for learning storage failures."""
+
+
 ObservationState = Literal["draft"]
 CandidateState = Literal["draft", "scored", "approved", "rejected", "ingested"]
 CandidateType = Literal[
