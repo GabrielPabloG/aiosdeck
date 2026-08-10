@@ -80,10 +80,44 @@ class TestRenderTable:
             "by_model": {},
             "records": [],
             "cost_records": [],
+            "executions": [],
         }
         _render_table(data)
         captured = capsys.readouterr()
         assert "No usage records found" in captured.out
+
+    def test_render_deferred_token_tracking_shows_executions(self, capsys):
+        data = {
+            "totals": {
+                "input_tokens": 0,
+                "output_tokens": 0,
+                "total_tokens": 0,
+                "total_cost": 0,
+                "currency": "USD",
+            },
+            "by_agent": {},
+            "by_model": {},
+            "records": [],
+            "cost_records": [],
+            "executions": [
+                {
+                    "execution_id": "exec-1",
+                    "agent": "planner",
+                    "status": "succeeded",
+                },
+                {
+                    "execution_id": "exec-2",
+                    "agent": "developer",
+                    "status": "succeeded",
+                },
+            ],
+        }
+        _render_table(data)
+        captured = capsys.readouterr()
+        assert "No token usage recorded" in captured.out
+        assert "token tracking deferred" in captured.out
+        assert "2 execution(s) recorded" in captured.out
+        assert "No usage records found" not in captured.out
 
     def test_render_with_data(self, capsys):
         data = {

@@ -93,6 +93,7 @@ def _render_table(data: dict) -> None:
     by_model = data.get("by_model", {})
     records = data.get("records", [])
     cost_records = data.get("cost_records", [])
+    executions = data.get("executions", [])
 
     print(render_section("Usage Summary"))
     print(render_row("Total input tokens", f"{totals.get('input_tokens', 0):,}"))
@@ -125,7 +126,13 @@ def _render_table(data: dict) -> None:
         if unpriced:
             print(f"  Unpriced: {len(unpriced)} records (no pricing data available)")
 
-    if not records:
-        print("\n  No usage records found.")
-    else:
+    if records:
         print(f"\n  {len(records)} usage record(s) found.")
+        return
+
+    if executions:
+        print("\n  No token usage recorded — token tracking deferred.")
+        print(f"  {len(executions)} execution(s) recorded.")
+        return
+
+    print("\n  No usage records found.")

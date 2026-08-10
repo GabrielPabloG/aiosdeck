@@ -280,6 +280,37 @@ class TestAggregateUsage:
         assert agg["by_model"]["gpt-4o"]["input_tokens"] == 300
         store.close()
 
+    def test_aggregate_includes_executions_when_tokens_deferred(self, tmp_path):
+        db = tmp_path / "test.db"
+        store = TelemetryStore(db, "project-1")
+        store.open()
+
+        store.insert_execution(
+            {
+                "execution_id": "exec-1",
+                "event_id": "evt-1",
+                "agent": "planner",
+                "status": "succeeded",
+                "timestamp": "2026-01-01T00:00:00Z",
+            }
+        )
+        store.insert_execution(
+            {
+                "execution_id": "exec-2",
+                "event_id": "evt-2",
+                "agent": "developer",
+                "status": "succeeded",
+                "timestamp": "2026-01-01T00:00:00Z",
+            }
+        )
+
+        agg = store.aggregate_usage()
+        assert agg["totals"]["input_tokens"] == 0
+        assert agg["records"] == []
+        assert len(agg["executions"]) == 2
+        assert {e["agent"] for e in agg["executions"]} == {"planner", "developer"}
+        store.close()
+
 
 class TestTelemetryStoreClosed:
     def test_query_on_closed_store(self, tmp_path):

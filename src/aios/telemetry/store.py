@@ -596,6 +596,13 @@ class TelemetryStore:
             date_to=date_to,
             limit=limit,
         )
+        execution_rows = self.query_executions(
+            agent=agent,
+            workflow_id=workflow_id,
+            date_from=date_from,
+            date_to=date_to,
+            limit=limit,
+        )
 
         total_input = sum(r["input_tokens"] or 0 for r in usage_rows)
         total_output = sum(r["output_tokens"] or 0 for r in usage_rows)
@@ -636,6 +643,7 @@ class TelemetryStore:
             "by_model": by_model,
             "records": usage_rows,
             "cost_records": cost_rows,
+            "executions": execution_rows,
         }
 
     # ------------------------------------------------------------------
