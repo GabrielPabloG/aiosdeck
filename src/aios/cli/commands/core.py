@@ -8,9 +8,11 @@ from __future__ import annotations
 
 import json
 import logging
+import sys
 from collections.abc import Callable
 from pathlib import Path
 
+from aios.cli.completion_scripts import BASH_COMPLETION, ZSH_COMPLETION
 from aios.core.console import render_row, render_section
 
 VERSION_TEXT = "AiosDeck"
@@ -136,6 +138,23 @@ def cmd_complete(raw_args: list[str], project_path: Path, kernel_factory: Callab
     suggestions = complete(raw_args)
     for s in suggestions:
         print(s)
+
+
+def cmd_completion(raw_args: list[str], project_path: Path, kernel_factory: Callable) -> None:  # noqa: ARG001
+    """Print the shell completion script for bash or zsh.
+
+    ``aios completion --bash`` and ``aios completion --zsh`` emit the
+    corresponding completion script to stdout, so users can install it via
+    ``source <(aios completion --bash)`` without shipping extra files.
+    """
+    args = raw_args or []
+    if "--bash" in args:
+        print(BASH_COMPLETION, end="")
+    elif "--zsh" in args:
+        print(ZSH_COMPLETION, end="")
+    else:
+        print("Usage: aios completion --bash | --zsh", file=sys.stderr)
+        sys.exit(1)
 
 
 def cmd_exit(raw_args: list[str], project_path: Path, kernel_factory: Callable) -> None:

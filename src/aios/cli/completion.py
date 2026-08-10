@@ -3,6 +3,10 @@
 Shell completion scripts (bash, zsh, fish) delegate to this module via
 `aios __complete <current_word> <previous_words...>`. The engine walks the
 command tree from the registry and returns matching command names.
+
+The static shell scripts printed by `aios completion --bash/--zsh` live in
+`aios.cli.completion_scripts` — they are thin glue around the `__complete`
+hook, so all completion intelligence stays in Python.
 """
 
 from __future__ import annotations

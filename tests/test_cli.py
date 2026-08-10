@@ -202,6 +202,41 @@ def test_completion_partial():
     assert "memory" in result.stdout
 
 
+def test_completion_command_bash():
+    result = subprocess.run(
+        ["aios", "completion", "--bash"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0
+    assert "complete -F _aios_completion aios aiosdeck ad" in result.stdout
+    assert "_aios_completion()" in result.stdout
+
+
+def test_completion_command_zsh():
+    result = subprocess.run(
+        ["aios", "completion", "--zsh"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0
+    assert "#compdef aios aiosdeck ad" in result.stdout
+    assert "compdef _aios_completion aios aiosdeck ad" in result.stdout
+
+
+def test_completion_command_requires_shell():
+    result = subprocess.run(
+        ["aios", "completion"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 1
+    assert "Usage:" in result.stderr
+
+
 def test_research_web_without_fetcher(tmp_path):
     result = subprocess.run(
         ["aios", "research", "auth flow", "--scope", "web"],

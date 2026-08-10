@@ -25,6 +25,7 @@ from aios.backlog.cli import (
 )
 from aios.cli.commands.core import (
     cmd_complete,
+    cmd_completion,
     cmd_dashboard,
     cmd_doctor,
     cmd_exit,
@@ -146,6 +147,7 @@ def _print_help() -> None:
     print("  aios route <cmd>      Explain or inspect model routing decisions")
     print("  aios backlog <cmd>    Run, list, add, or inspect backlog tasks")
     print("  aios help             Show this help")
+    print("  aios completion [sh]  Print a shell completion script (--bash|--zsh)")
     print()
     print("Commands:")
     _print_command_list(COMMANDS, indent=2)
@@ -237,6 +239,11 @@ COMMANDS: dict[str, Command] = {
         name="help",
         description="Show help",
         execute=cmd_help,
+    ),
+    "completion": Command(
+        name="completion",
+        description="Print shell completion script (--bash | --zsh)",
+        execute=cmd_completion,
     ),
     "usage": Command(
         name="usage",
