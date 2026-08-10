@@ -570,6 +570,56 @@ class TelemetryStore:
             for row in rows
         ]
 
+    def _count(self, table: str, conditions: list[str], params: list) -> int:
+        """Count rows matching the given WHERE conditions (no LIMIT)."""
+        if not self._conn:
+            return 0
+        where = " AND ".join(conditions)
+        try:
+            row = self._conn.execute(
+                f"SELECT COUNT(*) FROM {table} WHERE {where}",
+                params,
+            ).fetchone()
+            return int(row[0]) if row else 0
+        except sqlite3.Error as exc:
+            logger.warning("_count failed for %s: %s", table, exc)
+            return 0
+
+    def _filter_conditions(  # noqa: PLR0913 - mirrors the telemetry audit filters
+        self,
+        *,
+        agent: str | None = None,
+        model: str | None = None,
+        workflow_id: str | None = None,
+        date_from: str | None = None,
+        date_to: str | None = None,
+        on_usage: bool = False,
+    ) -> tuple[list[str], list]:
+        conditions = ["project_id = ?"]
+        params: list = [self._project_id]
+        if agent:
+            conditions.append("agent = ?")
+            params.append(agent)
+        if model and on_usage:
+            conditions.append("model = ?")
+            params.append(model)
+        if workflow_id:
+            conditions.append(
+                "execution_id IN ("
+                "SELECT execution_id FROM telemetry_executions "
+                "WHERE workflow_id = ?)"
+                if on_usage
+                else "workflow_id = ?"
+            )
+            params.append(workflow_id)
+        if date_from:
+            conditions.append("timestamp >= ?")
+            params.append(date_from)
+        if date_to:
+            conditions.append("timestamp <= ?")
+            params.append(date_to)
+        return conditions, params
+
     def aggregate_usage(  # noqa: PLR0913 - filters are the telemetry audit contract
         self,
         *,
@@ -602,6 +652,26 @@ class TelemetryStore:
             date_from=date_from,
             date_to=date_to,
             limit=limit,
+        )
+
+        usage_conditions, usage_params = self._filter_conditions(
+            agent=agent,
+            model=model,
+            workflow_id=workflow_id,
+            date_from=date_from,
+            date_to=date_to,
+            on_usage=True,
+        )
+        usage_total = self._count("telemetry_usage", usage_conditions, usage_params)
+
+        execution_conditions, execution_params = self._filter_conditions(
+            agent=agent,
+            workflow_id=workflow_id,
+            date_from=date_from,
+            date_to=date_to,
+        )
+        execution_total = self._count(
+            "telemetry_executions", execution_conditions, execution_params
         )
 
         total_input = sum(r["input_tokens"] or 0 for r in usage_rows)
@@ -644,6 +714,8 @@ class TelemetryStore:
             "records": usage_rows,
             "cost_records": cost_rows,
             "executions": execution_rows,
+            "total_records": usage_total,
+            "total_executions": execution_total,
         }
 
     # ------------------------------------------------------------------

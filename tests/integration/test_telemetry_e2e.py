@@ -155,5 +155,6 @@ def test_e2e_execution_without_usage_no_usage_record(tmp_path):
     assert result["totals"]["input_tokens"] == 0
     assert len(result["records"]) == 0
     assert len(result["executions"]) >= 2
+    assert result["total_executions"] >= 2
 
     engine.shutdown()
