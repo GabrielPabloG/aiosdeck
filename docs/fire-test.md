@@ -61,9 +61,13 @@ aios ocean --json
 
 # Páginas individuais navegáveis
 aios ocean --page overview
-aios ocean --page security
-aios ocean --page routing
-aios ocean --page learning
+aios ocean --page workflows
+aios ocean --page agents
+aios ocean --page skills
+aios ocean --page knowledge
+aios ocean --page usage
+aios ocean --page quality
+aios ocean --page settings
 ```
 
 Esperado: cada página renderiza sem erro. `--json` retorna JSON válido.

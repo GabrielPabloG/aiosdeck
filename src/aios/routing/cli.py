@@ -206,7 +206,7 @@ def cmd_route(raw_args: list[str], project_path: Path, kernel_factory: Callable)
         print("Subcommands:")
         print("  explain   Explain routing decision for a given input")
         print("  stats     Show routing telemetry stats or records")
-        return
+        sys.exit(1)
 
     sub_map = {
         "explain": cmd_route_explain,

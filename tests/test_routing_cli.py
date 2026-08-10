@@ -3,7 +3,10 @@
 import json
 from pathlib import Path
 
+import pytest
+
 from aios.routing.cli import (
+    cmd_route,
     cmd_route_explain,
     cmd_route_stats,
     _parse_explain_args,
@@ -277,3 +280,21 @@ class TestRouteStats:
         args = _parse_stats_args(["--accuracy", "--json"])
         assert args["accuracy"] is True
         assert args["json"] is True
+
+
+class TestCmdRoute:
+    def test_no_subcommand_exits_nonzero(self, capsys):
+        with pytest.raises(SystemExit) as exc:
+            cmd_route([], Path.cwd(), lambda p: None)
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert "Usage: aios route" in captured.err
+        assert "explain" in captured.out
+        assert "stats" in captured.out
+
+    def test_unknown_subcommand_exits_nonzero(self, capsys):
+        with pytest.raises(SystemExit) as exc:
+            cmd_route(["bogus"], Path.cwd(), lambda p: None)
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert "Unknown subcommand: bogus" in captured.err
