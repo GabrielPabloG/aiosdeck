@@ -2,8 +2,10 @@
 
 from dataclasses import dataclass, field
 
+from aios.storage.errors import StoreError
 
-class StorageError(Exception):
+
+class StorageError(StoreError):
     """Domain error for storage failures. Hides SQLite from callers."""
 
 

@@ -1,8 +1,6 @@
 """SQLite storage backend. Implementation detail of MemoryEngine."""
 
 import logging
-import sqlite3
-from datetime import UTC, datetime
 from pathlib import Path
 
 from aios.memory.models import (
@@ -12,7 +10,7 @@ from aios.memory.models import (
     Pattern,
     StorageError,
 )
-from aios.storage.threadsafe import ThreadSafeConnection, connect_threadsafe
+from aios.storage.sqlite import BaseSQLiteStore
 
 logger = logging.getLogger("aios.memory.store")
 
@@ -59,41 +57,9 @@ CREATE TABLE IF NOT EXISTS mistakes (
 """
 
 
-class SQLiteStore:
+class SQLiteStore(BaseSQLiteStore):
     def __init__(self, db_path: Path, project_id: str) -> None:
-        self._db_path = db_path
-        self._project_id = project_id
-        self._conn: ThreadSafeConnection | None = None
-
-    def open(self) -> None:
-        try:
-            self._db_path.parent.mkdir(parents=True, exist_ok=True)
-        except OSError as exc:
-            raise StorageError(f"Cannot create directory: {self._db_path.parent}") from exc
-
-        try:
-            self._conn = connect_threadsafe(self._db_path)
-            self._conn.execute("PRAGMA journal_mode=WAL")
-            self._conn.execute("PRAGMA foreign_keys = ON")
-            self._conn.executescript(SCHEMA)
-            self._conn.commit()
-        except sqlite3.Error as exc:
-            self._conn = None
-            raise StorageError(f"Database open failed: {exc}") from exc
-
-    def close(self) -> None:
-        if self._conn:
-            self._conn.close()
-            self._conn = None
-
-    def is_open(self) -> bool:
-        if self._conn is None:
-            return False
-        try:
-            self._conn.execute("SELECT 1")
-            return True
-        except sqlite3.Error:
-            return False
+        super().__init__(db_path, project_id, SCHEMA, error_class=StorageError)
 
     def get_conventions(self) -> list[Convention]:
         rows = self._fetch_all(
@@ -132,7 +98,7 @@ class SQLiteStore:
         return [Mistake(*row) for row in rows]
 
     def upsert_convention(self, rule: str, category: str, source: str) -> None:
-        now = _now()
+        now = self._now()
         if not self._conn:
             return
         with self._conn.atomic():
@@ -154,18 +120,17 @@ class SQLiteStore:
                 )
 
     def add_decision(self, title: str, context: str, decision: str, consequences: str) -> None:
-        now = _now()
+        now = self._now()
         self._execute(
             "INSERT INTO decisions "
             "(title, context, decision, consequences, status, project_id, created_at) "
             "VALUES (?, ?, ?, ?, 'active', ?, ?)",
             (title, context, decision, consequences, self._project_id, now),
         )
-        if self._conn:
-            self._conn.commit()
+        self._commit()
 
     def add_pattern(self, name: str, description: str) -> None:
-        now = _now()
+        now = self._now()
         if not self._conn:
             return
         with self._conn.atomic():
@@ -186,30 +151,13 @@ class SQLiteStore:
                 )
 
     def add_mistake(self, description: str, category: str, severity: str) -> None:
-        now = _now()
+        now = self._now()
         self._execute(
             "INSERT INTO mistakes (description, category, severity, project_id, created_at) "
             "VALUES (?, ?, ?, ?, ?)",
             (description, category, severity, self._project_id, now),
         )
-        if self._conn:
-            self._conn.commit()
-
-    def _fetch_all(self, query: str, params: tuple = ()) -> list[tuple]:
-        if not self._conn:
-            return []
-        try:
-            return self._conn.execute(query, params).fetchall()
-        except sqlite3.Error:
-            return []
-
-    def _fetch_one(self, query: str, params: tuple = ()) -> tuple | None:
-        if not self._conn:
-            return None
-        try:
-            return self._conn.execute(query, params).fetchone()
-        except sqlite3.Error:
-            return None
+        self._commit()
 
     def delete_convention(self, rule: str) -> bool:
         self._execute(
@@ -271,11 +219,3 @@ class SQLiteStore:
         ):
             results.append((row[0], row[1]))
         return results
-
-    def _execute(self, query: str, params: tuple = ()) -> None:
-        if self._conn:
-            self._conn.execute(query, params)
-
-
-def _now() -> str:
-    return datetime.now(UTC).isoformat()
