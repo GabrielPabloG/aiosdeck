@@ -63,10 +63,10 @@ class WorkflowStage:
 1. Plan     → Planner: decompose feature into subtasks
 2. (Human approval: review and accept plan)
 3. For each subtask (ordered by dependency):
-   a. Implement → Coder: write code
+   a. Implement → Developer: write code
    b. Quality   → Quality Pipeline: format, lint, test, security
    c. Review    → Reviewer: critique code
-   d. Fix       → Coder: address review findings (if any)
+   d. Fix       → Developer: address review findings (if any)
    e. Document  → Documentation: update docs if needed
 4. Test       → Tester: run full test suite
 5. Commit     → Git: stage and commit changes
@@ -75,7 +75,7 @@ class WorkflowStage:
 #### `/fix` — Fix a bug
 
 ```
-1. Implement → Coder: write fix
+1. Implement → Developer: write fix
 2. Quality   → Quality Pipeline: format, lint, test
 3. Test      → Tester: verify fix with relevant tests
 4. Review    → Reviewer: verify fix is correct and minimal
@@ -94,7 +94,7 @@ class WorkflowStage:
 
 ```
 1. Plan      → Planner: identify refactoring targets
-2. Implement → Coder: execute refactoring
+2. Implement → Developer: execute refactoring
 3. Test      → Tester: ensure tests still pass
 4. Review    → Reviewer: verify behavior unchanged
 5. Commit    → Git: commit with "refactor:" prefix
@@ -204,14 +204,14 @@ If a workflow is not listed in the manifest, it is still available but may produ
 
 ## Implementation Notes
 
-- [ ] Implement `workflows/engine.py` — WorkflowEngine with state machine
-- [ ] Implement `workflows/pipelines/feature.py`, `fix.py`, `review.py`, `refactor.py`, `document.py`, `release.py`
-- [ ] Workflow definition must be serializable to YAML for plugin support
-- [ ] Failure strategy: retry with exponential backoff, skip with warning, abort with error
-- [ ] Workflow progress must be reported: "Stage 3/6: Reviewing code..."
-- [ ] Stage dependencies: only advance when all dependencies for next stage are met
-- [ ] Human approval after planning: emit approval request, wait for response
-- [ ] Test: feature workflow → plan → implement → test → review → commit
-- [ ] Test: failed stage with retry strategy → retried up to 3 times
-- [ ] Test: failed stage with abort strategy → workflow aborted immediately
-- [ ] Test: workflow with no quality gates → stages run without gate checks
+- [x] Implement `workflow/engine.py` — WorkflowEngine orchestrating the fixed pipeline
+- [ ] Define separate `workflows/pipelines/*.py` definitions (feature, fix, review, refactor, document, release) — the v1.0 pipeline is code-driven in `workflow/engine.py`; declarative definitions are post-1.0
+- [ ] Workflow definition must be serializable to YAML for plugin support — post-1.0
+- [x] Failure strategy: abort on failure with graceful skip of optional stages (tester, documentation, git)
+- [x] Workflow progress must be reported via the `on_stage` callback ("Stage 3/6: ...")
+- [x] Stage dependencies: the pipeline is sequential; each stage advances only when the previous one completes
+- [x] Human approval after planning: security approval events (`security.approval_requested` / `approved` / `denied`)
+- [x] Test: feature workflow → plan → implement → test → review → commit
+- [ ] Test: failed stage with retry strategy → retried up to 3 times — post-1.0 (v1.0 aborts)
+- [x] Test: failed stage with abort strategy → workflow aborted immediately
+- [x] Test: workflow with no quality gates → stages run without gate checks

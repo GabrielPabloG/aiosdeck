@@ -192,13 +192,13 @@ async def _safe_call(self, handler: Callable, event: Event) -> None:
 
 ## Implementation Notes
 
-- [ ] Implement `event_bus/events.py` — Event dataclass and all payload type definitions
-- [ ] Implement `event_bus/dispatcher.py` — EventBus class with publish/subscribe
-- [ ] Event payloads must be serializable to JSON for logging
-- [ ] Wildcard subscriptions (`task.*`) must resolve correctly
-- [ ] Subscriber errors must be caught and logged; never propagate to callers
-- [ ] Audit Logger integration: every published event must be written to structured log
-- [ ] Test: publish event → all matching subscribers receive it
-- [ ] Test: subscriber error → other subscribers still receive the event
-- [ ] Test: unsubscribe → subscriber no longer receives events
-- [ ] Test: wildcard subscription matches exact topics correctly
+- [x] Implement `events/events.py` — Event dataclass and all payload type definitions
+- [x] Implement `events/bus.py` — EventBus class with publish/subscribe
+- [x] Event payloads must be serializable to JSON for logging
+- [x] Wildcard subscriptions (`task.*`) must resolve correctly
+- [x] Subscriber errors must be caught and logged; never propagate to callers
+- [x] Audit Logger integration: every published event must be written to structured log
+- [x] Test: publish event → all matching subscribers receive it
+- [x] Test: subscriber error → other subscribers still receive the event
+- [x] Test: unsubscribe → subscriber no longer receives events
+- [x] Test: wildcard subscription matches exact topics correctly

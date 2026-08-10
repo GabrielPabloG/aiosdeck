@@ -33,7 +33,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     metadata standardized; false claims fixed (Coder→developer.py, Reviewer CLI,
     workflows implemented, `.aios/memory.db` path); phase/agent statuses
     updated; stabilization roadmap (S0-S5) replaces rigid plans;
-    `docs/migration-1.0.md` guide.
+    `docs/migration-1.0.md` guide. Package layout in `docs/architecture.md`
+    rewritten to mirror `src/aios/` (events/ not event_bus/, workflow/ not
+    workflows/pipelines/, security/intent_validator|resolver|capabilities|
+    actions|contracts, integrations/projdesk/; backlog, learning, knowledge,
+    retrieval, routing, skills, telemetry, usage, prompts, research, ui,
+    storage added); README Getting Started marked v1.0-rc1; phase-01/04/05/06
+    implementation notes aligned with the shipped code.
   - **S5 RC/GA** — Backlog Runner integrated (v0.9.13 feature brought forward;
     CLI now has 20 top-level commands); `docs/release-checklist.md`; version
     bumped to `1.0.0-rc1`; v1.0 labeling documented in `docs/architecture.md`.

@@ -140,5 +140,5 @@ Configuration is documented in [internals/configuration.md](../internals/configu
 - [x] `aios` dashboard renders the status overview shown in the README
 - [x] `aios doctor --json` must output machine-readable status for scripting
 - [x] Config merge order must be verified with tests: defaults < manifest < user config < env
-- [ ] Graceful degradation tests: start with missing ai-jail, missing Docker, etc.
-- [ ] Event: emit `session.start` on initialization, `session.ready` when all engines are up, `session.shutdown` on exit
+- [x] Graceful degradation tests: start with missing ai-jail, missing Docker, etc.
+- [ ] Event: emit `session.start` on initialization, `session.ready` when all engines are up, `session.shutdown` on exit — topics registered in `events/events.py`, but emission is not implemented (post-1.0)

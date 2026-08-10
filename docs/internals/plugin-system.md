@@ -36,7 +36,7 @@ AiosDeck defines five extension points. Each is a Python protocol that plugins i
 | Extension Point | Protocol | Example Plugin |
 |----------------|----------|---------------|
 | Runtime | `RuntimeAdapter` | OpenCode adapter, DirectLLM adapter |
-| Agent | `Agent` | Coder, Reviewer, custom domain agent |
+| Agent | `Agent` | Developer, Reviewer, custom domain agent |
 | Skill | `SKILL.md` + metadata | `spring-boot`, `react-patterns` |
 | Workflow | `WorkflowDefinition` | `/feature`, `/release`, custom workflow |
 | Quality Gate | `QualityGate` | Custom security scanner, custom linter |
@@ -171,12 +171,12 @@ Plugins run within the same process as AiosDeck. They are subject to the same se
 
 ## Implementation Notes
 
-- [ ] Implement `plugins/registry.py` — PluginRegistry with dict-based storage per extension point
-- [ ] Implement `plugins/loader.py` — PluginLoader with directory scanning and manifest parsing
-- [ ] Define plugin manifest schema (YAML with name, version, type, entry_point, dependencies)
-- [ ] Implement `aios plugin list|install|uninstall|enable|disable` CLI commands
-- [ ] Plugin manifest validation: required fields, version format, dependency compatibility
-- [ ] Plugin loading: dynamic import of entry_point
+- [ ] Implement `plugins/registry.py` — PluginRegistry with dict-based storage per extension point — post-1.0
+- [ ] Implement `plugins/loader.py` — PluginLoader with directory scanning and manifest parsing — post-1.0
+- [ ] Define plugin manifest schema (YAML with name, version, type, entry_point, dependencies) — post-1.0
+- [ ] Implement `aios plugin list|install|uninstall|enable|disable` CLI commands — post-1.0
+- [ ] Plugin manifest validation: required fields, version format, dependency compatibility — post-1.0
+- [ ] Plugin loading: dynamic import of entry_point — post-1.0
 - [ ] Protocol validation: loaded plugin must implement the correct protocol for its type
 - [ ] Test: discover plugins from project and user directories
 - [ ] Test: register agent plugin → Registry.get_agent(name) returns the plugin

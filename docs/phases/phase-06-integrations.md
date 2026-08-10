@@ -1,8 +1,8 @@
 # Phase 06 — Integrations
 
-**Status**: Partial
+**Status**: Implemented (ProjDesk, OpenCode, ai-jail, Ollama); Deferred (Docker, VS Code, GitHub)
 **Level**: Implementation
-**Review date**: 2026-08-09
+**Review date**: 2026-08-10
 **Date**: 2026-08-02
 **Target Version**: v0.9–v1.0
 
@@ -16,16 +16,26 @@ Each integration is an **adapter** — a thin layer that translates between Aios
 
 ### Integration Architecture
 
+| Adapter | Status | Implementation |
+|---------|--------|----------------|
+| ProjDesk | Implemented | `integrations/projdesk/` — `ProjDeskClient`, `ProjectNotFound`, `ProjectAmbiguous` |
+| OpenCode | Implemented | `runtime/opencode.py` — agent execution, headless permission enforcement |
+| ai-jail | Implemented | `runtime/opencode.py` — always invoked via `ai-jail opencode`; degrades with warning when absent |
+| Ollama | Implemented | `retrieval/providers.py` — `OllamaEmbeddingProvider`; default in `config/schema.py` |
+| Docker | Deferred (post-1.0) | context detection only (`context/packet.py`); no adapter |
+| VS Code | Deferred (post-1.0) | no adapter |
+| GitHub | Deferred (post-1.0) | no adapter |
+
 ```
 AiosDeck Core
      │
-     ├── ProjDesk Adapter    (reads .aios/project.yaml, workspace context)
-     ├── OpenCode Adapter    (runtime: agent execution, skill loading)
-     ├── ai-jail Adapter     (sandbox: process isolation, filesystem masking)
-     ├── Ollama Adapter      (LLM: local model inference)
-     ├── Docker Adapter      (containers: development services)
-     ├── VS Code Adapter     (IDE: editor integration)
-     └── GitHub Adapter      (VCS: PRs, issues, CI/CD)
+     ├── ProjDesk Adapter    (reads .aios/project.yaml, workspace context)   ✓ Implemented
+     ├── OpenCode Adapter    (runtime: agent execution, skill loading)       ✓ Implemented
+     ├── ai-jail Adapter     (sandbox: process isolation, filesystem masking) ✓ Implemented
+     ├── Ollama Adapter      (LLM: local model inference)                    ✓ Implemented
+     ├── Docker Adapter      (containers: development services)              ✗ Deferred
+     ├── VS Code Adapter     (IDE: editor integration)                       ✗ Deferred
+     └── GitHub Adapter      (VCS: PRs, issues, CI/CD)                       ✗ Deferred
 ```
 
 ### Adapter Protocol
@@ -142,9 +152,12 @@ Each adapter is tested in isolation:
 
 ## Implementation Notes
 
-- [ ] Implement base adapter protocol in `integrations/__init__.py`
-- [ ] Discovery loop: check all adapters at session start, log availability
-- [ ] Graceful degradation: critical failures abort, non-critical log warning
-- [ ] Test: all adapters installed → all available
-- [ ] Test: adapter missing → logged warning, system continues
-- [ ] Test: OpenCode missing → critical error, system exits
+- [x] Implement base adapter protocol in `integrations/__init__.py`
+- [x] ProjDesk adapter: `integrations/projdesk/client.py` + `exceptions.py`
+- [x] OpenCode runtime adapter: `runtime/opencode.py`
+- [x] ai-jail enforcement in the runtime adapter
+- [x] Ollama embedding provider: `retrieval/providers.py`
+- [ ] Docker / VS Code / GitHub adapters — Deferred (post-1.0)
+- [x] Graceful degradation: critical failures abort, non-critical log warning
+- [x] Test: adapter missing → logged warning, system continues
+- [x] Test: OpenCode missing → critical error, system exits

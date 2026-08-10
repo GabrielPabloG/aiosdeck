@@ -9,7 +9,7 @@
 
 Version control operations — commit, push, tag, branch — are destructive by nature. A bad commit message is recoverable. A force-push to main is not. The Git agent is the **only agent** with Git permissions. No other agent can stage, commit, push, or tag.
 
-This constraint is enforced by the Security Manager. The Coder writes code. The Reviewer approves it. The Tester verifies it. Only then does the Git agent commit and push — and even then, push requires human approval.
+This constraint is enforced by the Security Manager. The Developer writes code. The Reviewer approves it. The Tester verifies it. Only then does the Git agent commit and push — and even then, push requires human approval.
 
 ## Decision
 
@@ -132,7 +132,7 @@ chore: update dependencies
 - [ ] Allowed commands whitelist: only commands in the table above
 - [ ] Push, force-push, tag → emit `security.approval_requested` before execution
 - [ ] Commit message must follow Conventional Commits format
-- [ ] File staging: only stage files that exist and were changed by the Coder
+- [ ] File staging: only stage files that exist and were changed by the Developer
 - [ ] Git agent must verify repository is not in detached HEAD state before committing
 - [ ] Test: commit → files staged, commit created, hash returned
 - [ ] Test: push → approval requested → approved → push executes
