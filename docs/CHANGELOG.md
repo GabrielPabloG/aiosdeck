@@ -57,6 +57,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (v0.9.5..v0.9.13 released, [Unreleased] only carries stabilization work).
 - `docs/fire-test.md` — generalized from a v0.9.11 routing guide to a
   stabilization fire test.
+- `aios backlog run` — gains `--branch`/`--no-branch` flags to create a
+  per-task branch (`feature/<slug>-<id>`) or commit on the current branch
+  (default remains no branch).
 
 ## [0.9.13] - 2026-08-09
 

@@ -44,6 +44,58 @@ def test_cmd_backlog_run_no_source(capsys):
     assert "Usage:" in captured.out
 
 
+class _RecordKernel:
+    def __init__(self) -> None:
+        self.last_create_branch = None
+        self._engines: dict = {}
+
+    def start(self) -> None:
+        pass
+
+    def get_engine(self, name: str):
+        return self._engines.get(name)
+
+    def get_context(self):
+        return None
+
+    def run(self, task, context, mode="plan", commit_factory=None, create_branch=False):
+        self.last_create_branch = create_branch
+        return _RunResult()
+
+
+class _RunResult:
+    success = True
+    errors = ()
+    stages = ()
+
+
+def _write_todo(path: Path, lines: list[str]) -> None:
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def _assert_create_branch(tmp_path: Path, flag: str, expected: bool) -> None:
+    from aios.backlog.cli import cmd_backlog_run
+
+    kernel = _RecordKernel()
+    todo = tmp_path / "TODO.md"
+    _write_todo(todo, ["- [ ] feat(cli): add flag"])
+    args = [f"--source=file:{todo.name}", flag] if flag else [f"--source=file:{todo.name}"]
+    cmd_backlog_run(args, tmp_path, lambda p: kernel)
+    assert kernel.last_create_branch is expected
+
+
+def test_cmd_backlog_run_branch_flag_defaults_false(tmp_path):
+    _assert_create_branch(tmp_path, "", False)
+
+
+def test_cmd_backlog_run_branch_flag_true(tmp_path):
+    _assert_create_branch(tmp_path, "--branch", True)
+
+
+def test_cmd_backlog_run_branch_flag_false(tmp_path):
+    _assert_create_branch(tmp_path, "--no-branch", False)
+
+
 def test_cmd_backlog_stats_no_records(capsys):
     from aios.backlog.cli import cmd_backlog_stats
 

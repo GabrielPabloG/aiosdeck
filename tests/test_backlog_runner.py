@@ -215,12 +215,19 @@ class TestBacklogRunner:
         msg = kernel.last_commit_factory(None)
         assert msg == "feat(backlog): add models (v0.9.13)"
 
-    def test_create_branch_is_false(self):
+    def test_create_branch_is_false_by_default(self):
         kernel = _MockKernel()
         tasks = [BacklogTask(title="t1", subject="t1")]
         runner = BacklogRunner(kernel)
         runner.run(tasks)
         assert kernel.last_create_branch is False
+
+    def test_create_branch_is_true_when_requested(self):
+        kernel = _MockKernel()
+        tasks = [BacklogTask(title="t1", subject="t1")]
+        runner = BacklogRunner(kernel)
+        runner.run(tasks, create_branch=True)
+        assert kernel.last_create_branch is True
 
     def test_callbacks(self):
         kernel = _MockKernel()

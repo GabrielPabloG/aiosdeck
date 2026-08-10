@@ -23,6 +23,7 @@ def cmd_backlog_run(  # noqa: PLR0912, PLR0915
     stop_on_error = True
     from_index = 0
     source: str | None = None
+    create_branch = False
 
     i = 0
     while i < len(raw_args or []):
@@ -32,6 +33,10 @@ def cmd_backlog_run(  # noqa: PLR0912, PLR0915
         elif arg == "--from":
             i += 1
             from_index = int(raw_args[i]) if i < len(raw_args) else 0
+        elif arg == "--branch":
+            create_branch = True
+        elif arg == "--no-branch":
+            create_branch = False
         elif arg.startswith("--source=") or (arg.startswith("--") and "=" in arg):
             source = arg.split("=", 1)[1]
         elif arg.startswith("board:") or arg.startswith("file:"):
@@ -40,7 +45,7 @@ def cmd_backlog_run(  # noqa: PLR0912, PLR0915
 
     if source is None:
         print("Usage: aios backlog run --source=board:NAME | --source=file:PATH")
-        print("  [--continue] [--from N]")
+        print("  [--branch] [--no-branch] [--continue] [--from N]")
         sys.exit(1)
 
     kernel = _resolve_kernel(kernel_factory, project_path)
@@ -67,6 +72,7 @@ def cmd_backlog_run(  # noqa: PLR0912, PLR0915
         tasks,
         stop_on_error=stop_on_error,
         from_index=from_index,
+        create_branch=create_branch,
     )
 
     succeeded = sum(1 for r in results if r.status == "succeeded")

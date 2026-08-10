@@ -9,8 +9,10 @@ telemetry and kanban tracking.
 - **BacklogTask** — a single task parsed from a conventional commit title
   (`type(scope): subject (vX.Y.Z)`).
 - **BacklogRunner** — sequentially executes tasks through `Kernel.run` with
-  `mode="plan-run"`, `create_branch=False`, and a commit factory derived from
-  the parsed title.
+  `mode="plan-run"`, a commit factory derived from the parsed title, and branch
+  creation controlled by the `--branch`/`--no-branch` flags (default: no branch
+  per task). With `--branch`, each task runs on its own `feature/<slug>-<id>`
+  branch.
 - **Source** — tasks come from a kanban board's `Todo` column (`board:NAME`)
   or a `TODO.md` file (`file:PATH`).
 
@@ -40,6 +42,8 @@ aios backlog stats --json
 |------|-------------|
 | `--source=board:NAME` | Load tasks from kanban board `NAME` (Todo column) |
 | `--source=file:PATH`  | Load tasks from markdown file with `- [ ]` lines |
+| `--branch`            | Create a per-task branch (`feature/<slug>-<id>`) before running |
+| `--no-branch`         | Commit on the current branch (default) |
 | `--continue`          | Keep running despite task failures |
 | `--from N`            | Resume from task index N (0-based) |
 | `--json`              | Output stats as JSON |
@@ -53,7 +57,7 @@ CLI → BacklogRunner.run()
     parse_conventional(title) → (type, scope, subject, version)
     build_commit_factory()    → f"type(scope): subject (version)"
     kanban.begin_work(card)
-    Kernel.run(task, context, mode="plan-run", create_branch=False)
+    Kernel.run(task, context, mode="plan-run", create_branch=<flag>)
     kanban.complete_work(card) | kanban.block_card(card)
     TelemetryEngine ← backlog.* events
 ```
