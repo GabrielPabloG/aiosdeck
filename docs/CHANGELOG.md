@@ -40,11 +40,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     retrieval, routing, skills, telemetry, usage, prompts, research, ui,
     storage added); README Getting Started marked v1.0-rc1; phase-01/04/05/06
     implementation notes aligned with the shipped code.
-  - **S5 RC/GA** — Backlog Runner integrated (v0.9.13 feature brought forward;
-    CLI now has 20 top-level commands); `docs/release-checklist.md`; version
+  - **S5 RC/GA** — Backlog Runner integrated (v0.9.13 feature brought forward);
+    CLI surface frozen with the full top-level command tree);
+    `docs/release-checklist.md`; version
     bumped to `1.0.0-rc1`; v1.0 labeling documented in `docs/architecture.md`.
     S5.1 RC checks 2026-08-10: 1344 tests green, ruff clean, circular imports
-    verified, contract + architecture gates pass.
+    verified, contract + architecture gates pass. Fire-test telemetry gates
+    rewritten for v1.0 (executions + routing mandatory; token/cost when the
+    provider reports usage); known limitations documented.
 
 ### Changed
 

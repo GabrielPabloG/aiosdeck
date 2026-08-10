@@ -30,7 +30,7 @@ Manual verification on a throwaway project (see `docs/fire-test.md`).
 
 - [ ] `aios ocean` renders the overview without error (TTY and non-TTY).
 - [ ] `aios ocean --once` and `aios ocean --json` produce correct output.
-- [ ] `aios help` lists all 20 top-level commands; no traceback.
+- [ ] `aios help` lists all top-level commands; no traceback.
 - [ ] `aios` bare invocation shows the dashboard without crash.
 - [ ] `aios completion --bash` / `--zsh` produce valid scripts.
 - [ ] `aios doctor` reports a healthy kernel (or clear warnings).
@@ -45,9 +45,10 @@ Manual verification on a throwaway project (see `docs/fire-test.md`).
 Fire test (`docs/fire-test.md`) validates on a real run:
 
 - [ ] `telemetry_executions` has ≥1 row.
-- [ ] `telemetry_tokens` has ≥1 row.
-- [ ] `telemetry_costs` has ≥1 row.
-- [ ] `agent.lifecycle.changed` + `agent.execution.*` events published.
+- [ ] `telemetry_routing` has ≥1 row.
+- [ ] `telemetry_costs` has ≥1 row (when the provider reports usage).
+- [ ] `agent.lifecycle.changed` + `agent.execution.*` events evidenced in
+      `telemetry_executions`.
 - [ ] `aios usage` shows data.
 
 ## S5.4 — Regression Gates (for GA)

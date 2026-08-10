@@ -1,7 +1,7 @@
 # Fire Test Manual — Stabilization v1.0
 
 Guia para validar o núcleo estável do AiosDeck em um projeto limpo.
-Testa telemetria mínima obrigatória (executions, tokens, cost), a CLI
+Testa telemetria mínima obrigatória (executions, routing, usage/cost), a CLI
 essencial (`aios ocean`, `help`, `completion`) e a saúde do Kernel.
 
 ## Pré-requisitos
@@ -81,27 +81,35 @@ aios plan "add a hello world endpoint" --run
 Esperado: pipeline completa (planner → developer → reviewer → tester →
 documentation → git). A saída contém os stages.
 
-## Passo 5 — Validar telemetria obrigatória (executions + tokens + cost)
+## Passo 5 — Validar telemetria mínima obrigatória (executions + routing)
 
-As 3 tabelas mínimas obrigatórias devem existir e ter dados:
+As 2 tabelas de telemetria mínimas obrigatórias devem existir e ter dados:
 
 ```bash
-# Execuções registradas
+# Execuções registradas (uma por lifecycle/execution event)
 sqlite3 .aios/memory.db "SELECT COUNT(*) FROM telemetry_executions;"
 
-# Tokens consumidos
-sqlite3 .aios/memory.db "SELECT COUNT(*) FROM telemetry_tokens;"
-
-# Custos calculados
-sqlite3 .aios/memory.db "SELECT COUNT(*) FROM telemetry_costs;"
+# Decisões de roteamento registradas (uma por runtime.route_selected event)
+sqlite3 .aios/memory.db "SELECT COUNT(*) FROM telemetry_routing;"
 ```
 
 Esperado: pelo menos 1 registro em cada tabela após uma execução.
 
+Token usage e custo são gravados quando o runtime reporta `usage` no evento de
+execução (provider-dependent). Quando reportados, devem ter dados:
+
+```bash
+# Tokens consumidos (presentes quando o provider reporta usage)
+sqlite3 .aios/memory.db "SELECT COUNT(*) FROM telemetry_usage;"
+
+# Custos calculados (derivados de telemetry_usage)
+sqlite3 .aios/memory.db "SELECT COUNT(*) FROM telemetry_costs;"
+```
+
 Uso visível:
 
 ```bash
-# Resumo de uso (tokens + custo)
+# Resumo de uso (execuções + tokens + custo)
 aios usage
 
 # Com filtro de limit
@@ -110,14 +118,18 @@ aios usage --limit 5
 
 ## Passo 6 — Validar eventos mínimos obrigatórios
 
-Os tópicos de evento obrigatórios para cada execução:
+Os eventos obrigatórios não são persistidos numa tabela própria: o
+TelemetryEngine os consome e os evidencia nas tabelas de telemetria. Para
+confirmar que os eventos foram publicados, verifique os status de execução
+gravados (que refletem `agent.lifecycle.*` / `agent.execution.*`):
 
 ```bash
-sqlite3 .aios/memory.db "SELECT DISTINCT topic FROM telemetry_events ORDER BY topic;"
+sqlite3 .aios/memory.db "SELECT DISTINCT status FROM telemetry_executions ORDER BY status;"
 ```
 
-Esperado: os tópicos `agent.lifecycle.changed`, `agent.execution.*` (started,
-completed/failed), `workflow.started`, `workflow.completed` estão presentes.
+Esperado: os status `started`, `completed`/`succeeded`/`failed` (conforme o
+run) estão presentes, além de `workflow.started`/`workflow.completed`
+evidenciados pelas execuções do workflow.
 
 ## Passo 7 — Caminhos de erro
 
@@ -156,11 +168,27 @@ rm -rf /tmp/firetest-stable
 | 2 | `aios doctor` saudável | Passo 2 |
 | 3 | `aios ocean` renderiza sem erro | Passo 3 |
 | 4 | Pipeline executa sem crash | Passo 4 |
-| 5 | `telemetry_executions` tem registros | Passo 5 |
-| 6 | `telemetry_tokens` tem registros | Passo 5 |
-| 7 | `telemetry_costs` tem registros | Passo 5 |
-| 8 | Eventos `agent.lifecycle.*` e `agent.execution.*` publicados | Passo 6 |
+| 5 | `telemetry_executions` tem ≥1 registro | Passo 5 |
+| 6 | `telemetry_routing` tem ≥1 registro | Passo 5 |
+| 7 | `telemetry_costs` tem registros (quando o provider reporta usage) | Passo 5 |
+| 8 | Eventos `agent.lifecycle.*` e `agent.execution.*` evidenciados | Passo 6 |
 | 9 | `aios usage` mostra dados | Passo 5 |
 | 10 | Erros não vazam traceback | Passo 7 |
 | 11 | Agentes executor-free | Passo 8 |
 | 12 | Completion shell funciona | Passo 2 |
+
+## Known Limitations (v1.0)
+
+- **Token tracking pode ser deferido** — `telemetry_usage` e `telemetry_costs`
+  só recebem linhas quando o runtime reporta `usage` no evento de execução.
+  Quando o provider não reporta tokens, `aios usage` responde com dados
+  honestos (mostra as execuções registradas), mas sem linhas de token/custo.
+  Os portões de telemetria obrigatórios da v1.0 são `telemetry_executions` e
+  `telemetry_routing`.
+- **Eventos não são persistidos numa tabela própria** — os eventos não são
+  gravados numa tabela dedicada de eventos; o TelemetryEngine os consome e os
+  evidencia nas tabelas de telemetria (principalmente `telemetry_executions`).
+- **A tabela de tokens é `telemetry_usage`** — contagens de token vivem em
+  `telemetry_usage` e custos em `telemetry_costs`.
+- **Custo real pós-1.0** — `route_accuracy` via parsing de `opencode --format
+  json` é deferido (ver `docs/migration-1.0.md`).
