@@ -44,10 +44,9 @@ class TestThreadSafeConnection:
     def test_atomic_rolls_back_on_error(self, tmp_path):
         conn = connect_threadsafe(tmp_path / "atomic.db")
         conn.execute("CREATE TABLE t (i INTEGER)")
-        with pytest.raises(RuntimeError):
-            with conn.atomic():
-                conn.execute("INSERT INTO t VALUES (?)", (1,))
-                raise RuntimeError("boom")
+        with pytest.raises(RuntimeError), conn.atomic():
+            conn.execute("INSERT INTO t VALUES (?)", (1,))
+            raise RuntimeError("boom")
         assert conn.execute("SELECT COUNT(*) FROM t").fetchone()[0] == 0
         conn.close()
 

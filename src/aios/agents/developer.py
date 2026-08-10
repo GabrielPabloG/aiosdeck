@@ -19,6 +19,7 @@ logger = logging.getLogger("aios.agent.developer")
 class DeveloperAgent(BaseAgent):
     """Writes and modifies code.  The main implementation agent — it consumes
     context assembled by the context engine and produces code changes."""
+
     name = "developer"
     timeout = 600.0
     required_capabilities = ["filesystem_read", "filesystem_write", "shell"]

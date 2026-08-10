@@ -21,6 +21,7 @@ from aios.agents.models import AgentResult
 @dataclass(frozen=True)
 class GitOperation:
     """Result payload from the Git agent (command, exit code, output)."""
+
     command: list[str]
     executed: bool
     stdout: str
@@ -40,6 +41,7 @@ class GitOperation:
 class GitAgent(BaseAgent):
     """Performs version-control operations: branch, stage, commit.
     Push requires explicit human approval."""
+
     name = "git"
     timeout = 90.0
     required_capabilities = ["git"]

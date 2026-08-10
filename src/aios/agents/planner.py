@@ -42,6 +42,7 @@ class PlannerAgent(BaseAgent):
     """Decomposes high-level goals into ordered subtasks.  Reads project
     structure and existing conventions to produce a structured plan of
     implementation steps."""
+
     name = "planner"
     timeout = 360.0
     retry_policy = RetryPolicy(

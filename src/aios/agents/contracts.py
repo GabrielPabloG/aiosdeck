@@ -77,7 +77,8 @@ def coerce_task(task: Task | AgentTask) -> AgentTask:
     """Return an ``AgentTask`` regardless of whether a Task or AgentTask arrives."""
     if isinstance(task, AgentTask):
         return task
-    from aios.core.task import Task  # noqa: PLC0415 - local import breaks the core<->agents cycle
+
+    from aios.core.task import Task  # noqa: PLC0415
 
     if isinstance(task, Task):
         return AgentTask.from_task(task)
@@ -102,9 +103,8 @@ class AgentTask:
             for key, value in overrides.items():
                 setattr(task, key, value)
             return task
-        from aios.core.task import (  # noqa: PLC0415 - local import breaks the core<->agents cycle
-            Task,
-        )
+
+        from aios.core.task import Task  # noqa: PLC0415
 
         if not isinstance(task, Task):
             raise TypeError(f"expected Task or AgentTask, got {type(task).__name__}")

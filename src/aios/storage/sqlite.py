@@ -58,9 +58,7 @@ class BaseSQLiteStore:
         try:
             self._db_path.parent.mkdir(parents=True, exist_ok=True)
         except OSError as exc:
-            raise self._error_class(
-                f"Cannot create directory: {self._db_path.parent}"
-            ) from exc
+            raise self._error_class(f"Cannot create directory: {self._db_path.parent}") from exc
 
         try:
             self._conn = connect_threadsafe(self._db_path)

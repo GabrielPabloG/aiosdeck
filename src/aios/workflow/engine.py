@@ -402,8 +402,14 @@ class WorkflowEngine:
         notify(ctx.stages[-1])
         return subtasks, None
 
-    def _run_developer_phase(
-        self, ctx: _WorkflowContext, agents: dict, subtasks: list[dict], context, gates: dict, notify
+    def _run_developer_phase(  # noqa: PLR0913, PLR0917
+        self,
+        ctx: _WorkflowContext,
+        agents: dict,
+        subtasks: list[dict],
+        context,
+        gates: dict,
+        notify,
     ) -> WorkflowResult | None:
         """Per-subtask developer loop followed by the code gate.
 

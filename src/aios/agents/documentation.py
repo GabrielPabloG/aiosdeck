@@ -36,6 +36,7 @@ class ChangelogFragment:
 
 class DocumentationAgent(BaseAgent):
     """Updates documentation files, ADRs, and the CHANGELOG."""
+
     name = "documentation"
     timeout = 30.0
     required_capabilities = ["filesystem_read", "filesystem_write"]

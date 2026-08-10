@@ -141,6 +141,7 @@ _WEB_UNAVAILABLE_RECO = Recommendation(
 class ResearchAgent(BaseAgent):
     """Searches project documentation, source files, and configured web
     sources.  Structured results feed the Planner and Developer context."""
+
     name = "research"
     timeout = 60.0
     required_capabilities = ["filesystem_read"]

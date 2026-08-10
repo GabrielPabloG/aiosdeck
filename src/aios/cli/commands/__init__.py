@@ -50,10 +50,12 @@ from aios.cli.commands.exec_cmds import (
     _render_stage as _render_stage,
 )
 from aios.cli.commands.exec_cmds import (
+    _run_result_to_json as _run_result_to_json,
+)
+from aios.cli.commands.exec_cmds import (
     cmd_plan,
     cmd_research,
     cmd_review,
-    _run_result_to_json as _run_result_to_json,
 )
 from aios.cli.commands.memory import (
     cmd_memory_add,

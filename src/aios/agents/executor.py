@@ -93,6 +93,7 @@ class AgentExecutor:
     enforces capabilities, drives the lifecycle state machine, applies
     timeout/retry/cancellation, and publishes ``agent.*`` events.  Agents
     never hold or call the executor, so recursion is structurally impossible."""
+
     def __init__(self, event_bus=None, capabilities_enforcer=None) -> None:
         self._bus = event_bus
         self._enforcer = capabilities_enforcer

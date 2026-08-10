@@ -1,6 +1,6 @@
 # RC/GA Checklist — v1.0.0
 
-**Status**: Planned (run before tagging v1.0.0-rc1)
+**Status**: Verified (2026-08-10)
 **Date**: 2026-08-09
 
 This checklist gates the v1.0.0 release candidate. Every item must pass before
@@ -10,18 +10,19 @@ tagging `v1.0.0-rc1`; the GA (`v1.0.0`) adds only the release/regression gates.
 
 Run on the `feature/stable-1.0` branch.
 
-- [ ] `pytest tests/ -q` — full suite green (1300+ tests, target 0 failures).
-- [ ] `ruff check src tests` — zero errors.
-- [ ] `ruff format --check src tests` — zero reformatting.
-- [ ] No new runtime dependencies (stdlib + existing only).
-- [ ] No module exceeds an accepted size; large modules documented
+- [x] `pytest tests/ -q` — full suite green (1344 tests, 0 failures).
+- [x] `ruff check src tests` — zero errors.
+- [x] `ruff format --check src tests` — zero reformatting.
+- [x] No new runtime dependencies (stdlib + existing only).
+- [x] No module exceeds an accepted size; large modules documented
       (`telemetry/store.py` single-responsibility note).
-- [ ] No circular imports: fresh interpreter imports `aios.cli.commands`,
+- [x] No circular imports: fresh interpreter imports `aios.cli.commands`,
       `aios.agents.executor`, `aios.security.intent_validator`.
-- [ ] Contract tests (`tests/contracts/`) all pass — frozen signatures intact.
-- [ ] Architecture tests (`tests/architecture/`) all pass — executor-free agents,
-      single event producer, no rich-domain-API bypass.
-- [ ] `aios --version` reports `1.0.0-rc1` (or the intended tag version).
+- [x] Contract tests (`tests/contracts/`) all pass — frozen signatures intact
+      (148 passed).
+- [x] Architecture tests (`tests/architecture/`) all pass — executor-free agents,
+      single event producer, no rich-domain-API bypass (8 passed).
+- [x] `aios --version` reports `1.0.0-rc1` (or the intended tag version).
 
 ## S5.2 — CLI UX Checklist
 

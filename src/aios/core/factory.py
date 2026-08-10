@@ -120,7 +120,9 @@ def _build_skill_assembler(project_path: Path, kernel: Kernel):
             recorder = SkillUsageRecorder(telemetry)
             return SkillAssembler(discovery=discovery, retrieval=retrieval, recorder=recorder)
     except Exception:
-        logger.warning("Failed to build skill assembler (skills will be unavailable)", exc_info=True)
+        logger.warning(
+            "Failed to build skill assembler (skills will be unavailable)", exc_info=True
+        )
         pass
     return SkillAssembler()
 
