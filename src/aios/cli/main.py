@@ -1,48 +1,20 @@
 """CLI entry point for the aios command."""
 
 import argparse
-import os
 import signal
 import sys
 from pathlib import Path
 
 from aios import __version__
-from aios.agents import AgentExecutor
-from aios.agents.developer import DeveloperAgent
-from aios.agents.documentation import DocumentationAgent
-from aios.agents.git import GitAgent
-from aios.agents.planner import PlannerAgent
-from aios.agents.research import ResearchAgent
-from aios.agents.reviewer import ReviewerAgent
-from aios.agents.tester import TesterAgent
 from aios.cli.commands import COMMANDS, _error, _print_command_help, _print_help
-from aios.config import ConfigEngine
-from aios.config.loader import ConfigLoader
-from aios.context import ContextAssembler, ContextEngine
 from aios.core import Kernel
-from aios.events import EventsEngine
+from aios.core.factory import create_kernel
 from aios.integrations.projdesk import (
     ProjDeskClient,
     ProjDeskError,
     ProjectAmbiguous,
     ProjectNotFound,
 )
-from aios.knowledge import KnowledgeEngine
-from aios.learning import LearningEngine
-from aios.memory import MemoryEngine
-from aios.retrieval.providers import OllamaEmbeddingProvider
-from aios.retrieval.selector import ContextBudget
-from aios.routing.engine import RuleBasedRouter
-from aios.runtime import RuntimeEngine
-from aios.scheduler import KanbanEngine
-from aios.security import SecurityEngine
-from aios.skills.assembler import SkillAssembler
-from aios.skills.discovery import SkillDiscoveryService
-from aios.skills.registry import SkillRegistry
-from aios.skills.retrieval import SkillRetrievalService
-from aios.skills.telemetry import SkillUsageRecorder
-from aios.telemetry import TelemetryEngine
-from aios.workflow import WorkflowEngine
 
 VERSION_TEXT = f"AiosDeck v{__version__}"
 
@@ -129,7 +101,7 @@ def _resolve_project(args: list[str]) -> Path:
 
 def _dispatch(cmd, raw_args: list[str], project_path: Path) -> None:
     if not raw_args and cmd.execute is not None:
-        cmd.execute(raw_args, project_path, _create_kernel)
+        cmd.execute(raw_args, project_path, _kernel_factory)
         return
 
     if not raw_args:
@@ -150,102 +122,20 @@ def _dispatch(cmd, raw_args: list[str], project_path: Path) -> None:
         if sub.subcommands or sub.execute is not None:
             _dispatch(sub, remaining, project_path)
         elif cmd.execute is not None:
-            cmd.execute(raw_args, project_path, _create_kernel)
+            cmd.execute(raw_args, project_path, _kernel_factory)
         else:
             _print_command_help(sub)
         return
 
     if cmd.execute is not None:
-        cmd.execute(raw_args, project_path, _create_kernel)
+        cmd.execute(raw_args, project_path, _kernel_factory)
         return
 
     _error(f"Unknown subcommand: {sub_name}")
 
 
-def _build_skill_assembler(project_path: Path, kernel: Kernel):
-    try:
-        registry = SkillRegistry(project_path)
-        discovery = SkillDiscoveryService(registry)
-        knowledge = kernel.get_engine("knowledge")
-        telemetry = kernel.get_engine("telemetry")
-        if knowledge is not None:
-            retrieval = SkillRetrievalService(knowledge)
-            recorder = SkillUsageRecorder(telemetry)
-            return SkillAssembler(discovery=discovery, retrieval=retrieval, recorder=recorder)
-    except Exception:
-        pass
-    return SkillAssembler()
-
-
-def _build_context_assembler(project_path: Path, kernel: Kernel):
-    try:
-        knowledge = kernel.get_engine("knowledge")
-        return ContextAssembler(knowledge=knowledge, budget=ContextBudget())
-    except Exception:
-        pass
-    return ContextAssembler(knowledge=None)
-
-
-def _create_kernel(project_path: Path) -> Kernel:
+def _kernel_factory(project_path: Path) -> Kernel:
     global _active_kernel  # noqa: PLW0603
-    kernel = Kernel(project_path=str(project_path))
-    kernel.register(ConfigEngine(project_path=project_path))
-    kernel.register(ContextEngine(project_path=project_path))
-    kernel.register(MemoryEngine(project_path=project_path))
-    kernel.register(
-        LearningEngine(
-            project_path=project_path,
-            memory=kernel.get_engine("memory"),
-        )
-    )
-    kernel.register(KanbanEngine(project_path=project_path))
-    events = EventsEngine()
-    kernel.register(events)
-    kernel.register(TelemetryEngine(project_path=project_path))
-    embedding_host = os.environ.get("AIOS_OLLAMA_HOST", "http://localhost:11434")
-    embedding_model = os.environ.get("AIOS_EMBEDDING_MODEL", "nomic-embed-text")
-    embedding_provider = OllamaEmbeddingProvider(model=embedding_model, host=embedding_host)
-    kernel.register(
-        KnowledgeEngine(project_path=project_path, embedding_provider=embedding_provider)
-    )
-    security = SecurityEngine(project_path=project_path)
-    kernel.register(security)
-    executor = AgentExecutor(capabilities_enforcer=security._enforcer)
-    executor.set_event_bus(events.bus)
-    kernel.set_executor(executor)
-
-    routing_config = ConfigLoader(project_path=project_path).load().routing
-    router = None
-    if routing_config and routing_config.enabled:
-        router = RuleBasedRouter(routing_config)
-
-    runtime = RuntimeEngine(router=router)
-    kernel.register(runtime)
-
-    assembler = _build_skill_assembler(project_path, kernel)
-    context_assembler = _build_context_assembler(project_path, kernel)
-    developer = DeveloperAgent(runtime, skills=assembler, assembler=context_assembler)
-    planner = PlannerAgent(runtime, skills=assembler, assembler=context_assembler)
-    reviewer = ReviewerAgent()
-    research_agent = ResearchAgent()
-    kernel.register(developer)
-    kernel.register(planner)
-    kernel.register(reviewer)
-    kernel.register(research_agent)
-    git = GitAgent(repository=project_path) if (project_path / ".git").exists() else None
-    kernel.register(
-        WorkflowEngine(
-            planner=planner,
-            scheduler=kernel.get_engine("scheduler"),
-            developer=developer,
-            reviewer=reviewer,
-            researcher=research_agent,
-            tester=TesterAgent(),
-            documentation=DocumentationAgent(docs_dir=str(project_path / "docs")),
-            git=git,
-            project_path=project_path,
-            executor=executor,
-        )
-    )
+    kernel = create_kernel(project_path)
     _active_kernel = kernel
     return kernel

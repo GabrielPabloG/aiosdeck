@@ -18,7 +18,7 @@ from aios.agents.models import AgentResult
 from aios.agents.planner import PlannerAgent
 from aios.agents.reviewer import ReviewerAgent
 from aios.cli.commands.exec_cmds import cmd_plan as _cmd_plan
-from aios.cli.main import _create_kernel
+from aios.core.factory import create_kernel
 from aios.context import ContextEngine
 from aios.context.packet import ContextPacket, GitInfo, ProjectInfo, ToolsInfo
 from aios.core import Kernel, RunResult, StageSummary
@@ -133,7 +133,7 @@ class TestPlanDelegatesToKernel:
 
     def test_create_kernel_registers_workflow(self, tmp_path):
         """The production kernel factory registers the workflow engine."""
-        kernel = _create_kernel(tmp_path)
+        kernel = create_kernel(tmp_path)
 
         workflow = kernel.get_engine("workflow")
         assert workflow is not None

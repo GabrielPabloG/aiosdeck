@@ -1,6 +1,6 @@
 """Integration tests for routing wired into the production kernel factory.
 
-``aios.cli.main._create_kernel`` must build the runtime router from the
+``aios.core.factory.create_kernel`` must build the runtime router from the
 routing config before ``kernel.start()`` ever runs, so that real ``aios plan
 --run`` invocations select a model instead of silently running with the
 default one.
@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from aios.cli.main import _create_kernel
+from aios.core.factory import create_kernel
 from aios.routing.models import RouteInput
 
 
@@ -39,7 +39,7 @@ class TestCreateKernelRouterWiring:
             "      model: openrouter/deepseek/deepseek-v4-flash\n",
         )
 
-        kernel = _create_kernel(tmp_path)
+        kernel = create_kernel(tmp_path)
 
         runtime = kernel.get_engine("runtime")
         assert runtime is not None
@@ -57,7 +57,7 @@ class TestCreateKernelRouterWiring:
             "routing:\n  enabled: false\n",
         )
 
-        kernel = _create_kernel(tmp_path)
+        kernel = create_kernel(tmp_path)
 
         runtime = kernel.get_engine("runtime")
         assert runtime is not None
@@ -67,7 +67,7 @@ class TestCreateKernelRouterWiring:
         _clean_env(monkeypatch)
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
-        kernel = _create_kernel(tmp_path)
+        kernel = create_kernel(tmp_path)
 
         runtime = kernel.get_engine("runtime")
         assert runtime is not None
