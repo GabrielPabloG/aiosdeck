@@ -2,11 +2,10 @@
 
 import logging
 import sqlite3
-from datetime import UTC, datetime
 from pathlib import Path
 
 from aios.scheduler.models import COLUMNS, KanbanBoard, KanbanCard, KanbanError, KanbanSubtask
-from aios.storage.threadsafe import ThreadSafeConnection, connect_threadsafe
+from aios.storage.sqlite import BaseSQLiteStore
 
 logger = logging.getLogger("aios.scheduler.store")
 
@@ -45,30 +44,11 @@ CREATE TABLE IF NOT EXISTS kanban_subtasks (
 """
 
 
-class KanbanStore:
+class KanbanStore(BaseSQLiteStore):
     def __init__(self, db_path: Path, project_id: str) -> None:
-        self._db_path = db_path
-        self._project_id = project_id
-        self._conn: ThreadSafeConnection | None = None
+        super().__init__(db_path, project_id, SCHEMA, error_class=KanbanError)
 
-    def open(self) -> None:
-        try:
-            self._db_path.parent.mkdir(parents=True, exist_ok=True)
-        except OSError as exc:
-            raise KanbanError(f"Cannot create directory: {self._db_path.parent}") from exc
-
-        try:
-            self._conn = connect_threadsafe(self._db_path)
-            self._conn.execute("PRAGMA journal_mode=WAL")
-            self._conn.execute("PRAGMA foreign_keys = ON")
-            self._conn.executescript(SCHEMA)
-            self._migrate()
-            self._conn.commit()
-        except sqlite3.Error as exc:
-            self._conn = None
-            raise KanbanError(f"Database open failed: {exc}") from exc
-
-    def _migrate(self) -> None:
+    def _post_open(self) -> None:
         if self._conn is None:
             return
         columns = {row[1] for row in self._conn.execute("PRAGMA table_info(kanban_cards)")}
@@ -81,22 +61,13 @@ class KanbanStore:
                 "ALTER TABLE kanban_cards ADD COLUMN block_reason TEXT NOT NULL DEFAULT ''"
             )
 
-    def close(self) -> None:
-        if self._conn:
-            self._conn.close()
-            self._conn = None
-
-    def is_open(self) -> bool:
-        if self._conn is None:
-            return False
-        try:
-            self._conn.execute("SELECT 1")
-            return True
-        except sqlite3.Error:
-            return False
+    def _execute(self, query: str, params: tuple = ()) -> sqlite3.Cursor:
+        if not self._conn:
+            raise KanbanError("Store is not open")
+        return self._conn.execute(query, params)
 
     def create_board(self, name: str) -> KanbanBoard:
-        now = _now()
+        now = self._now()
         cursor = self._execute(
             "INSERT INTO kanban_boards (name, status, project_id, created_at) "
             "VALUES (?, 'active', ?, ?)",
@@ -128,7 +99,7 @@ class KanbanStore:
         return [KanbanBoard(*row) for row in rows]
 
     def create_card(self, board_id: int, title: str, description: str = "") -> KanbanCard:
-        now = _now()
+        now = self._now()
         cursor = self._execute(
             "INSERT INTO kanban_cards (board_id, title, description, column_name, tdd_gate, "
             "blocked, block_reason, project_id, created_at, updated_at) "
@@ -201,7 +172,7 @@ class KanbanStore:
 
         self._execute(
             "UPDATE kanban_cards SET column_name=?, updated_at=? WHERE id=?",
-            (column, _now(), card_id),
+            (column, self._now(), card_id),
         )
         self._commit()
         return self.get_card(card_id)
@@ -209,20 +180,20 @@ class KanbanStore:
     def pass_tdd_gate(self, card_id: int) -> None:
         self._execute(
             "UPDATE kanban_cards SET tdd_gate=1, updated_at=? WHERE id=?",
-            (_now(), card_id),
+            (self._now(), card_id),
         )
         self._commit()
 
     def set_blocked(self, card_id: int, reason: str = "") -> KanbanCard:
         self._execute(
             "UPDATE kanban_cards SET blocked=1, block_reason=?, updated_at=? WHERE id=?",
-            (reason, _now(), card_id),
+            (reason, self._now(), card_id),
         )
         self._commit()
         return self.get_card(card_id)
 
     def create_subtask(self, card_id: int, description: str) -> KanbanSubtask:
-        now = _now()
+        now = self._now()
         cursor = self._execute(
             "INSERT INTO kanban_subtasks (card_id, description, done, created_at) "
             "VALUES (?, ?, 0, ?)",
@@ -251,32 +222,3 @@ class KanbanStore:
     def complete_subtask(self, subtask_id: int) -> None:
         self._execute("UPDATE kanban_subtasks SET done=1 WHERE id=?", (subtask_id,))
         self._commit()
-
-    def _fetch_all(self, query: str, params: tuple = ()) -> list[tuple]:
-        if not self._conn:
-            return []
-        try:
-            return self._conn.execute(query, params).fetchall()
-        except sqlite3.Error:
-            return []
-
-    def _fetch_one(self, query: str, params: tuple = ()) -> tuple | None:
-        if not self._conn:
-            return None
-        try:
-            return self._conn.execute(query, params).fetchone()
-        except sqlite3.Error:
-            return None
-
-    def _execute(self, query: str, params: tuple = ()) -> sqlite3.Cursor:
-        if not self._conn:
-            raise KanbanError("Store is not open")
-        return self._conn.execute(query, params)
-
-    def _commit(self) -> None:
-        if self._conn:
-            self._conn.commit()
-
-
-def _now() -> str:
-    return datetime.now(UTC).isoformat()
