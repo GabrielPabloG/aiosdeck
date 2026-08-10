@@ -199,7 +199,7 @@ def _parse_stats_args(raw_args: list[str]) -> dict:
     return opts
 
 
-def _cmd_route(raw_args: list[str], project_path: Path, kernel_factory: Callable) -> None:
+def cmd_route(raw_args: list[str], project_path: Path, kernel_factory: Callable) -> None:
     if not raw_args:
         print("Usage: aios route <subcommand>", file=sys.stderr)
         print()

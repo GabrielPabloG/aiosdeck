@@ -8,7 +8,7 @@ from typing import Any
 
 import pytest
 
-from aios.ui.cli import _cmd_ocean
+from aios.ui.cli import cmd_ocean
 
 
 class FakeKernel:
@@ -36,8 +36,8 @@ def _fake_kernel_factory(path: Path) -> FakeKernel:
 # ── --once ────────────────────────────────────────────────────────────────────
 
 
-def test_cmd_ocean_once_renders_text(capsys: pytest.CaptureFixture) -> None:
-    _cmd_ocean(["--once"], Path.cwd(), _fake_kernel_factory)
+def testcmd_ocean_once_renders_text(capsys: pytest.CaptureFixture) -> None:
+    cmd_ocean(["--once"], Path.cwd(), _fake_kernel_factory)
     captured = capsys.readouterr()
     out = captured.out
     assert "Project" in out
@@ -47,8 +47,8 @@ def test_cmd_ocean_once_renders_text(capsys: pytest.CaptureFixture) -> None:
 # ── --json ────────────────────────────────────────────────────────────────────
 
 
-def test_cmd_ocean_json_output(capsys: pytest.CaptureFixture) -> None:
-    _cmd_ocean(["--json"], Path.cwd(), _fake_kernel_factory)
+def testcmd_ocean_json_output(capsys: pytest.CaptureFixture) -> None:
+    cmd_ocean(["--json"], Path.cwd(), _fake_kernel_factory)
     captured = capsys.readouterr()
     out = captured.out
     parsed = json.loads(out)
@@ -58,7 +58,7 @@ def test_cmd_ocean_json_output(capsys: pytest.CaptureFixture) -> None:
 # ── non-TTY fallback ──────────────────────────────────────────────────────────
 
 
-def test_cmd_ocean_non_tty_fallback(
+def testcmd_ocean_non_tty_fallback(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     calls: list[tuple[list[str], int]] = []
@@ -75,7 +75,7 @@ def test_cmd_ocean_non_tty_fallback(
         return render(page_names[0])
 
     monkeypatch.setattr("aios.ui.run_tui", _fake_run_tui)
-    _cmd_ocean([], Path.cwd(), _fake_kernel_factory)
+    cmd_ocean([], Path.cwd(), _fake_kernel_factory)
     assert len(calls) == 1
     page_names, start_index = calls[0]
     assert page_names[0] == "overview"
@@ -85,8 +85,8 @@ def test_cmd_ocean_non_tty_fallback(
 # ── --page flag ───────────────────────────────────────────────────────────────
 
 
-def test_cmd_ocean_page_flag(capsys: pytest.CaptureFixture) -> None:
-    _cmd_ocean(["--page", "workflows", "--once"], Path.cwd(), _fake_kernel_factory)
+def testcmd_ocean_page_flag(capsys: pytest.CaptureFixture) -> None:
+    cmd_ocean(["--page", "workflows", "--once"], Path.cwd(), _fake_kernel_factory)
     captured = capsys.readouterr()
     out = captured.out
     assert "Workflows" in out
@@ -95,7 +95,7 @@ def test_cmd_ocean_page_flag(capsys: pytest.CaptureFixture) -> None:
 # ── dashboard regression ──────────────────────────────────────────────────────
 
 
-def test_cmd_ocean_dashboard_unchanged_regression(
+def testcmd_ocean_dashboard_unchanged_regression(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     calls: list[tuple[list[str], int, Any]] = []
@@ -112,7 +112,7 @@ def test_cmd_ocean_dashboard_unchanged_regression(
         return None
 
     monkeypatch.setattr("aios.ui.run_tui", _fake_run_tui)
-    _cmd_ocean([], Path.cwd(), _fake_kernel_factory)
+    cmd_ocean([], Path.cwd(), _fake_kernel_factory)
     assert len(calls) == 1
     page_names, start_index, refresh = calls[0]
     assert "overview" in page_names

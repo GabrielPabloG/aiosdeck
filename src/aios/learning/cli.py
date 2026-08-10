@@ -228,7 +228,7 @@ def _extract_flag(args: list[str], flag: str) -> str:
     return ""
 
 
-def _cmd_learning(raw_args: list[str], project_path: Path, kernel_factory: Callable) -> None:
+def cmd_learning(raw_args: list[str], project_path: Path, kernel_factory: Callable) -> None:
     if not raw_args:
         print("Usage: aios learning <subcommand>", file=sys.stderr)
         print()

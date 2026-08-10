@@ -12,7 +12,7 @@ from aios.learning.cli import (
     cmd_learning_export,
     cmd_learning_ingest,
     cmd_learning_reject,
-    _cmd_learning,
+    cmd_learning,
 )
 from aios.learning.engine import LearningEngine
 
@@ -288,14 +288,14 @@ class TestLearningExport:
 class TestLearningDispatch:
     def test_no_subcommand_shows_usage(self, capsys, engine_and_factory) -> None:
         engine, factory = engine_and_factory
-        _cmd_learning([], Path("/tmp/test-cli"), factory)
+        cmd_learning([], Path("/tmp/test-cli"), factory)
         captured = capsys.readouterr()
         assert "Usage" in captured.out or "Subcommands" in captured.out
 
     def test_unknown_subcommand(self, capsys, engine_and_factory) -> None:
         engine, factory = engine_and_factory
         with pytest.raises(SystemExit) as exc:
-            _cmd_learning(["nonexistent"], Path("/tmp/test-cli"), factory)
+            cmd_learning(["nonexistent"], Path("/tmp/test-cli"), factory)
         assert exc.value.code == 1
         captured = capsys.readouterr()
         assert "Unknown" in captured.err

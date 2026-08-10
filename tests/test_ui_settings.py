@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from aios.ui.cli import _cmd_ocean
+from aios.ui.cli import cmd_ocean
 from aios.ui.datasources import settings_data
 from aios.ui.settings_io import default_config_path, load_ui_section, save_ui_section
 from aios.ui.settings_page import render_settings_page
@@ -125,16 +125,16 @@ def test_render_settings_page_empty_state() -> None:
 # ── --save CLI integration ────────────────────────────────────────────────────
 
 
-def test_cmd_ocean_save_writes_ui_section(tmp_path: Path, monkeypatch, capsys) -> None:
+def testcmd_ocean_save_writes_ui_section(tmp_path: Path, monkeypatch, capsys) -> None:
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
-    _cmd_ocean(["--page", "settings", "--once", "--save"], Path.cwd(), _fake_kernel_factory)
+    cmd_ocean(["--page", "settings", "--once", "--save"], Path.cwd(), _fake_kernel_factory)
     cfg = tmp_path / ".config" / "aiosdeck" / "config.yaml"
     assert cfg.exists()
     assert "ui:" in cfg.read_text()
 
 
-def test_cmd_ocean_without_save_does_not_write(tmp_path: Path, monkeypatch, capsys) -> None:
+def testcmd_ocean_without_save_does_not_write(tmp_path: Path, monkeypatch, capsys) -> None:
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
-    _cmd_ocean(["--page", "settings", "--once"], Path.cwd(), _fake_kernel_factory)
+    cmd_ocean(["--page", "settings", "--once"], Path.cwd(), _fake_kernel_factory)
     cfg = tmp_path / ".config" / "aiosdeck" / "config.yaml"
     assert not cfg.exists()

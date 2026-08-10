@@ -93,7 +93,7 @@ def _parse_ocean_args(raw_args: list[str] | None) -> tuple[dict[str, Any], int |
     return opts, refresh_interval
 
 
-def _cmd_ocean(
+def cmd_ocean(
     raw_args: list[str],
     project_path: Path,
     kernel_factory: Callable,
