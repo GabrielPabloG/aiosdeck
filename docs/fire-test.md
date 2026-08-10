@@ -148,7 +148,17 @@ Esperado: mensagens de erro formatadas, sem traceback Python, exit code 1.
 
 ## Passo 8 — Verificação de arquitetura (o que a v1.0 garante)
 
-- Agentes são executor-free: `grep -n "AgentExecutor" src/aios/agents/planner.py src/aios/agents/developer.py src/aios/agents/reviewer.py src/aios/agents/tester.py src/aios/agents/documentation.py src/aios/agents/git.py src/aios/agents/research.py` não deve achar match.
+O gate oficial de arquitetura é a suíte de testes dedicada:
+
+```bash
+pytest tests/architecture/ -q
+```
+
+Esperado: **8 passed**. A suíte garante, entre outros, que os 7 agentes são
+executor-free (nenhum importa ou referencia `AgentExecutor`). O re-export
+público em `src/aios/agents/__init__.py` é intencional (API pública congelada)
+e não é um agente importando o executor.
+
 - `AgentTask` e `AgentResult` são o único contrato de entrada/saída de agentes.
 - `HeuristicRanker` é o único ranker implementado (TelemetryRanker é post-1.0).
 - Tabelas de telemetria são aditivas (`CREATE TABLE IF NOT EXISTS`).
@@ -174,7 +184,7 @@ rm -rf /tmp/firetest-stable
 | 8 | Eventos `agent.lifecycle.*` e `agent.execution.*` evidenciados | Passo 6 |
 | 9 | `aios usage` mostra dados | Passo 5 |
 | 10 | Erros não vazam traceback | Passo 7 |
-| 11 | Agentes executor-free | Passo 8 |
+| 11 | Agentes executor-free (suíte de arquitetura 8 passed) | Passo 8 |
 | 12 | Completion shell funciona | Passo 2 |
 
 ## Known Limitations (v1.0)
