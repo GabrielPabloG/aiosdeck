@@ -8,6 +8,7 @@ module; all agent/engine imports live here.
 
 from __future__ import annotations
 
+import logging
 import os
 from pathlib import Path
 
@@ -40,6 +41,8 @@ from aios.skills.retrieval import SkillRetrievalService
 from aios.skills.telemetry import SkillUsageRecorder
 from aios.telemetry import TelemetryEngine
 from aios.workflow import WorkflowEngine
+
+logger = logging.getLogger("aios.core.factory")
 
 
 def create_kernel(project_path: Path) -> Kernel:
@@ -117,6 +120,7 @@ def _build_skill_assembler(project_path: Path, kernel: Kernel):
             recorder = SkillUsageRecorder(telemetry)
             return SkillAssembler(discovery=discovery, retrieval=retrieval, recorder=recorder)
     except Exception:
+        logger.warning("Failed to build skill assembler (skills will be unavailable)", exc_info=True)
         pass
     return SkillAssembler()
 
@@ -126,5 +130,6 @@ def _build_context_assembler(project_path: Path, kernel: Kernel):
         knowledge = kernel.get_engine("knowledge")
         return ContextAssembler(knowledge=knowledge, budget=ContextBudget())
     except Exception:
+        logger.warning("Failed to build context assembler (context will be limited)", exc_info=True)
         pass
     return ContextAssembler(knowledge=None)
