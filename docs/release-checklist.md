@@ -1,6 +1,6 @@
 # RC/GA Checklist — v1.0.0
 
-**Status**: Verified (2026-08-10)
+**Status**: GA Confirmed (2026-08-10)
 **Date**: 2026-08-09
 
 This checklist gates the v1.0.0 release candidate. Every item must pass before
@@ -10,7 +10,7 @@ tagging `v1.0.0-rc1`; the GA (`v1.0.0`) adds only the release/regression gates.
 
 Run on the `feature/stable-1.0` branch.
 
-- [x] `pytest tests/ -q` — full suite green (1344 tests, 0 failures).
+- [x] `pytest tests/ -q` — full suite green (1358 tests, 0 failures).
 - [x] `ruff check src tests` — zero errors.
 - [x] `ruff format --check src tests` — zero reformatting.
 - [x] No new runtime dependencies (stdlib + existing only).
@@ -22,42 +22,46 @@ Run on the `feature/stable-1.0` branch.
       (148 passed).
 - [x] Architecture tests (`tests/architecture/`) all pass — executor-free agents,
       single event producer, no rich-domain-API bypass (8 passed).
-- [x] `aios --version` reports `1.0.0-rc1` (or the intended tag version).
+- [x] `aios --version` reports `1.0.0`.
 
 ## S5.2 — CLI UX Checklist
 
 Manual verification on a throwaway project (see `docs/fire-test.md`).
 
-- [ ] `aios ocean` renders the overview without error (TTY and non-TTY).
-- [ ] `aios ocean --once` and `aios ocean --json` produce correct output.
-- [ ] `aios help` lists all top-level commands; no traceback.
-- [ ] `aios` bare invocation shows the dashboard without crash.
-- [ ] `aios completion --bash` / `--zsh` produce valid scripts.
-- [ ] `aios doctor` reports a healthy kernel (or clear warnings).
-- [ ] `aios plan <intent>` (plan mode) works end-to-end.
-- [ ] `aios review`, `aios research`, `aios memory`, `aios knowledge`,
+- [x] `aios ocean` renders the overview without error (TTY and non-TTY).
+- [x] `aios ocean --once` and `aios ocean --json` produce correct output.
+- [x] `aios help` lists all top-level commands; no traceback.
+- [x] `aios` bare invocation shows the dashboard without crash.
+- [x] `aios completion --bash` / `--zsh` produce valid scripts.
+- [x] `aios doctor` reports a healthy kernel (or clear warnings).
+- [x] `aios plan <intent>` (plan mode) works end-to-end.
+- [x] `aios review`, `aios research`, `aios memory`, `aios knowledge`,
       `aios skills`, `aios learning`, `aios route`, `aios usage` all respond
       without traceback.
-- [ ] Unknown command / bad option → formatted error, exit code 1, no traceback.
+- [x] Unknown command / bad option → formatted error, exit code 1, no traceback.
 
 ## S5.3 — Telemetry Minimums
 
 Fire test (`docs/fire-test.md`) validates on a real run:
 
-- [ ] `telemetry_executions` has ≥1 row.
-- [ ] `telemetry_routing` has ≥1 row.
-- [ ] `telemetry_costs` has ≥1 row (when the provider reports usage).
-- [ ] `agent.lifecycle.changed` + `agent.execution.*` events evidenced in
-      `telemetry_executions`.
-- [ ] `aios usage` shows data.
+- [x] `telemetry_executions` has ≥1 row (84 rows in the fire test).
+- [x] `telemetry_routing` has ≥1 row (6 rows in the fire test).
+- [~] `telemetry_costs` has ≥1 row (when the provider reports usage). — Not
+      exercised in the fire test: the local run deferred token tracking, so
+      `telemetry_usage`/`telemetry_costs` stayed at 0 by design (see Known
+      Limitations in `docs/fire-test.md`).
+- [x] `agent.lifecycle.changed` + `agent.execution.*` events evidenced in
+      `telemetry_executions` (`created/queued/running/validated/succeeded`).
+- [x] `aios usage` shows data (executions; honest "token tracking deferred"
+      note when the provider reports no usage).
 
 ## S5.4 — Regression Gates (for GA)
 
-- [ ] All release-notes content matches `docs/CHANGELOG.md` [Unreleased].
-- [ ] Docs status blocks reflect Implemented/Partial/Planned truthfully.
-- [ ] `docs/migration-1.0.md` reflects the actual diff from v0.9.x.
-- [ ] Tag `v1.0.0-rc1` on `feature/stable-1.0` after S5.1–S5.3 pass.
-- [ ] GA `v1.0.0` tagged from the same state after regression run.
+- [x] All release-notes content matches `docs/CHANGELOG.md` [1.0.0].
+- [x] Docs status blocks reflect Implemented/Partial/Planned truthfully.
+- [x] `docs/migration-1.0.md` reflects the actual diff from v0.9.x.
+- [x] GA `v1.0.0` tagged (annotated, force-moved) on `feature/stable-1.0`
+      after the regression/fire-test run.
 
 ## Release Procedure
 
@@ -66,3 +70,8 @@ Fire test (`docs/fire-test.md`) validates on a real run:
 3. Bump `__version__` and `pyproject.toml` to `1.0.0-rc1`.
 4. Tag `v1.0.0-rc1`.
 5. After the RC soak (regression run), tag `v1.0.0` from the same commit.
+
+**GA notes (2026-08-10):** the stabilization branch went straight to `v1.0.0`
+without a separate `v1.0.0-rc1` tag. The GA tag was moved to the final HEAD
+after the fire-test regression run (S5.1–S5.3 above). Manual steps remaining:
+`git push origin feature/stable-1.0` and `git push origin v1.0.0`.
