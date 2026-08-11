@@ -152,13 +152,20 @@ def skipped_entry(reason: str) -> dict:
     return {"skipped": True, "reason": reason}
 
 
-def measure_lifecycle(project_path, kernel_factory, skip_agents: bool = False) -> dict:
+def measure_lifecycle(  # noqa: PLR0915
+    project_path, kernel_factory, skip_agents: bool = False, *, on_phase=None
+) -> dict:
     """Run one full 7-phase lifecycle and return per-phase timings.
 
     Errors never abort the measurement: a failed phase records its elapsed
     time plus the error message, and a failing kernel factory yields the
     remaining phases as ``kernel unavailable``.
+
+    When *on_phase* is provided it is called with ``(("phase_name", "start"))``
+    before and ``(("phase_name", "end", elapsed_ms))`` after the slow ``plan``,
+    ``agent_exec``, and ``telemetry_flush`` phases.
     """
+    notify = on_phase or (lambda _e: None)
     result: dict[str, dict] = {}
 
     wall, user, system = sample_start()
@@ -196,19 +203,29 @@ def measure_lifecycle(project_path, kernel_factory, skip_agents: bool = False) -
         if skip_agents:
             result[phase] = skipped_entry(SKIP_REASON)
             continue
+        notify((phase, "start"))
         wall, user, system = sample_start()
         try:
             runner(kernel)
-            result[phase] = elapsed(wall, user, system)
+            entry = elapsed(wall, user, system)
+            result[phase] = entry
+            notify((phase, "end", entry["wall_time_ms"]))
         except Exception as exc:  # noqa: BLE001 - failed agent run still measures the path
-            result[phase] = elapsed(wall, user, system, error=str(exc))
+            entry = elapsed(wall, user, system, error=str(exc))
+            result[phase] = entry
+            notify((phase, "end", entry["wall_time_ms"]))
 
+    notify(("telemetry_flush", "start"))
     wall, user, system = sample_start()
     try:
         kernel.shutdown()
-        result["telemetry_flush"] = elapsed(wall, user, system)
+        entry = elapsed(wall, user, system)
+        result["telemetry_flush"] = entry
+        notify(("telemetry_flush", "end", entry["wall_time_ms"]))
     except Exception as exc:  # noqa: BLE001
-        result["telemetry_flush"] = elapsed(wall, user, system, error=str(exc))
+        entry = elapsed(wall, user, system, error=str(exc))
+        result["telemetry_flush"] = entry
+        notify(("telemetry_flush", "end", entry["wall_time_ms"]))
 
     return result
 

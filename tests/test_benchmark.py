@@ -11,12 +11,13 @@ structures.
 """
 
 import json
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from aios.cli.commands.benchmark import _collect_samples, cmd_benchmark
 from aios.telemetry.benchmark import (
     METRICS,
     PHASES,
+    measure_lifecycle,
     percentile,
     summarize,
 )
@@ -320,3 +321,65 @@ class TestBenchmarkCli:
         _collect_samples(run_once, {"warmup": 0, "repeat": 1}, label="")
         err = capsys.readouterr().err
         assert "sample 1/1" in err
+
+    def test_measure_lifecycle_reports_phase_start_end(self):
+        calls: list[tuple] = []
+
+        def _on_phase(event):
+            calls.append(event)
+
+        kernel = MagicMock()
+        kernel.start = MagicMock()
+        kernel.get_context = MagicMock(return_value=None)
+        kernel.run = MagicMock(return_value=MagicMock(success=True))
+        kernel.run_agent = MagicMock(return_value=MagicMock(success=True))
+        kernel.shutdown = MagicMock()
+
+        measure_lifecycle(
+            ".",
+            lambda _: kernel,
+            skip_agents=False,
+            on_phase=_on_phase,
+        )
+
+        assert any(c == ("plan", "start") for c in calls)
+        assert any(c[0] == "plan" and c[1] == "end" for c in calls)
+        assert any(c == ("agent_exec", "start") for c in calls)
+        assert any(c[0] == "agent_exec" and c[1] == "end" for c in calls)
+
+    def test_measure_lifecycle_no_on_phase_defaults(self):
+        kernel = MagicMock()
+        kernel.start = MagicMock()
+        kernel.get_context = MagicMock(return_value=None)
+        kernel.run = MagicMock(return_value=MagicMock(success=True))
+        kernel.run_agent = MagicMock(return_value=MagicMock(success=True))
+        kernel.shutdown = MagicMock()
+
+        result = measure_lifecycle(".", lambda _: kernel, skip_agents=False)
+        assert "plan" in result
+        assert "agent_exec" in result
+
+    def test_phases_bar_shows_sample_and_phase(self, tmp_path, capsys):
+        with patch("aios.cli.commands.benchmark.ProgressBar") as mock_bar_cls:
+            mock_bar = MagicMock()
+            mock_bar_cls.return_value = mock_bar
+
+            cmd_benchmark(
+                ["phases", "--json", "--warmup", "0", "--repeat", "1", "--skip-agents"],
+                tmp_path,
+                lambda _: _stub_kernel(),
+            )
+
+        assert mock_bar_cls.called
+
+    def test_phases_bar_json_stdout_clean(self, tmp_path, capsys):
+        cmd_benchmark(
+            ["phases", "--json", "--warmup", "0", "--repeat", "1", "--skip-agents"],
+            tmp_path,
+            lambda _: _stub_kernel(),
+        )
+        out_text = capsys.readouterr().out
+        report = json.loads(out_text)
+        assert "schema_version" in report
+        assert "results" in report
+        assert out_text.strip().startswith("{")

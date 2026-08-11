@@ -29,7 +29,7 @@ from aios.backlog.cli import cmd_backlog_run
 from aios.cli.commands.core import cmd_dashboard, cmd_doctor
 from aios.cli.commands.exec_cmds import cmd_plan
 from aios.cli.commands.memory import cmd_memory_list
-from aios.core.console import log_step
+from aios.core.console import ProgressBar, log_step
 from aios.skills.cli import cmd_skills_discover
 from aios.telemetry.benchmark import (
     PHASES,
@@ -195,11 +195,20 @@ def _cmd_validate(args: list[str]) -> None:
 
 
 def _measure_phases(project_path, kernel_factory, opts: dict) -> list[dict]:
-    profiles = _collect_samples(
-        lambda: measure_lifecycle(project_path, kernel_factory, opts["skip_agents"]),
-        opts,
-        label="phases",
-    )
+    bar = ProgressBar(sample_total=opts["repeat"], label="phases")
+
+    def _run_one():
+        result = measure_lifecycle(
+            project_path,
+            kernel_factory,
+            opts["skip_agents"],
+            on_phase=_on_phase_for_bar(bar),
+        )
+        bar._advance_sample()
+        return result
+
+    profiles = _collect_samples(_run_one, opts, label="phases")
+    bar._finish()
 
     results: list[dict] = []
     for phase in PHASES:
@@ -219,6 +228,17 @@ def _measure_phases(project_path, kernel_factory, opts: dict) -> list[dict]:
         else:
             results.append({"group": "phases", "target": phase, **_build_entry(runs)})
     return results
+
+
+def _on_phase_for_bar(bar):
+    def _handler(event: tuple) -> None:
+        if event[0] in ("plan", "agent_exec", "telemetry_flush"):
+            if event[1] == "start":
+                bar._report_phase_start(event[0])
+            elif event[1] == "end":
+                bar._report_phase_end(event[0], event[2])
+
+    return _handler
 
 
 def _measure_all(project_path, kernel_factory, opts: dict) -> list[dict]:
