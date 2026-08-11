@@ -41,9 +41,7 @@ def validate_report(report: dict) -> list[str]:
             errors.append(f"missing top-level key: {key}")
 
     if "schema_version" in report and report["schema_version"] != SCHEMA_VERSION:
-        errors.append(
-            f"schema_version {report['schema_version']!r} != expected {SCHEMA_VERSION!r}"
-        )
+        errors.append(f"schema_version {report['schema_version']!r} != expected {SCHEMA_VERSION!r}")
 
     if "results" not in report:
         return errors
