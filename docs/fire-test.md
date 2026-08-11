@@ -175,7 +175,7 @@ Instrumentação de tempos de parede (wall + CPU user/system) com
 
 ```bash
 # Profile das 7 fases (startup → telemetry_flush), percentis p50/p95/p99
-aios benchmark --json --warmup 1 --repeat 5
+aios benchmark phases --json --warmup 1 --repeat 5
 
 # Cinco comandos da superfície CLI, sem LLM (rápido/determinístico)
 aios benchmark all --skip-agents --json

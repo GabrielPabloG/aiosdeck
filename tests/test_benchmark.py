@@ -87,15 +87,56 @@ class TestSummarize:
 
 
 class TestBenchmarkCli:
+    def test_benchmark_no_target_shows_targets(self, tmp_path, capsys):
+        cmd_benchmark([], tmp_path, _StubKernelFactory())
+        out = capsys.readouterr().out
+        for target in (
+            "all",
+            "startup",
+            "phases",
+            "dashboard",
+            "doctor",
+            "skills",
+            "memory",
+            "plan",
+            "backlog",
+        ):
+            assert target in out
+        for option in ("--json", "--warmup", "--repeat", "--output", "--skip-agents", "--process"):
+            assert option in out
+
+    def test_benchmark_help_flag_shows_targets(self, tmp_path, capsys):
+        for flag in ("--help", "-h"):
+            capsys.readouterr()
+            cmd_benchmark([flag], tmp_path, _StubKernelFactory())
+            out = capsys.readouterr().out
+            assert "all" in out
+            assert "phases" in out
+            assert "--warmup" in out
+            assert "--repeat" in out
+
+    def test_benchmark_phases_target_profiles_lifecycle(self, tmp_path, capsys):
+        cmd_benchmark(
+            ["phases", "--json", "--warmup", "0", "--repeat", "2"], tmp_path, _StubKernelFactory()
+        )
+        out = json.loads(capsys.readouterr().out)
+        assert "phases" in out
+        for phase in PHASES:
+            assert out["phases"][phase]["summaries"]["wall_time_ms"]["p50"] > 0
+
     def test_benchmark_cli_outputs_json(self, tmp_path, capsys):
-        cmd_benchmark(["--json", "--warmup", "0", "--repeat", "2"], tmp_path, _StubKernelFactory())
+        cmd_benchmark(
+            ["phases", "--json", "--warmup", "0", "--repeat", "2"], tmp_path, _StubKernelFactory()
+        )
         out = json.loads(capsys.readouterr().out)
         assert out["tool"] == "aios benchmark"
         assert "phases" in out
         assert out["phases"]["startup"]["summaries"]["wall_time_ms"]["p50"] > 0
 
     def test_benchmark_measures_startup_time(self, tmp_path, capsys):
-        cmd_benchmark(["--json", "--warmup", "0", "--repeat", "2"], tmp_path, _StubKernelFactory())
+        cmd_benchmark(
+            ["phases", "--json", "--warmup", "0", "--repeat", "2"], tmp_path, _StubKernelFactory()
+        )
         out = json.loads(capsys.readouterr().out)
         startup = out["phases"]["startup"]
         assert startup["summaries"]["wall_time_ms"]["p50"] > 0
@@ -113,7 +154,9 @@ class TestBenchmarkCli:
             assert entry["summaries"]["wall_time_ms"]["count"] == 1
 
     def test_benchmark_repeat_produces_reliable_data(self, tmp_path, capsys):
-        cmd_benchmark(["--json", "--warmup", "0", "--repeat", "5"], tmp_path, _StubKernelFactory())
+        cmd_benchmark(
+            ["phases", "--json", "--warmup", "0", "--repeat", "5"], tmp_path, _StubKernelFactory()
+        )
         out = json.loads(capsys.readouterr().out)
         for phase in PHASES:
             entry = out["phases"][phase]
@@ -124,14 +167,16 @@ class TestBenchmarkCli:
 
     def test_benchmark_warmup_discards_cold_runs(self, tmp_path, capsys):
         factory = _StubKernelFactory()
-        cmd_benchmark(["--json", "--warmup", "2", "--repeat", "3"], tmp_path, factory)
+        cmd_benchmark(["phases", "--json", "--warmup", "2", "--repeat", "3"], tmp_path, factory)
         out = json.loads(capsys.readouterr().out)
         assert len(out["phases"]["startup"]["runs"]) == 3
         assert out["phases"]["startup"]["summaries"]["wall_time_ms"]["count"] == 3
         assert factory.calls == 5
 
     def test_each_measurement_captures_wall_and_cpu_times(self, tmp_path, capsys):
-        cmd_benchmark(["--json", "--warmup", "0", "--repeat", "1"], tmp_path, _StubKernelFactory())
+        cmd_benchmark(
+            ["phases", "--json", "--warmup", "0", "--repeat", "1"], tmp_path, _StubKernelFactory()
+        )
         out = json.loads(capsys.readouterr().out)
         run = out["phases"]["startup"]["runs"][0]
         assert set(METRICS) == {"wall_time_ms", "cpu_user_ms", "cpu_system_ms"}
@@ -141,7 +186,7 @@ class TestBenchmarkCli:
 
     def test_skip_agents_marks_plan_phases_skipped(self, tmp_path, capsys):
         cmd_benchmark(
-            ["--json", "--warmup", "0", "--repeat", "1", "--skip-agents"],
+            ["phases", "--json", "--warmup", "0", "--repeat", "1", "--skip-agents"],
             tmp_path,
             _StubKernelFactory(),
         )
@@ -180,7 +225,9 @@ class TestBenchmarkCli:
         def broken_factory(project_path):
             raise RuntimeError("no kernel available")
 
-        cmd_benchmark(["--json", "--warmup", "0", "--repeat", "1"], tmp_path, broken_factory)
+        cmd_benchmark(
+            ["phases", "--json", "--warmup", "0", "--repeat", "1"], tmp_path, broken_factory
+        )
         out = json.loads(capsys.readouterr().out)
         assert "phases" in out
         assert out["phases"]["startup"]["runs"][0]["error"] == "no kernel available"

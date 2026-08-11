@@ -1,11 +1,12 @@
 """Benchmark CLI command — measure wall/CPU times for startup and commands.
 
-``aios benchmark`` (no target) profiles the 7 lifecycle phases.
-``aios benchmark <command>`` times one command; ``aios benchmark all`` times
-the full CLI surface (dashboard, doctor, skills, memory, plan, backlog run).
-``aios benchmark startup --process`` measures real process startup via
-subprocess. Command dispatch is in-process through ``kernel_factory`` (no
-PATH dependency, reproducible, works with a stubbed kernel in tests).
+``aios benchmark`` (no target) prints usage; ``aios benchmark phases``
+profiles the 7 lifecycle phases. ``aios benchmark <command>`` times one
+command; ``aios benchmark all`` times the full CLI surface (dashboard,
+doctor, skills, memory, plan, backlog run). ``aios benchmark startup
+--process`` measures real process startup via subprocess. Command dispatch
+is in-process through ``kernel_factory`` (no PATH dependency, reproducible,
+works with a stubbed kernel in tests).
 """
 
 from __future__ import annotations
@@ -39,7 +40,7 @@ from aios.telemetry.benchmark import (
 )
 
 _ALL_TARGETS = ("dashboard", "doctor", "skills", "memory", "plan", "backlog")
-_AVAILABLE = ("all", "startup", *_ALL_TARGETS)
+_AVAILABLE = ("all", "startup", "phases", *_ALL_TARGETS)
 
 # name -> (command function, fixed args, requires agent runtime, timeout_sec)
 _COMMAND_ARGS: dict[str, tuple[Callable, list[str], bool, float | None]] = {
@@ -65,7 +66,10 @@ def cmd_benchmark(raw_args: list[str], project_path: Path, kernel_factory: Calla
     }
 
     command = opts["command"]
-    if command is None:
+    if command is None or opts["help"]:
+        _print_usage()
+        return
+    if command == "phases":
         report["phases"] = _measure_phases(project_path, kernel_factory, opts)
     elif command == "all":
         report["commands"] = _measure_all(project_path, kernel_factory, opts)
@@ -86,9 +90,27 @@ def cmd_benchmark(raw_args: list[str], project_path: Path, kernel_factory: Calla
         _render_text(report)
 
 
+def _print_usage() -> None:
+    print("Usage: aios benchmark <target> [options]")
+    print()
+    print("Targets:")
+    for name in _AVAILABLE:
+        print(f"  {name}")
+    print()
+    print("Options:")
+    print("  -h, --help       Show this help and exit")
+    print("  --warmup N       Warmup runs before measuring (default: 1)")
+    print("  --repeat N       Measured runs per target (default: 5)")
+    print("  --json           Print report as JSON")
+    print("  --output PATH    Save the report to PATH")
+    print("  --skip-agents    Skip targets that require an agent runtime")
+    print("  --process        startup: measure a real subprocess (not in-process)")
+
+
 def _parse_args(raw_args: list[str]) -> dict:
     opts = {
         "command": None,
+        "help": False,
         "warmup": 1,
         "repeat": 5,
         "json": False,
@@ -99,7 +121,9 @@ def _parse_args(raw_args: list[str]) -> dict:
     i = 0
     while i < len(raw_args):
         arg = raw_args[i]
-        if arg == "--json":
+        if arg in ("--help", "-h"):
+            opts["help"] = True
+        elif arg == "--json":
             opts["json"] = True
         elif arg == "--skip-agents":
             opts["skip_agents"] = True
