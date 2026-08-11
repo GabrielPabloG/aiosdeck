@@ -48,6 +48,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     verified, contract + architecture gates pass. Fire-test telemetry gates
     rewritten for v1.0 (executions + routing mandatory; token/cost when the
     provider reports usage); known limitations documented.
+  - **Build & Release CD** — `.github/workflows/release.yml`: tag `v*` → gates →
+    build → `twine check` → PyPI via Trusted Publishing (no token) → GitHub
+    Release with `dist/` artifacts and CHANGELOG notes; `workflow_dispatch`
+    supports `dry-run` and TestPyPI publishes; version-consistency gate blocks
+    mismatched tags. CI (`ci.yml`) also covers `feature/stable-1.0`; `build` +
+    `twine` added to the `dev` extras.
 
 ### Changed
 

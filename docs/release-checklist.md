@@ -67,11 +67,19 @@ Fire test (`docs/fire-test.md`) validates on a real run:
 
 1. Run S5.1 (automated) — must be green.
 2. Run S5.2 + S5.3 (manual, on a throwaway repo) — must pass.
-3. Bump `__version__` and `pyproject.toml` to `1.0.0-rc1`.
-4. Tag `v1.0.0-rc1`.
-5. After the RC soak (regression run), tag `v1.0.0` from the same commit.
+3. Bump `__version__` and `pyproject.toml` to the target version.
+4. Tag `v<version>` (annotated) on the release branch.
+5. Push the tag — the CD pipeline (`.github/workflows/release.yml`) runs
+   gates → build → `twine check` → PyPI (Trusted Publishing, no token) →
+   GitHub Release with `dist/` artifacts and CHANGELOG notes.
+
+The pipeline can be exercised without publishing via the `release.yml`
+`workflow_dispatch` inputs: `dry-run` (validate gates + build + package,
+no publish) or `testpypi` (publish to TestPyPI). A version mismatch between
+the tag, `pyproject.toml`, and `aios.__version__` fails the gate and blocks
+the release.
 
 **GA notes (2026-08-10):** the stabilization branch went straight to `v1.0.0`
-without a separate `v1.0.0-rc1` tag. The GA tag was moved to the final HEAD
-after the fire-test regression run (S5.1–S5.3 above). Manual steps remaining:
-`git push origin feature/stable-1.0` and `git push origin v1.0.0`.
+without a separate `v1.0.0-rc1` tag. The GA tag points to the final HEAD after
+the fire-test regression run (S5.1–S5.3 above). Publishing v1.0.0 is automated:
+`git push origin v1.0.0` triggers the CD pipeline.
