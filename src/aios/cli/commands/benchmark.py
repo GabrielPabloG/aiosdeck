@@ -29,6 +29,7 @@ from aios.backlog.cli import cmd_backlog_run
 from aios.cli.commands.core import cmd_dashboard, cmd_doctor
 from aios.cli.commands.exec_cmds import cmd_plan
 from aios.cli.commands.memory import cmd_memory_list
+from aios.core.console import log_step
 from aios.skills.cli import cmd_skills_discover
 from aios.telemetry.benchmark import (
     PHASES,
@@ -197,6 +198,7 @@ def _measure_phases(project_path, kernel_factory, opts: dict) -> list[dict]:
     profiles = _collect_samples(
         lambda: measure_lifecycle(project_path, kernel_factory, opts["skip_agents"]),
         opts,
+        label="phases",
     )
 
     results: list[dict] = []
@@ -230,6 +232,7 @@ def _measure_named(name: str, project_path, kernel_factory, opts: dict) -> dict:
     runs = _collect_samples(
         lambda: _run_command(name, project_path, kernel_factory),
         opts,
+        label=name,
     )
     return {"group": "commands", "target": name, **_build_entry(runs)}
 
@@ -241,14 +244,21 @@ def _measure_startup(project_path, kernel_factory, opts: dict) -> dict:
     runs = _collect_samples(
         lambda: measure_startup_inprocess(project_path, kernel_factory),
         opts,
+        label="startup",
     )
     return {"group": "startup", "target": "startup", "mode": "in-process", **_build_entry(runs)}
 
 
-def _collect_samples(run_once: Callable, opts: dict) -> list[dict]:
-    for _ in range(opts["warmup"]):
+def _collect_samples(run_once: Callable, opts: dict, label: str = "") -> list[dict]:
+    prefix = f"{label} " if label else ""
+    for i in range(opts["warmup"]):
+        log_step("◐", f"{prefix}warmup {i + 1}/{opts['warmup']}")
         run_once()
-    return [run_once() for _ in range(opts["repeat"])]
+    results: list[dict] = []
+    for i in range(opts["repeat"]):
+        log_step("▶", f"{prefix}sample {i + 1}/{opts['repeat']}")
+        results.append(run_once())
+    return results
 
 
 def _run_command(name: str, project_path, kernel_factory) -> dict:

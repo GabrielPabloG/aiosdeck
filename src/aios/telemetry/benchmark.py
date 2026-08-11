@@ -173,7 +173,7 @@ def measure_lifecycle(project_path, kernel_factory, skip_agents: bool = False) -
 
     wall, user, system = sample_start()
     try:
-        kernel.start()
+        kernel.start(quiet=True)
         result["kernel_init"] = elapsed(wall, user, system)
     except Exception as exc:  # noqa: BLE001
         result["kernel_init"] = elapsed(wall, user, system, error=str(exc))

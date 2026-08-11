@@ -13,7 +13,7 @@ structures.
 import json
 from unittest.mock import MagicMock
 
-from aios.cli.commands.benchmark import cmd_benchmark
+from aios.cli.commands.benchmark import _collect_samples, cmd_benchmark
 from aios.telemetry.benchmark import (
     METRICS,
     PHASES,
@@ -288,3 +288,35 @@ class TestBenchmarkCli:
         startup = _result(out, "startup", "startup")
         assert startup["mode"] == "process"
         assert startup["summaries"]["wall_time_ms"]["count"] == 1
+
+    def test_collect_samples_reports_progress_to_stderr(self, capsys):
+        calls: list[str] = []
+
+        def run_once() -> dict:
+            calls.append("x")
+            return {"wall_time_ms": 1.0, "cpu_user_ms": 0.0, "cpu_system_ms": 0.0}
+
+        _collect_samples(run_once, {"warmup": 1, "repeat": 2}, label="phases")
+        err = capsys.readouterr().err
+        assert "phases" in err
+        assert "warmup 1/1" in err
+        assert "sample 1/2" in err
+        assert "sample 2/2" in err
+        assert len(calls) == 3
+
+    def test_collect_samples_progress_does_not_touch_stdout(self, capsys):
+        def run_once() -> dict:
+            return {"wall_time_ms": 1.0, "cpu_user_ms": 0.0, "cpu_system_ms": 0.0}
+
+        _collect_samples(run_once, {"warmup": 0, "repeat": 1}, label="doctor")
+        captured = capsys.readouterr()
+        assert captured.out == ""
+        assert "sample 1/1" in captured.err
+
+    def test_collect_samples_no_label_omits_prefix(self, capsys):
+        def run_once() -> dict:
+            return {"wall_time_ms": 1.0, "cpu_user_ms": 0.0, "cpu_system_ms": 0.0}
+
+        _collect_samples(run_once, {"warmup": 0, "repeat": 1}, label="")
+        err = capsys.readouterr().err
+        assert "sample 1/1" in err

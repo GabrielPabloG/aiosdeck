@@ -59,6 +59,28 @@ def _make_workflow_result(stages=(), errors=()) -> WorkflowResult:
     )
 
 
+def test_kernel_start_quiet_suppresses_banner(tmp_path):
+    kernel = Kernel(project_path=str(tmp_path))
+    kernel.register(ConfigEngine(project_path=tmp_path))
+    kernel.register(EventsEngine())
+    kernel._print_banner = MagicMock()
+
+    kernel.start(quiet=True)
+    kernel._print_banner.assert_not_called()
+    kernel.shutdown()
+
+
+def test_kernel_start_default_prints_banner(tmp_path):
+    kernel = Kernel(project_path=str(tmp_path))
+    kernel.register(ConfigEngine(project_path=tmp_path))
+    kernel.register(EventsEngine())
+    kernel._print_banner = MagicMock()
+
+    kernel.start()
+    kernel._print_banner.assert_called_once()
+    kernel.shutdown()
+
+
 def test_kernel_start_stop(tmp_path):
     kernel = Kernel(project_path=str(tmp_path))
     kernel.register(ConfigEngine(project_path=tmp_path))
