@@ -24,3 +24,6 @@ htmlcov/
 .ai-jail
 TODO.md
 .baseline-test-durations.txt
+scripts/
+.aios/benchmarks/tmp/
+.aios/benchmarks/*.tmp

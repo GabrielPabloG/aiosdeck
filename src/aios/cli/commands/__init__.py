@@ -23,6 +23,7 @@ from aios.backlog.cli import (
     cmd_backlog_run,
     cmd_backlog_stats,
 )
+from aios.cli.commands.benchmark import cmd_benchmark
 from aios.cli.commands.core import (
     cmd_complete,
     cmd_completion,
@@ -137,6 +138,7 @@ def _print_help() -> None:
     print("  aios review [target]  Review code/architecture/conventions (read-only)")
     print("  aios research <q>     Research a question (repo/docs/web)")
     print("  aios usage [opts]     Show token usage and cost telemetry")
+    print("  aios benchmark [opts] Measure wall/CPU times (phases, commands, all)")
     print("  aios quality stats     Show quality gate telemetry")
     print("  aios policy show       Show security policy (capabilities/intents)")
     print("  aios security stats    Show security allow/deny audit trail")
@@ -249,6 +251,11 @@ COMMANDS: dict[str, Command] = {
         name="usage",
         description="Show token usage and cost telemetry",
         execute=cmd_usage,
+    ),
+    "benchmark": Command(
+        name="benchmark",
+        description="Measure wall/CPU times for startup and commands",
+        execute=cmd_benchmark,
     ),
     "quality": Command(
         name="quality",

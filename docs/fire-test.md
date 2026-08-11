@@ -168,6 +168,35 @@ e não é um agente importando o executor.
 - Tabelas de telemetria são aditivas (`CREATE TABLE IF NOT EXISTS`).
 - `RunResult` + `StageSummary` são a única interface CLI ↔ execução.
 
+## Passo 9 — Benchmark (baseline de performance, v1.1.0)
+
+Instrumentação de tempos de parede (wall + CPU user/system) com
+`time.monotonic()`/`os.times()`. Mede antes de otimizar.
+
+```bash
+# Profile das 7 fases (startup → telemetry_flush), percentis p50/p95/p99
+aios benchmark --json --warmup 1 --repeat 5
+
+# Cinco comandos da superfície CLI, sem LLM (rápido/determinístico)
+aios benchmark all --skip-agents --json
+
+# Baseline versionada (geração determinística para CI/regressão)
+aios benchmark all --skip-agents --output .aios/benchmarks/v1.0.0.json
+
+# Espera real de processo do usuário (subprocesso, python -m aios --version)
+aios benchmark startup --process --json
+```
+
+Esperado: JSON estruturado com `phases.*` e `commands.*` (cada um com `runs`
+brutos e `summaries` por métrica — `wall_time_ms`, `cpu_user_ms`,
+`cpu_system_ms`), percentis p50 ≤ p95 ≤ p99, e `skipped: true` explícito para
+fases/comandos que dependem de modelo quando `--skip-agents` é usado. Nenhum
+traceback. Sem `--json`/`--output`, a saída é uma tabela de texto.
+
+Critérios: warmup é descartado (cold start não contamina), falhas de kernel ou
+de comando registram duração sem abortar o benchmark (modo minimal), e o
+baseline é salvo apenas com `--output`.
+
 ## Limpeza
 
 ```bash
@@ -190,9 +219,19 @@ rm -rf /tmp/firetest-stable
 | 10 | Erros não vazam traceback | Passo 7 |
 | 11 | Agentes executor-free (suíte de arquitetura 8 passed) | Passo 8 |
 | 12 | Completion shell funciona | Passo 2 |
+| 13 | `aios benchmark` produz baseline com percentis (p50/p95/p99) | Passo 9 |
 
 ## Known Limitations (v1.0)
 
+- **Fases LLM exigem modelo** — as fases `plan` e `agent_exec` (e os comandos
+  `plan` / `backlog run`) do `aios benchmark` só medem com um runtime/modelo
+  disponível (ex: Ollama). Sem modelo, a fase falha mas registra a duração e o
+  erro; com `--skip-agents`, essas fases/comandos aparecem explicitamente como
+  `skipped` (não confundir com "0 ms").
+- **`startup` in-process ≠ espera de processo real** — `aios benchmark` mede
+  `startup` como bootstrap + `create_kernel` em processo. A espera real do
+  usuário (criação de processo + imports + argparse) é medida à parte com
+  `aios benchmark startup --process` (subprocesso).
 - **Token tracking pode ser deferido** — `telemetry_usage` e `telemetry_costs`
   só recebem linhas quando o runtime reporta `usage` no evento de execução.
   Quando o provider não reporta tokens, `aios usage` responde com dados
