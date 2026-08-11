@@ -21,6 +21,8 @@ PRICING_V1: dict[tuple[str, str], dict] = {
     ("anthropic", "claude-haiku-3-5"): {"input_per_1M": 0.80, "output_per_1M": 4.00},
     ("deepseek", "deepseek-chat"): {"input_per_1M": 0.27, "output_per_1M": 1.10},
     ("deepseek", "deepseek-reasoner"): {"input_per_1M": 0.55, "output_per_1M": 2.19},
+    ("openrouter", "deepseek-v4-flash-0731"): {"input_per_1M": 0.08, "output_per_1M": 0.252},
+    ("openrouter", "deepseek-v4-flash-latest"): {"input_per_1M": 0.08, "output_per_1M": 0.252},
     ("google", "gemini-2.5-flash"): {"input_per_1M": 0.15, "output_per_1M": 0.60},
     ("google", "gemini-2.5-pro"): {"input_per_1M": 1.25, "output_per_1M": 10.00},
 }
@@ -50,8 +52,7 @@ class PricingResolver:
         (provider, model) pair. Never guesses — missing data is acceptable.
         """
         key = (provider.strip().lower() if provider else "", model.strip().lower() if model else "")
-        price = self._pricing.get(key)
-
+        price = self._pricing.get(key) or self._pricing.get(self._normalize_key(key))
         if price is None or input_tokens is None or output_tokens is None:
             return {
                 "input_cost": 0.0,
@@ -77,3 +78,19 @@ class PricingResolver:
             "pricing_source": "builtin",
             "calculated_at": datetime.now(UTC).isoformat(),
         }
+
+    @staticmethod
+    def _normalize_key(key: tuple[str, str]) -> tuple[str, str]:
+        """Resolve OpenRouter routing aliases to a priced bare model name.
+
+        The runtime records the full routed model id (e.g.
+        ``openrouter/~deepseek/deepseek-v4-flash-latest``); the pricing table
+        is keyed on the provider and the bare model name. This strips the
+        OpenRouter ``~`` fallback marker and any provider/path prefix.
+        """
+        provider, model = key
+        provider = provider.replace("~", "").strip()
+        model = model.replace("~", "").strip()
+        if "/" in model:
+            model = model.rsplit("/", 1)[-1]
+        return provider, model

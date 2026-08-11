@@ -271,3 +271,22 @@ class TestOpenRouterPricing:
         decision = RuleBasedRouter(config).route(RouteInput(agent="planner"))
         assert decision.model == "ollama/llama3"
         assert decision.estimated_cost == 0.0
+
+    @pytest.mark.parametrize(
+        "slug",
+        [
+            "openrouter/deepseek/deepseek-v4-flash-0731",
+            "openrouter/deepseek/deepseek-v4-flash-latest",
+            "openrouter/~deepseek/deepseek-v4-flash-latest",
+        ],
+    )
+    def test_deepseek_v4_flash_priced(self, slug: str) -> None:
+        config = RouteConfig(
+            default_provider="ollama",
+            default_model="llama3",
+            rules=[{"agent": "planner", "model": slug}],
+        )
+        decision = RuleBasedRouter(config).route(
+            RouteInput(agent="planner", complexity="medium", context_size=10000)
+        )
+        assert decision.estimated_cost > 0
