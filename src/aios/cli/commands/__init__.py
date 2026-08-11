@@ -138,7 +138,7 @@ def _print_help() -> None:
     print("  aios review [target]  Review code/architecture/conventions (read-only)")
     print("  aios research <q>     Research a question (repo/docs/web)")
     print("  aios usage [opts]     Show token usage and cost telemetry")
-    print("  aios benchmark <target> [opts]  Measure wall/CPU times (all|phases|startup|...)")
+    print("  aios benchmark <target> [opts]  Measure wall/CPU/memory (all|phases|validate|...)")
     print("  aios quality stats     Show quality gate telemetry")
     print("  aios policy show       Show security policy (capabilities/intents)")
     print("  aios security stats    Show security allow/deny audit trail")

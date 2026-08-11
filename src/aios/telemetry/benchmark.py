@@ -2,8 +2,10 @@
 
 Pure measurement logic (no CLI dispatch, no aios.cli imports) so the CLI layer
 depends on this module, never the reverse. Every measurement captures
-``wall_time_ms`` (via ``time.monotonic()``) plus ``cpu_user_ms`` and
-``cpu_system_ms`` (deltas of ``os.times()``).
+``wall_time_ms`` (via ``time.monotonic()``), ``cpu_user_ms`` and
+``cpu_system_ms`` (deltas of ``os.times()``), and ``peak_memory_kb`` (process
+peak RSS via ``resource.getrusage``). Metrics are owned by
+:mod:`aios.telemetry.schema` — this module consumes them, it does not fork them.
 
 Measurement contract for ``measure_lifecycle``:
 
@@ -33,8 +35,8 @@ from pathlib import Path
 
 from aios import __version__
 from aios.core.task import Task
+from aios.telemetry.schema import METRICS
 
-METRICS = ("wall_time_ms", "cpu_user_ms", "cpu_system_ms")
 PHASES = (
     "startup",
     "kernel_init",
@@ -101,6 +103,25 @@ def sample_start() -> tuple[float, float, float]:
     return time.monotonic(), times.user, times.system
 
 
+def peak_memory_kb() -> float:
+    """Peak RSS of this process normalized to KB.
+
+    Contract: ``resource.getrusage(RUSAGE_SELF).ru_maxrss`` is normalized to
+    KB by platform — Linux returns KB directly, macOS returns bytes. A zero
+    result (unsupported platform) still satisfies the schema, which only
+    requires the metric to be present.
+    """
+    try:
+        import resource  # noqa: PLC0415
+
+        rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    except (ImportError, AttributeError, OSError):
+        return 0.0
+    if sys.platform == "darwin":
+        return rss / 1024.0
+    return float(rss)
+
+
 def elapsed(wall: float, user: float, system: float, *, error: str | None = None) -> dict:
     """Delta since sample_start(), in milliseconds, with optional error."""
     times = os.times()
@@ -108,6 +129,7 @@ def elapsed(wall: float, user: float, system: float, *, error: str | None = None
         "wall_time_ms": (time.monotonic() - wall) * 1000.0,
         "cpu_user_ms": (times.user - user) * 1000.0,
         "cpu_system_ms": (times.system - system) * 1000.0,
+        "peak_memory_kb": peak_memory_kb(),
     }
     if error is not None:
         entry["error"] = error
@@ -120,6 +142,7 @@ def error_entry(message: str) -> dict:
         "wall_time_ms": 0.0,
         "cpu_user_ms": 0.0,
         "cpu_system_ms": 0.0,
+        "peak_memory_kb": 0.0,
         "error": message,
     }
 
