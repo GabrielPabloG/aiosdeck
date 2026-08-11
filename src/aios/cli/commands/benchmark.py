@@ -4,9 +4,14 @@
 profiles the 7 lifecycle phases. ``aios benchmark <command>`` times one
 command; ``aios benchmark all`` times the full CLI surface (dashboard,
 doctor, skills, memory, plan, backlog run). ``aios benchmark startup
---process`` measures real process startup via subprocess. Command dispatch
-is in-process through ``kernel_factory`` (no PATH dependency, reproducible,
-works with a stubbed kernel in tests).
+--process`` measures real process startup via subprocess. ``aios benchmark
+validate <file>`` checks a report against the versioned schema (exit 0/1).
+
+Every measurement lands in the report as a flat ``results[]`` entry — the
+single canonical representation. No ``phases``/``commands``/``startup``
+structure survives at the top level. Command dispatch is in-process through
+``kernel_factory`` (no PATH dependency, reproducible, works with a stubbed
+kernel in tests).
 """
 
 from __future__ import annotations
@@ -30,6 +35,7 @@ from aios.telemetry.benchmark import (
     SKIP_REASON,
     elapsed,
     json_dumps,
+    load_report,
     measure_lifecycle,
     measure_startup_inprocess,
     measure_startup_process,
@@ -38,9 +44,16 @@ from aios.telemetry.benchmark import (
     skipped_entry,
     summarize_runs,
 )
+from aios.telemetry.schema import (
+    GROUPS,
+    SCHEMA_VERSION,
+    git_commit,
+    system_info,
+    validate_report,
+)
 
 _ALL_TARGETS = ("dashboard", "doctor", "skills", "memory", "plan", "backlog")
-_AVAILABLE = ("all", "startup", "phases", *_ALL_TARGETS)
+_AVAILABLE = ("all", "startup", "phases", "validate", *_ALL_TARGETS)
 
 # name -> (command function, fixed args, requires agent runtime, timeout_sec)
 _COMMAND_ARGS: dict[str, tuple[Callable, list[str], bool, float | None]] = {
@@ -54,29 +67,26 @@ _COMMAND_ARGS: dict[str, tuple[Callable, list[str], bool, float | None]] = {
 
 
 def cmd_benchmark(raw_args: list[str], project_path: Path, kernel_factory: Callable) -> None:
+    if raw_args and raw_args[0] == "validate":
+        _cmd_validate(raw_args[1:])
+        return
+
     opts = _parse_args(raw_args)
 
-    report = {
-        "tool": "aios benchmark",
-        "version": __version__,
-        "timestamp": datetime.now(UTC).isoformat(),
-        "warmup": opts["warmup"],
-        "repeat": opts["repeat"],
-        "skip_agents": opts["skip_agents"],
-    }
+    report = _new_report(opts)
 
     command = opts["command"]
     if command is None or opts["help"]:
         _print_usage()
         return
     if command == "phases":
-        report["phases"] = _measure_phases(project_path, kernel_factory, opts)
+        report["results"].extend(_measure_phases(project_path, kernel_factory, opts))
     elif command == "all":
-        report["commands"] = _measure_all(project_path, kernel_factory, opts)
+        report["results"].extend(_measure_all(project_path, kernel_factory, opts))
     elif command == "startup":
-        report["startup"] = _measure_startup(project_path, kernel_factory, opts)
+        report["results"].append(_measure_startup(project_path, kernel_factory, opts))
     elif command in _COMMAND_ARGS:
-        report["commands"] = {command: _measure_named(command, project_path, kernel_factory, opts)}
+        report["results"].append(_measure_named(command, project_path, kernel_factory, opts))
     else:
         _error(f"Unknown benchmark target: {command}. Available: {', '.join(_AVAILABLE)}")
 
@@ -88,6 +98,20 @@ def cmd_benchmark(raw_args: list[str], project_path: Path, kernel_factory: Calla
         print(json_dumps(report))
     else:
         _render_text(report)
+
+
+def _new_report(opts: dict) -> dict:
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "aiosdeck_version": __version__,
+        "git_commit": git_commit(),
+        "timestamp": datetime.now(UTC).isoformat(),
+        "system_info": system_info(),
+        "warmup": opts["warmup"],
+        "repeat": opts["repeat"],
+        "skip_agents": opts["skip_agents"],
+        "results": [],
+    }
 
 
 def _print_usage() -> None:
@@ -105,6 +129,9 @@ def _print_usage() -> None:
     print("  --output PATH    Save the report to PATH")
     print("  --skip-agents    Skip targets that require an agent runtime")
     print("  --process        startup: measure a real subprocess (not in-process)")
+    print()
+    print("Validate:")
+    print("  aios benchmark validate <file>   Check a report against the schema (exit 0/1)")
 
 
 def _parse_args(raw_args: list[str]) -> dict:
@@ -147,50 +174,75 @@ def _parse_args(raw_args: list[str]) -> dict:
     return opts
 
 
-def _measure_phases(project_path, kernel_factory, opts: dict) -> dict:
+def _cmd_validate(args: list[str]) -> None:
+    if not args or args[0] in ("--help", "-h"):
+        print("Usage: aios benchmark validate <file>", file=sys.stderr)
+        sys.exit(1)
+    try:
+        report = load_report(args[0])
+    except Exception as exc:  # noqa: BLE001 - any read/parse failure is a bad report
+        print(f"Invalid benchmark report: {args[0]}\n  cannot read file: {exc}")
+        sys.exit(1)
+    errors = validate_report(report)
+    if errors:
+        print(f"Invalid benchmark report ({len(errors)} error(s)): {args[0]}")
+        for error in errors:
+            print(f"  - {error}")
+        sys.exit(1)
+    print(f"Valid benchmark report: {args[0]}")
+    sys.exit(0)
+
+
+def _measure_phases(project_path, kernel_factory, opts: dict) -> list[dict]:
     profiles = _collect_samples(
         lambda: measure_lifecycle(project_path, kernel_factory, opts["skip_agents"]),
         opts,
     )
 
-    result: dict[str, dict] = {}
+    results: list[dict] = []
     for phase in PHASES:
         runs = []
         for profile in profiles:
             entry = profile[phase]
             if entry.get("skipped"):
-                result[phase] = skipped_entry(entry.get("reason") or SKIP_REASON)
+                results.append(
+                    {
+                        "group": "phases",
+                        "target": phase,
+                        **skipped_entry(entry.get("reason") or SKIP_REASON),
+                    }
+                )
                 break
             runs.append(entry)
         else:
-            result[phase] = _build_entry(runs)
-    return result
+            results.append({"group": "phases", "target": phase, **_build_entry(runs)})
+    return results
 
 
-def _measure_all(project_path, kernel_factory, opts: dict) -> dict:
-    return {name: _measure_named(name, project_path, kernel_factory, opts) for name in _ALL_TARGETS}
+def _measure_all(project_path, kernel_factory, opts: dict) -> list[dict]:
+    return [_measure_named(name, project_path, kernel_factory, opts) for name in _ALL_TARGETS]
 
 
 def _measure_named(name: str, project_path, kernel_factory, opts: dict) -> dict:
     _fn, _args, needs_agent, _timeout = _COMMAND_ARGS[name]
     if needs_agent and opts["skip_agents"]:
-        return skipped_entry(SKIP_REASON)
+        return {"group": "commands", "target": name, **skipped_entry(SKIP_REASON)}
     runs = _collect_samples(
         lambda: _run_command(name, project_path, kernel_factory),
         opts,
     )
-    return _build_entry(runs)
+    return {"group": "commands", "target": name, **_build_entry(runs)}
 
 
 def _measure_startup(project_path, kernel_factory, opts: dict) -> dict:
     if opts["process"]:
         runs = measure_startup_process(opts["warmup"], opts["repeat"])
-        return {"mode": "process", **_build_entry(runs)}
+        return {"group": "startup", "target": "startup", "mode": "process", **_build_entry(runs)}
     runs = _collect_samples(
         lambda: measure_startup_inprocess(project_path, kernel_factory),
         opts,
     )
-    return {"mode": "in-process", **_build_entry(runs)}
+    return {"group": "startup", "target": "startup", "mode": "in-process", **_build_entry(runs)}
 
 
 def _collect_samples(run_once: Callable, opts: dict) -> list[dict]:
@@ -258,21 +310,23 @@ def _build_entry(runs: list[dict]) -> dict:
 
 def _render_text(report: dict) -> None:
     print(
-        f"AiosDeck v{report['version']} — benchmark "
+        f"AiosDeck v{report['aiosdeck_version']} — benchmark "
         f"(warmup={report['warmup']}, repeat={report['repeat']}, "
         f"skip_agents={report['skip_agents']})"
     )
-    if "phases" in report:
-        print("\nPhases (p50 ms):")
-        for name in PHASES:
-            _render_entry(f"  {name:<16}", report["phases"][name])
-    if "commands" in report:
-        print("\nCommands (p50 ms):")
-        for name in sorted(report["commands"]):
-            _render_entry(f"  {name:<16}", report["commands"][name])
-    if "startup" in report:
-        print(f"\nStartup ({report['startup']['mode']}, p50 ms):")
-        _render_entry("  startup", report["startup"])
+    for group in GROUPS:
+        entries = [result for result in report["results"] if result.get("group") == group]
+        if not entries:
+            continue
+        if group == "phases":
+            print("\nPhases (p50 ms):")
+        elif group == "commands":
+            print("\nCommands (p50 ms):")
+        else:
+            mode = next((r["mode"] for r in entries if "mode" in r), "")
+            print(f"\nStartup ({mode}, p50 ms):")
+        for result in entries:
+            _render_entry(f"  {result['target']:<16}", result)
     if "output" in report:
         print(f"\nBaseline saved: {report['output']}")
 

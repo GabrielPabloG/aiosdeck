@@ -4,6 +4,10 @@ The benchmark measures wall/CPU times with time.monotonic() + os.times() for
 startup phases and CLI commands, reporting p50/p95/p99 percentiles and
 preserving raw runs. All tests drive the CLI entry point with a stub kernel
 factory so no runtime/model is required.
+
+The report's canonical shape is a flat ``results[]`` list (versioned schema
+v1). Tests walk ``results[]`` — never top-level ``phases``/``commands``
+structures.
 """
 
 import json
@@ -16,8 +20,20 @@ from aios.telemetry.benchmark import (
     percentile,
     summarize,
 )
+from aios.telemetry.schema import SCHEMA_VERSION
 
 ALL_COMMANDS = ("dashboard", "doctor", "skills", "memory", "plan", "backlog")
+
+
+def _result(report: dict, group: str, target: str) -> dict:
+    for result in report["results"]:
+        if result.get("group") == group and result["target"] == target:
+            return result
+    raise KeyError((group, target))
+
+
+def _group(report: dict, group: str) -> dict[str, dict]:
+    return {r["target"]: r for r in report["results"] if r.get("group") == group}
 
 
 class _StubKernelFactory:
@@ -94,6 +110,7 @@ class TestBenchmarkCli:
             "all",
             "startup",
             "phases",
+            "validate",
             "dashboard",
             "doctor",
             "skills",
@@ -120,25 +137,26 @@ class TestBenchmarkCli:
             ["phases", "--json", "--warmup", "0", "--repeat", "2"], tmp_path, _StubKernelFactory()
         )
         out = json.loads(capsys.readouterr().out)
-        assert "phases" in out
         for phase in PHASES:
-            assert out["phases"][phase]["summaries"]["wall_time_ms"]["p50"] > 0
+            entry = _result(out, "phases", phase)
+            assert entry["summaries"]["wall_time_ms"]["p50"] > 0
 
     def test_benchmark_cli_outputs_json(self, tmp_path, capsys):
         cmd_benchmark(
             ["phases", "--json", "--warmup", "0", "--repeat", "2"], tmp_path, _StubKernelFactory()
         )
         out = json.loads(capsys.readouterr().out)
-        assert out["tool"] == "aios benchmark"
-        assert "phases" in out
-        assert out["phases"]["startup"]["summaries"]["wall_time_ms"]["p50"] > 0
+        assert out["schema_version"] == SCHEMA_VERSION
+        assert out["aiosdeck_version"] == "1.0.0"
+        assert "results" in out
+        assert _result(out, "phases", "startup")["summaries"]["wall_time_ms"]["p50"] > 0
 
     def test_benchmark_measures_startup_time(self, tmp_path, capsys):
         cmd_benchmark(
             ["phases", "--json", "--warmup", "0", "--repeat", "2"], tmp_path, _StubKernelFactory()
         )
         out = json.loads(capsys.readouterr().out)
-        startup = out["phases"]["startup"]
+        startup = _result(out, "phases", "startup")
         assert startup["summaries"]["wall_time_ms"]["p50"] > 0
         assert len(startup["runs"]) == 2
 
@@ -147,9 +165,10 @@ class TestBenchmarkCli:
             ["all", "--json", "--warmup", "0", "--repeat", "1"], tmp_path, _StubKernelFactory()
         )
         out = json.loads(capsys.readouterr().out)
-        assert set(out["commands"]) == set(ALL_COMMANDS)
+        commands = _group(out, "commands")
+        assert set(commands) == set(ALL_COMMANDS)
         for name in ALL_COMMANDS:
-            entry = out["commands"][name]
+            entry = commands[name]
             assert "runs" in entry
             assert entry["summaries"]["wall_time_ms"]["count"] == 1
 
@@ -159,7 +178,7 @@ class TestBenchmarkCli:
         )
         out = json.loads(capsys.readouterr().out)
         for phase in PHASES:
-            entry = out["phases"][phase]
+            entry = _result(out, "phases", phase)
             assert len(entry["runs"]) == 5
             summary = entry["summaries"]["wall_time_ms"]
             assert summary["count"] == 5
@@ -169,8 +188,9 @@ class TestBenchmarkCli:
         factory = _StubKernelFactory()
         cmd_benchmark(["phases", "--json", "--warmup", "2", "--repeat", "3"], tmp_path, factory)
         out = json.loads(capsys.readouterr().out)
-        assert len(out["phases"]["startup"]["runs"]) == 3
-        assert out["phases"]["startup"]["summaries"]["wall_time_ms"]["count"] == 3
+        startup = _result(out, "phases", "startup")
+        assert len(startup["runs"]) == 3
+        assert startup["summaries"]["wall_time_ms"]["count"] == 3
         assert factory.calls == 5
 
     def test_each_measurement_captures_wall_and_cpu_times(self, tmp_path, capsys):
@@ -178,8 +198,13 @@ class TestBenchmarkCli:
             ["phases", "--json", "--warmup", "0", "--repeat", "1"], tmp_path, _StubKernelFactory()
         )
         out = json.loads(capsys.readouterr().out)
-        run = out["phases"]["startup"]["runs"][0]
-        assert set(METRICS) == {"wall_time_ms", "cpu_user_ms", "cpu_system_ms"}
+        run = _result(out, "phases", "startup")["runs"][0]
+        assert set(METRICS) == {
+            "wall_time_ms",
+            "cpu_user_ms",
+            "cpu_system_ms",
+            "peak_memory_kb",
+        }
         for metric in METRICS:
             assert metric in run
             assert run[metric] >= 0
@@ -191,10 +216,10 @@ class TestBenchmarkCli:
             _StubKernelFactory(),
         )
         out = json.loads(capsys.readouterr().out)
-        assert out["phases"]["plan"]["skipped"] is True
-        assert out["phases"]["agent_exec"]["skipped"] is True
-        assert "runs" not in out["phases"]["plan"]
-        assert "runs" in out["phases"]["startup"]
+        assert _result(out, "phases", "plan")["skipped"] is True
+        assert _result(out, "phases", "agent_exec")["skipped"] is True
+        assert "runs" not in _result(out, "phases", "plan")
+        assert "runs" in _result(out, "phases", "startup")
 
     def test_skip_agents_skips_plan_and_backlog_commands(self, tmp_path, capsys):
         cmd_benchmark(
@@ -203,9 +228,9 @@ class TestBenchmarkCli:
             _StubKernelFactory(),
         )
         out = json.loads(capsys.readouterr().out)
-        assert out["commands"]["plan"]["skipped"] is True
-        assert out["commands"]["backlog"]["skipped"] is True
-        assert "runs" in out["commands"]["doctor"]
+        assert _result(out, "commands", "plan")["skipped"] is True
+        assert _result(out, "commands", "backlog")["skipped"] is True
+        assert "runs" in _result(out, "commands", "doctor")
 
     def test_output_writes_baseline_file(self, tmp_path, capsys):
         baseline = tmp_path / "benchmarks" / "v1.0.0.json"
@@ -218,8 +243,8 @@ class TestBenchmarkCli:
         assert out["output"] == str(baseline)
         assert baseline.exists()
         saved = json.loads(baseline.read_text())
-        assert saved["tool"] == "aios benchmark"
-        assert "commands" in saved
+        assert saved["schema_version"] == SCHEMA_VERSION
+        assert "results" in saved
 
     def test_minimal_mode_without_kernel(self, tmp_path, capsys):
         def broken_factory(project_path):
@@ -229,9 +254,8 @@ class TestBenchmarkCli:
             ["phases", "--json", "--warmup", "0", "--repeat", "1"], tmp_path, broken_factory
         )
         out = json.loads(capsys.readouterr().out)
-        assert "phases" in out
-        assert out["phases"]["startup"]["runs"][0]["error"] == "no kernel available"
-        assert out["phases"]["kernel_init"]["runs"][0]["error"] == "kernel unavailable"
+        assert _result(out, "phases", "startup")["runs"][0]["error"] == "no kernel available"
+        assert _result(out, "phases", "kernel_init")["runs"][0]["error"] == "kernel unavailable"
 
     def test_command_error_records_timing(self, tmp_path, capsys):
         kernel = _stub_kernel()
@@ -241,15 +265,17 @@ class TestBenchmarkCli:
         factory = lambda project_path: kernel  # noqa: E731
         cmd_benchmark(["backlog", "--json", "--warmup", "0", "--repeat", "1"], tmp_path, factory)
         out = json.loads(capsys.readouterr().out)
-        run = out["commands"]["backlog"]["runs"][0]
+        entry = _result(out, "commands", "backlog")
+        run = entry["runs"][0]
         assert "error" in run
         assert run["wall_time_ms"] >= 0
-        assert out["commands"]["backlog"]["errors"] == 1
+        assert entry["errors"] == 1
 
     def test_unknown_command_reports_available(self, tmp_path):
         from aios.cli.commands.benchmark import _AVAILABLE
 
         assert "all" in _AVAILABLE
+        assert "validate" in _AVAILABLE
         assert set(ALL_COMMANDS) <= set(_AVAILABLE)
 
     def test_startup_process_mode(self, tmp_path, capsys):
@@ -259,5 +285,6 @@ class TestBenchmarkCli:
             _StubKernelFactory(),
         )
         out = json.loads(capsys.readouterr().out)
-        assert out["startup"]["mode"] == "process"
-        assert out["startup"]["summaries"]["wall_time_ms"]["count"] == 1
+        startup = _result(out, "startup", "startup")
+        assert startup["mode"] == "process"
+        assert startup["summaries"]["wall_time_ms"]["count"] == 1

@@ -170,8 +170,10 @@ e não é um agente importando o executor.
 
 ## Passo 9 — Benchmark (baseline de performance, v1.1.0)
 
-Instrumentação de tempos de parede (wall + CPU user/system) com
-`time.monotonic()`/`os.times()`. Mede antes de otimizar.
+Instrumentação de tempos de parede (wall + CPU user/system + pico de memória)
+com `time.monotonic()`/`os.times()`/`resource.getrusage`. Mede antes de
+otimizar. O report é um envelope versionado (schema v1) com `results[]` como
+única representação — sem estruturas paralelas `phases`/`commands`/`startup`.
 
 ```bash
 # Profile das 7 fases (startup → telemetry_flush), percentis p50/p95/p99
@@ -181,17 +183,23 @@ aios benchmark phases --json --warmup 1 --repeat 5
 aios benchmark all --skip-agents --json
 
 # Baseline versionada (geração determinística para CI/regressão)
-aios benchmark all --skip-agents --output .aios/benchmarks/v1.0.0.json
+aios benchmark all --skip-agents --output .aios/benchmarks/baseline-v1.0.0.json
+
+# Valida um report contra o schema (exit 0 válido / exit 1 inválido)
+aios benchmark validate .aios/benchmarks/baseline-v1.0.0.json
 
 # Espera real de processo do usuário (subprocesso, python -m aios --version)
 aios benchmark startup --process --json
 ```
 
-Esperado: JSON estruturado com `phases.*` e `commands.*` (cada um com `runs`
-brutos e `summaries` por métrica — `wall_time_ms`, `cpu_user_ms`,
-`cpu_system_ms`), percentis p50 ≤ p95 ≤ p99, e `skipped: true` explícito para
-fases/comandos que dependem de modelo quando `--skip-agents` é usado. Nenhum
-traceback. Sem `--json`/`--output`, a saída é uma tabela de texto.
+Esperado: JSON estruturado com envelope versionado (`schema_version`,
+`aiosdeck_version`, `git_commit`, `timestamp`, `system_info`) e `results[]`
+plano (cada entrada com `group`/`target`, `runs` brutos e `summaries` por
+métrica — `wall_time_ms`, `cpu_user_ms`, `cpu_system_ms`, `peak_memory_kb`),
+percentis p50 ≤ p95 ≤ p99, e `skipped: true` explícito para fases/comandos que
+dependem de modelo quando `--skip-agents` é usado. `aios benchmark validate`
+aceita o baseline (exit 0). Nenhum traceback. Sem `--json`/`--output`, a saída
+é uma tabela de texto.
 
 Critérios: warmup é descartado (cold start não contamina), falhas de kernel ou
 de comando registram duração sem abortar o benchmark (modo minimal), e o
