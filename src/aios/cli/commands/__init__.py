@@ -25,6 +25,7 @@ from aios.backlog.cli import (
 )
 from aios.cli.commands.core import (
     cmd_complete,
+    cmd_completion,
     cmd_dashboard,
     cmd_doctor,
     cmd_exit,
@@ -53,13 +54,9 @@ from aios.cli.commands.exec_cmds import (
     _run_result_to_json as _run_result_to_json,
 )
 from aios.cli.commands.exec_cmds import (
-    cmd_plan as _cmd_plan,
-)
-from aios.cli.commands.exec_cmds import (
-    cmd_research as _cmd_research,
-)
-from aios.cli.commands.exec_cmds import (
-    cmd_review as _cmd_review,
+    cmd_plan,
+    cmd_research,
+    cmd_review,
 )
 from aios.cli.commands.memory import (
     cmd_memory_add,
@@ -73,9 +70,9 @@ from aios.knowledge.cli import (
     cmd_knowledge_search,
     cmd_knowledge_sources,
 )
-from aios.learning.cli import _cmd_learning
+from aios.learning.cli import cmd_learning  # noqa: E402
 from aios.quality.cli import cmd_quality_stats
-from aios.routing.cli import _cmd_route
+from aios.routing.cli import cmd_route
 from aios.security.cli import (
     cmd_policy_show,
     cmd_security_stats,
@@ -86,7 +83,7 @@ from aios.skills.cli import (
     cmd_skills_stats,
 )
 from aios.telemetry.cli import cmd_usage
-from aios.ui.cli import _cmd_ocean
+from aios.ui.cli import cmd_ocean
 
 
 @dataclass
@@ -150,6 +147,7 @@ def _print_help() -> None:
     print("  aios route <cmd>      Explain or inspect model routing decisions")
     print("  aios backlog <cmd>    Run, list, add, or inspect backlog tasks")
     print("  aios help             Show this help")
+    print("  aios completion [sh]  Print a shell completion script (--bash|--zsh)")
     print()
     print("Commands:")
     _print_command_list(COMMANDS, indent=2)
@@ -223,24 +221,29 @@ COMMANDS: dict[str, Command] = {
     "plan": Command(
         name="plan",
         description="Decompose goal into subtasks",
-        execute=_cmd_plan,
+        execute=cmd_plan,
     ),
     "research": Command(
         name="research",
         description="Research a question (repo/docs/web)",
         aliases=["r"],
-        execute=_cmd_research,
+        execute=cmd_research,
     ),
     "review": Command(
         name="review",
         description="Review code, architecture, or conventions (read-only)",
         aliases=["rev"],
-        execute=_cmd_review,
+        execute=cmd_review,
     ),
     "help": Command(
         name="help",
         description="Show help",
         execute=cmd_help,
+    ),
+    "completion": Command(
+        name="completion",
+        description="Print shell completion script (--bash | --zsh)",
+        execute=cmd_completion,
     ),
     "usage": Command(
         name="usage",
@@ -330,7 +333,7 @@ COMMANDS: dict[str, Command] = {
                 aliases=["s"],
             ),
         },
-        execute=_cmd_route,
+        execute=cmd_route,
     ),
     "skills": Command(
         name="skills",
@@ -382,12 +385,12 @@ COMMANDS: dict[str, Command] = {
                 description="Export approved/ingested candidates to file",
             ),
         },
-        execute=_cmd_learning,
+        execute=cmd_learning,
     ),
     "ocean": Command(
         name="ocean",
         description="Open the ocean dashboard (interactive TUI)",
-        execute=_cmd_ocean,
+        execute=cmd_ocean,
     ),
     "exit": Command(
         name="exit",

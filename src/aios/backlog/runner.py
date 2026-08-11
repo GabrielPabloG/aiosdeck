@@ -14,13 +14,14 @@ class BacklogRunner:
         self._kanban = kanban
         self._telemetry = telemetry
 
-    def run(  # noqa: PLR0912, PLR0915 - sequential execution with multiple modes
+    def run(  # noqa: PLR0912, PLR0913, PLR0915, PLR0917 - sequential execution with multiple modes
         self,
         tasks: list[BacklogTask],
         stop_on_error: bool = True,
         from_index: int = 0,
         on_task_start: Callable[[BacklogTask], None] | None = None,
         on_task_end: Callable[[BacklogRunResult], None] | None = None,
+        create_branch: bool = False,
     ) -> list[BacklogRunResult]:
         results: list[BacklogRunResult] = []
         for i, task in enumerate(tasks):
@@ -38,7 +39,7 @@ class BacklogRunner:
             commit_sha = ""
 
             try:
-                result = self._execute_task(task)
+                result = self._execute_task(task, create_branch=create_branch)
                 if not result.success:
                     error = "; ".join(result.errors) if result.errors else "task failed"
                     status = "failed"
@@ -70,7 +71,7 @@ class BacklogRunner:
 
         return results
 
-    def _execute_task(self, task: BacklogTask) -> Any:
+    def _execute_task(self, task: BacklogTask, create_branch: bool = False) -> Any:
         commit_factory = self._build_commit_factory(task)
         description = task.subject or task.title
         t = Task(description=description, task_type="plan")
@@ -80,7 +81,7 @@ class BacklogRunner:
             context,
             mode="plan-run",
             commit_factory=commit_factory,
-            create_branch=False,
+            create_branch=create_branch,
         )
 
     def _build_commit_factory(self, task: BacklogTask) -> Callable[[Any], str]:

@@ -176,23 +176,10 @@ class WorkflowEngine:
             environment = self._quality_config.environment if self._quality_config else "dev"
             self._publish_quality(ctx, QUALITY_STARTED, {"environment": environment})
 
-        # 0. Research — optional front-gate. Only runs when a researcher is
-        # injected; its structured result feeds the planner/developer context.
-        if agents["research"] is not None:
-            self._run_research(ctx, task, context, notify)
-
-        # 1. Planner
-        plan_result = self._run_agent(agents["planner"], coerce_task(task), context)
-        if not plan_result.success:
-            ctx.stages.append(WorkflowStage(name="planner", success=False))
-            notify(ctx.stages[-1])
-            ctx.errors.append(plan_result.errors[0] if plan_result.errors else "Planner failed")
-            return self._finish(ctx)
-        ctx.plan = json.loads(plan_result.output)
-        subtasks = ctx.plan.get("subtasks", [])
-        ctx.subtask_count = len(subtasks)
-        ctx.stages.append(WorkflowStage(name="planner", success=True, details={"plan": ctx.plan}))
-        notify(ctx.stages[-1])
+        # 0–1. Research + Planner
+        subtasks, early = self._run_plan_phase(ctx, agents, task, context, notify)
+        if early is not None:
+            return early
 
         # 2. Git — create the run branch before any scheduler persistence
         if agents["git"] is not None and create_branch:
@@ -232,50 +219,9 @@ class WorkflowEngine:
         notify(ctx.stages[-1])
 
         # 4. Developer — one stage per subtask
-        for i, subtask in enumerate(subtasks):
-            card = ctx.cards[i]
-            agents["scheduler"].begin_work(card.id)
-            dev_task = AgentTask(
-                description=subtask["description"], task_type=subtask.get("type", "code")
-            )
-            dev_result = self._run_agent(agents["developer"], dev_task, context)
-            if not dev_result.success:
-                agents["scheduler"].block_card(card.id, reason="execution failed")
-                error = dev_result.errors[0] if dev_result.errors else "Developer failed"
-                ctx.stages.append(
-                    WorkflowStage(
-                        name=f"developer:{i + 1}",
-                        success=False,
-                        error=error,
-                        details={"description": subtask["description"]},
-                    )
-                )
-                notify(ctx.stages[-1])
-                ctx.errors.append(
-                    f"Developer [{subtask['description']}]: "
-                    f"{dev_result.errors[0] if dev_result.errors else 'failed'}"
-                )
-                return self._finish(ctx)
-            agents["scheduler"].complete_work(card.id)
-            ctx.completed_count += 1
-            ctx.stages.append(
-                WorkflowStage(
-                    name=f"developer:{i + 1}",
-                    success=True,
-                    details={"description": subtask["description"]},
-                )
-            )
-            notify(ctx.stages[-1])
-
-        # 4b. Code gate — lint/format must pass before review
-        if gates and not self._run_gate(
-            ctx,
-            gates,
-            "code_gate",
-            GateInput(project_path=self._project_path),
-            notify,
-        ):
-            return self._finish(ctx)
+        early = self._run_developer_phase(ctx, agents, subtasks, context, gates, notify)
+        if early is not None:
+            return early
 
         # 5. Reviewer
         review_result = self._run_agent(
@@ -431,6 +377,85 @@ class WorkflowEngine:
             task_id=task.task_id,
             correlation_id=task.correlation_id,
         )
+
+    def _run_plan_phase(
+        self, ctx: _WorkflowContext, agents: dict, task: Task, context, notify
+    ) -> tuple[list[dict], WorkflowResult | None]:
+        """Research front-gate (optional) and planner execution.
+
+        Returns ``(subtasks, None)`` on success or ``([], result)`` on
+        failure (caller must return the result immediately).
+        """
+        if agents["research"] is not None:
+            self._run_research(ctx, task, context, notify)
+
+        plan_result = self._run_agent(agents["planner"], coerce_task(task), context)
+        if not plan_result.success:
+            ctx.stages.append(WorkflowStage(name="planner", success=False))
+            notify(ctx.stages[-1])
+            ctx.errors.append(plan_result.errors[0] if plan_result.errors else "Planner failed")
+            return [], self._finish(ctx)
+        ctx.plan = json.loads(plan_result.output)
+        subtasks = ctx.plan.get("subtasks", [])
+        ctx.subtask_count = len(subtasks)
+        ctx.stages.append(WorkflowStage(name="planner", success=True, details={"plan": ctx.plan}))
+        notify(ctx.stages[-1])
+        return subtasks, None
+
+    def _run_developer_phase(  # noqa: PLR0913, PLR0917
+        self,
+        ctx: _WorkflowContext,
+        agents: dict,
+        subtasks: list[dict],
+        context,
+        gates: dict,
+        notify,
+    ) -> WorkflowResult | None:
+        """Per-subtask developer loop followed by the code gate.
+
+        Returns ``None`` on success or a ``WorkflowResult`` on failure
+        (caller must return it immediately).
+        """
+        for i, subtask in enumerate(subtasks):
+            card = ctx.cards[i]
+            agents["scheduler"].begin_work(card.id)
+            dev_task = AgentTask(
+                description=subtask["description"], task_type=subtask.get("type", "code")
+            )
+            dev_result = self._run_agent(agents["developer"], dev_task, context)
+            if not dev_result.success:
+                agents["scheduler"].block_card(card.id, reason="execution failed")
+                error = dev_result.errors[0] if dev_result.errors else "Developer failed"
+                ctx.stages.append(
+                    WorkflowStage(
+                        name=f"developer:{i + 1}",
+                        success=False,
+                        error=error,
+                        details={"description": subtask["description"]},
+                    )
+                )
+                notify(ctx.stages[-1])
+                ctx.errors.append(
+                    f"Developer [{subtask['description']}]: "
+                    f"{dev_result.errors[0] if dev_result.errors else 'failed'}"
+                )
+                return self._finish(ctx)
+            agents["scheduler"].complete_work(card.id)
+            ctx.completed_count += 1
+            ctx.stages.append(
+                WorkflowStage(
+                    name=f"developer:{i + 1}",
+                    success=True,
+                    details={"description": subtask["description"]},
+                )
+            )
+            notify(ctx.stages[-1])
+
+        if gates and not self._run_gate(
+            ctx, gates, "code_gate", GateInput(project_path=self._project_path), notify
+        ):
+            return self._finish(ctx)
+        return None
 
     @staticmethod
     def _apply_workflow_intent(context) -> None:

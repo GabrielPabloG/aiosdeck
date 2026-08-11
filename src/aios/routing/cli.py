@@ -199,14 +199,14 @@ def _parse_stats_args(raw_args: list[str]) -> dict:
     return opts
 
 
-def _cmd_route(raw_args: list[str], project_path: Path, kernel_factory: Callable) -> None:
+def cmd_route(raw_args: list[str], project_path: Path, kernel_factory: Callable) -> None:
     if not raw_args:
         print("Usage: aios route <subcommand>", file=sys.stderr)
         print()
         print("Subcommands:")
         print("  explain   Explain routing decision for a given input")
         print("  stats     Show routing telemetry stats or records")
-        return
+        sys.exit(1)
 
     sub_map = {
         "explain": cmd_route_explain,

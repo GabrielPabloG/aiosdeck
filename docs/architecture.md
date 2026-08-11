@@ -119,50 +119,74 @@ Events are fire-and-forget. Producers do not know consumers. Consumers do not kn
 ### Python Package Layout
 
 ```
-aiosdeck/
+aios/
 ├── __init__.py
-├── __main__.py                  # python -m aiosdeck
+├── __main__.py                  # python -m aios
+├── tools.py                     # Shared tooling helpers
 │
 ├── core/                        # Kernel + CLI
 │   ├── __init__.py
 │   ├── kernel.py                # Bootstrap, lifecycle, dispatcher
+│   ├── engine.py                # Engine protocol
 │   ├── console.py               # Dashboard rendering
+│   ├── run_result.py            # RunResult / StageSummary normalization
 │   └── task.py                  # Task dataclass
 │
 ├── cli/                         # CLI surface (v0.6.1)
 │   ├── __init__.py
 │   ├── main.py                  # Thin dispatcher — reads COMMANDS, resolves aliases
-│   ├── commands.py              # Command dataclass + COMMANDS registry
-│   └── completion.py            # Autocomplete engine consuming registry
+│   ├── completion.py            # Autocomplete engine consuming registry
+│   └── commands/                # Command registry (package)
+│       ├── __init__.py
+│       ├── core.py              # core commands
+│       ├── exec_cmds.py         # execution commands
+│       └── memory.py            # memory commands
+│
+├── events/                      # Event infrastructure
+│   ├── __init__.py
+│   ├── bus.py                   # EventBus: topic registry, publish/subscribe
+│   └── events.py                # Event type definitions
+│
+├── config/                      # Configuration
+│   ├── __init__.py
+│   ├── loader.py                # Detect + load + merge config
+│   └── schema.py                # Configuration schema definitions
 │
 ├── context/                     # Context Engine
 │   ├── __init__.py
-│   ├── engine.py                # Orchestrates detection and assembly
+│   ├── assembler.py             # Assembles context layers
+│   ├── assembly.py              # Context assembly pipeline
+│   ├── detector.py              # Project detection
+│   ├── layers.py                # Context layer definitions
+│   ├── packet.py                # ContextPacket
+│   ├── cli.py                   # context CLI commands
 │   └── collectors/              # Per-language detection modules
 │       ├── __init__.py
 │       ├── python.py
 │       ├── javascript.py
-│       ├── rust.py
 │       └── shell.py
 │
 ├── memory/                      # Memory Engine
 │   ├── __init__.py
 │   ├── engine.py                # Store, retrieve, index
+│   ├── models.py                # Memory dataclasses
 │   └── store.py                 # SQLite backend
 │
 ├── scheduler/                   # Kanban Engine (v0.8)
 │   ├── __init__.py              # Public API exports
 │   ├── engine.py                # KanbanEngine (Engine protocol facade)
 │   ├── models.py                # KanbanBoard, KanbanCard, KanbanSubtask, KanbanError, COLUMNS
-│   └── store.py                 # SQLite backend (kanban_ tables in .aios/memory.db)
+│   ├── store.py                 # SQLite backend (kanban_ tables in .aios/memory.db)
+│   └── backlog_writer.py        # TODO.md backlog writer
 │
 ├── security/                    # Security Manager
 │   ├── __init__.py
-│   ├── policy.py                # Policy engine, capability evaluation
+│   ├── contracts.py             # Security contracts
+│   ├── intent_validator.py      # Zero-trust intent validation
+│   ├── resolver.py              # Policy/capability resolution
 │   ├── capabilities.py          # Capability grant/revoke
-│   ├── secrets.py               # Secret injection, masking
-│   ├── firewall.py              # Prompt sanitization
-│   └── audit.py                 # Audit trail
+│   ├── actions.py               # Action definitions
+│   └── cli.py                   # security CLI commands
 │
 ├── agents/                      # Agent implementations
 │   ├── __init__.py
@@ -170,6 +194,8 @@ aiosdeck/
 │   ├── contracts.py             # AgentTask, AgentResult, AgentError, capabilities
 │   ├── executor.py              # AgentExecutor — the single execution boundary
 │   ├── lifecycle.py             # AgentLifecycle state machine
+│   ├── models.py                # Agent dataclasses
+│   ├── detectors.py             # Agent detection
 │   ├── developer.py             # v0.2: implementation agent
 │   ├── planner.py               # v0.4: task decomposition
 │   ├── reviewer.py              # v0.5: critique and review
@@ -180,47 +206,122 @@ aiosdeck/
 │
 ├── quality/                     # Quality Pipeline
 │   ├── __init__.py
-│   ├── pipeline.py              # Orchestrates quality gates
+│   ├── contracts.py             # Quality contracts
+│   ├── policy.py                # Quality policy
+│   ├── cli.py                   # quality CLI commands
 │   └── gates/                   # Individual gate implementations
 │       ├── __init__.py
-│       ├── format.py
-│       ├── lint.py
-│       ├── tests.py
-│       ├── security_gate.py
-│       ├── architecture_review.py
-│       └── documentation_review.py
+│       ├── common.py
+│       ├── code.py
+│       ├── documentation.py
+│       ├── release.py
+│       ├── security.py
+│       └── tester.py
 │
-├── workflows/                   # Workflow Engine
+├── workflow/                    # Workflow Engine
 │   ├── __init__.py
 │   ├── engine.py                # Workflow orchestration
-│   └── pipelines/               # Predefined workflow definitions
-│       ├── __init__.py
-│       ├── feature.py
-│       ├── fix.py
-│       ├── review.py
-│       ├── refactor.py
-│       ├── document.py
-│       └── release.py
+│   └── models.py                # Workflow dataclasses
 │
 ├── runtime/                     # Runtime Adapter
 │   ├── __init__.py
 │   ├── base.py                  # Runtime protocol interface
 │   └── opencode.py              # OpenCode adapter (via ai-jail)
 │
-├── plugins/                     # Plugin system
+├── backlog/                     # Backlog processing
 │   ├── __init__.py
-│   ├── registry.py              # Plugin discovery and registration
-│   └── loader.py                # Dynamic loading
+│   ├── cli.py                   # backlog CLI commands
+│   ├── models.py                # Backlog models
+│   ├── parser.py                # Backlog parsing
+│   └── runner.py                # Backlog execution runner
 │
-├── config/                      # Configuration
+├── learning/                    # Learning governance
 │   ├── __init__.py
-│   ├── loader.py                # Detect + load + merge config
-│   └── schema.py                # Configuration schema definitions
+│   ├── engine.py                # Learning engine (approval-gated)
+│   ├── contracts.py             # Learning contracts
+│   ├── extractor.py             # Observation extraction
+│   ├── advisor.py               # RulesAdvisor (deterministic)
+│   ├── models.py                # Learning dataclasses
+│   ├── store.py                 # Learning store
+│   └── cli.py                   # learning CLI commands
 │
-└── event_bus/                   # Event infrastructure
+├── knowledge/                   # Knowledge Engine
+│   ├── __init__.py
+│   ├── engine.py                # Knowledge engine
+│   ├── chunking.py              # Text chunking
+│   ├── discovery.py             # Knowledge discovery
+│   ├── models.py                # Knowledge dataclasses
+│   ├── store.py                 # Knowledge store
+│   └── cli.py                   # knowledge CLI commands
+│
+├── retrieval/                   # Retrieval
+│   ├── __init__.py
+│   ├── retrievers.py            # Retrieval strategies
+│   ├── providers.py             # Provider adapters
+│   └── selector.py              # Retriever selection
+│
+├── routing/                     # Model routing
+│   ├── __init__.py
+│   ├── engine.py                # RuleBasedRouter
+│   ├── models.py                # Routing dataclasses
+│   ├── contracts.py             # ModelRanker protocol (stub, post-1.0)
+│   └── cli.py                   # route CLI commands
+│
+├── skills/                      # Skills subsystem
+│   ├── __init__.py
+│   ├── registry.py              # Skill registry
+│   ├── discovery.py             # Skill discovery
+│   ├── metadata.py              # Skill metadata
+│   ├── retrieval.py             # Skill retrieval
+│   ├── assembler.py             # Skill assembly
+│   ├── telemetry.py             # Skill telemetry
+│   └── cli.py                   # skills CLI commands
+│
+├── telemetry/                   # Telemetry
+│   ├── __init__.py
+│   ├── engine.py                # Telemetry engine
+│   ├── pricing.py               # Cost tracking
+│   ├── store.py                 # Telemetry store
+│   └── cli.py                   # telemetry CLI commands
+│
+├── usage/                       # Usage records
+│   ├── __init__.py
+│   └── models.py                # Usage dataclasses
+│
+├── prompts/                     # Prompt building
+│   ├── __init__.py
+│   ├── builder.py               # Prompt builder
+│   └── layered.py               # Layered prompts
+│
+├── research/                    # Research
+│   ├── __init__.py
+│   ├── models.py                # Research dataclasses
+│   └── schema.py                # Research schema
+│
+├── ui/                          # Terminal UI (ocean dashboard)
+│   ├── __init__.py
+│   ├── cli.py                   # ui CLI commands
+│   ├── components.py            # UI components
+│   ├── datasources.py           # Dashboard data sources
+│   ├── mode.py                  # UI modes
+│   ├── pages.py                 # Dashboard pages
+│   ├── render.py                # Rendering helpers
+│   ├── resolver.py              # Resolution helpers
+│   ├── settings_io.py           # Settings persistence
+│   ├── settings_page.py         # Settings page
+│   ├── theme.py                 # Semantic design tokens
+│   └── tui.py                   # TUI renderer
+│
+├── storage/                     # Thread-safe storage helpers
+│   ├── __init__.py
+│   └── threadsafe.py            # Thread-safe containers
+│
+└── integrations/                # External integrations
     ├── __init__.py
-    ├── dispatcher.py            # Topic registry, publish/subscribe
-    └── events.py                # Event type definitions
+    └── projdesk/                # ProjDesk client
+        ├── __init__.py
+        ├── client.py            # ProjDeskClient
+        └── exceptions.py        # ProjDeskError → ProjectNotFound, ProjectAmbiguous
 ```
 
 ### Data Flow — Session Lifecycle
@@ -405,16 +506,16 @@ Each phase in the roadmap maps to specific code modules. Documentation drives im
 
 | Phase | Doc | Implementation |
 |-------|-----|---------------|
-| v0.1 | `phases/phase-01-kernel.md` + `phase-02-context.md` + internals | `core/`, `context/`, `config/`, `event_bus/`, `runtime/`, `security/` (skeleton) |
+| v0.1 | `phases/phase-01-kernel.md` + `phase-02-context.md` + internals | `core/`, `context/`, `config/`, `events/`, `runtime/`, `security/` (skeleton) |
 | v0.2 | `phases/phase-04-agents.md` | `agents/base.py`, `agents/developer.py` |
 | v0.3 | `phases/phase-03-memory.md` | `memory/` |
 | v0.4 | `agents/planner.md` | `agents/planner.py` |
 | v0.5 | `agents/reviewer.md` | `agents/reviewer.py` |
 | v0.6 | `agents/planner.md` + Headless SI | `agents/planner.py`, `runtime/opencode.py` (headless hardening) |
-| v0.7 | `phases/phase-05-workflows.md` + agent docs | `workflows/`, `agents/git.py` |
+| v0.7 | `phases/phase-05-workflows.md` + agent docs | `workflow/`, `agents/git.py` |
 | v0.8 | `internals/scheduler.md` (kanban) + `agents/planner.md` | `scheduler/` (kanban engine), kanban integration in `plan --run` |
-| v0.9 | `agents/*.md` (remaining) + `phases/phase-05-workflows.md` | `scheduler/` (queue + concurrency), `workflows/`, `plugins/` |
-| v1.0 | `phases/phase-06-integrations.md` | `integrations/` adapters |
+| v0.9 | `agents/*.md` (remaining) + `phases/phase-05-workflows.md` | `scheduler/` (queue + concurrency), `workflow/`, `skills/`, `telemetry/`, `routing/` |
+| v1.0 | `phases/phase-06-integrations.md` | `integrations/projdesk/`, `backlog/`, `learning/`, `knowledge/`, `retrieval/`, `ui/`, `storage/` |
 
 ## Consequences
 
@@ -459,7 +560,7 @@ The rest of the system never sees `CompletedProcess`, `returncode`, `stderr`, or
 
 - [x] Architecture diagram reflects all components through v1.0
 - [x] Package layout defined
-- [x] Event schema defined (`event_bus/events.py`)
+- [x] Event schema defined (`events/events.py`, `events/bus.py`)
 - [x] Runtime Adapter interface stable — extended with capabilities parameter (v0.6.1)
 - [x] Security Manager intercepts events from day one (v0.1 skeleton), event bus logging active
 - [ ] Each phase implementation must pass the architecture review gate before being considered done

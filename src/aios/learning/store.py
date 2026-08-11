@@ -5,16 +5,16 @@ from __future__ import annotations
 import json
 import logging
 import sqlite3
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from aios.learning.models import (
     CandidateState,
     LearningCandidate,
+    LearningStorageError,
     ObservationRecord,
 )
-from aios.storage.threadsafe import ThreadSafeConnection, connect_threadsafe
+from aios.storage.sqlite import BaseSQLiteStore
 
 logger = logging.getLogger("aios.learning.store")
 
@@ -74,10 +74,6 @@ CREATE TABLE IF NOT EXISTS learning_materializations (
 """
 
 
-def _now() -> str:
-    return datetime.now(UTC).isoformat()
-
-
 def _json_dumps(obj: Any) -> str:
     return json.dumps(obj, ensure_ascii=False)
 
@@ -89,48 +85,21 @@ def _json_loads(text: str, default: Any = None) -> Any:
         return default if default is not None else []
 
 
-class LearningStore:
+class LearningStore(BaseSQLiteStore):
     def __init__(self, db_path: Path, project_id: str) -> None:
-        self._db_path = db_path
-        self._project_id = project_id
-        self._conn: ThreadSafeConnection | None = None
+        super().__init__(db_path, project_id, SCHEMA, error_class=LearningStorageError)
 
-    def open(self) -> None:
-        try:
-            self._db_path.parent.mkdir(parents=True, exist_ok=True)
-        except OSError as exc:
-            raise RuntimeError(f"Cannot create directory: {self._db_path.parent}") from exc
-
-        try:
-            self._conn = connect_threadsafe(self._db_path)
-            self._conn.execute("PRAGMA journal_mode=WAL")
-            self._conn.execute("PRAGMA foreign_keys = ON")
-            self._conn.executescript(SCHEMA)
-            self._conn.commit()
-        except sqlite3.Error as exc:
-            self._conn = None
-            raise RuntimeError(f"Database open failed: {exc}") from exc
-
-    def close(self) -> None:
+    def _execute(self, query: str, params: tuple = ()) -> sqlite3.Cursor | None:
         if self._conn:
-            self._conn.close()
-            self._conn = None
-
-    def is_open(self) -> bool:
-        if self._conn is None:
-            return False
-        try:
-            self._conn.execute("SELECT 1")
-            return True
-        except sqlite3.Error:
-            return False
+            return self._conn.execute(query, params)
+        return None
 
     # ------------------------------------------------------------------
     # Observations
     # ------------------------------------------------------------------
 
     def insert_observation(self, obs: ObservationRecord) -> int:
-        now = _now()
+        now = self._now()
         evidence_json = _json_dumps(obs.evidence_refs)
         cursor = self._execute(
             "INSERT INTO learning_observations "
@@ -152,8 +121,7 @@ class LearningStore:
                 now,
             ),
         )
-        if self._conn:
-            self._conn.commit()
+        self._commit()
         return cursor.lastrowid if cursor else 0
 
     def find_observation_by_source(
@@ -200,7 +168,7 @@ class LearningStore:
     # ------------------------------------------------------------------
 
     def insert_candidate(self, candidate: LearningCandidate) -> int:
-        now = _now()
+        now = self._now()
         evidence_json = _json_dumps(candidate.evidence_refs)
         cursor = self._execute(
             "INSERT INTO learning_candidates "
@@ -224,8 +192,7 @@ class LearningStore:
                 now,
             ),
         )
-        if self._conn:
-            self._conn.commit()
+        self._commit()
         return cursor.lastrowid if cursor else 0
 
     def find_candidate_by_hash(
@@ -285,7 +252,7 @@ class LearningStore:
     def update_candidate_state(
         self, candidate_id: int, state: CandidateState, **kwargs: Any
     ) -> None:
-        now = _now()
+        now = self._now()
         fields = ["state=?", "updated_at=?"]
         params: list[Any] = [state, now]
         for key, value in kwargs.items():
@@ -298,8 +265,7 @@ class LearningStore:
             f"UPDATE learning_candidates SET {', '.join(fields)} WHERE id=? AND project_id=?",
             tuple(params),
         )
-        if self._conn:
-            self._conn.commit()
+        self._commit()
 
     def count_candidates_by_hash(self, dedupe_hash: str) -> int:
         row = self._fetch_one(
@@ -322,7 +288,7 @@ class LearningStore:
         decision: str,
         reason: str,
     ) -> int:
-        now = _now()
+        now = self._now()
         cursor = self._execute(
             "INSERT INTO learning_reviews "
             "(candidate_id, advisor, recommendation, justification, reviewer, decision, reason, "
@@ -330,8 +296,7 @@ class LearningStore:
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (candidate_id, advisor, recommendation, justification, reviewer, decision, reason, now),
         )
-        if self._conn:
-            self._conn.commit()
+        self._commit()
         return cursor.lastrowid if cursor else 0
 
     def get_reviews(self, candidate_id: int) -> list[dict]:
@@ -361,42 +326,18 @@ class LearningStore:
     # ------------------------------------------------------------------
 
     def insert_materialization(self, fmt: str, path: str, count: int) -> int:
-        now = _now()
+        now = self._now()
         cursor = self._execute(
             "INSERT INTO learning_materializations (format, path, candidate_count, created_at) "
             "VALUES (?, ?, ?, ?)",
             (fmt, path, count, now),
         )
-        if self._conn:
-            self._conn.commit()
+        self._commit()
         return cursor.lastrowid if cursor else 0
 
     # ------------------------------------------------------------------
-    # Internal helpers
+    # Row-to-model helpers
     # ------------------------------------------------------------------
-
-    def _execute(self, query: str, params: tuple = ()) -> sqlite3.Cursor | None:
-        if self._conn:
-            return self._conn.execute(query, params)
-        return None
-
-    def _fetch_one(self, query: str, params: tuple = ()) -> tuple | None:
-        if not self._conn:
-            return None
-        try:
-            return self._conn.execute(query, params).fetchone()
-        except sqlite3.Error as exc:
-            logger.error("Query error: %s", exc)
-            return None
-
-    def _fetch_all(self, query: str, params: tuple = ()) -> list[tuple]:
-        if not self._conn:
-            return []
-        try:
-            return self._conn.execute(query, params).fetchall()
-        except sqlite3.Error as exc:
-            logger.error("Query error: %s", exc)
-            return []
 
     @staticmethod
     def _row_to_observation(row: tuple) -> ObservationRecord:

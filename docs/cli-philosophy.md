@@ -125,8 +125,8 @@ parser.
 - [x] `docs/cli-philosophy.md` — this document
 - [x] `src/aios/cli/commands.py` — Command protocol + Registry
 - [x] `src/aios/cli/completion.py` — autocomplete engine consuming Registry
-- [ ] `completion/bash.sh` — thin wrapper calling `aios __complete`
-- [ ] `completion/zsh.sh` — thin wrapper calling `aios __complete`
+- [x] `completion/bash.sh` — thin wrapper calling `aios __complete`
+- [x] `completion/zsh.sh` — thin wrapper calling `aios __complete`
 - [x] `src/aios/cli/main.py` — rewritten CLI surface consuming Registry
 - [x] `__complete` must not appear in `--help` output (hidden=True)
 - [x] `start`, `status`, `exit` remain functional as hidden aliases

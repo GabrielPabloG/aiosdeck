@@ -1,7 +1,8 @@
 #compdef aios aiosdeck ad
 
 # AiosDeck zsh completion
-# Source this file: source completion/zsh.sh
+# Install: source <(aios completion --zsh)
+# Alternatively, keep this file and source it directly.
 
 _aios_completion() {
     local curcontext="$curcontext" state line

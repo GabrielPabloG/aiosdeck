@@ -1,5 +1,6 @@
 # AiosDeck bash completion
-# Source this file: source completion/bash.sh
+# Install: source <(aios completion --bash)
+# Alternatively, keep this file and source it directly.
 
 _aios_completion() {
     local cur prev words cword

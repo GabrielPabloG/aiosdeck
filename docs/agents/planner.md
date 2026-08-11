@@ -138,7 +138,7 @@ Out: AgentResult with list of Tasks ready for Scheduler
 
 - **Structured output**: Plans are machine-readable. The Scheduler consumes subtasks directly.
 - **Dependency awareness**: Tasks are ordered correctly. No agent gets an impossible task.
-- **Separation of concerns**: The Planner never executes. The Coder never plans.
+- **Separation of concerns**: The Planner never executes. The Developer never plans.
 - **Oversight**: Human reviews the plan before execution begins.
 
 ### Negative
@@ -149,7 +149,7 @@ Out: AgentResult with list of Tasks ready for Scheduler
 
 ### Neutral
 
-- The Planner is optional. Simple tasks bypass planning and go directly to the Coder.
+- The Planner is optional. Simple tasks bypass planning and go directly to the Developer.
 - Plan approval can be automated for low-risk tasks in future versions.
 
 ## Implementation Notes

@@ -9,7 +9,7 @@
 
 The Tester agent runs the project's test suite and reports results. It is part of the Quality Pipeline (v0.6) but exists as a standalone agent so it can be invoked independently — both as a pipeline gate and as a manual `aios /test` workflow.
 
-The Tester does not write tests. It only executes existing tests. Test generation is the Coder's responsibility (when the Planner creates a test task).
+The Tester does not write tests. It only executes existing tests. Test generation is the Developer's responsibility (when the Planner creates a test task).
 
 ## Decision
 
@@ -103,7 +103,7 @@ Out: AgentResult with test report
 
 ### Neutral
 
-- The Tester reports failures. It does not fix them. That is the Coder's job.
+- The Tester reports failures. It does not fix them. That is the Developer's job.
 - Test execution is synchronous within the Quality Pipeline. Parallel test execution is future work.
 
 ## Implementation Notes

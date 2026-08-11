@@ -13,7 +13,7 @@ documented. There are no intentional breaking changes to user workflows.
 
 | Area | Breaking? | Notes |
 |------|-----------|-------|
-| CLI commands | No | Same 20 top-level commands, same flags |
+| CLI commands | No | Same top-level commands, same flags |
 | Agent contracts | No | `AgentTask` / `AgentResult` / `AgentError` frozen |
 | Security intents | No | `IntentPolicy` / `EffectivePermissions` frozen |
 | Telemetry tables | No | 9 tables unchanged; schema additive only |

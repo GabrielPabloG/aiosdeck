@@ -53,6 +53,9 @@ _ARCH_SUGGESTIONS = {
 
 
 class ReviewerAgent(BaseAgent):
+    """Critiques code, architecture, and conventions.  Read-only — does not
+    modify files, only produces review reports."""
+
     name = "reviewer"
     timeout = 60.0
     required_capabilities = ["filesystem_read"]

@@ -5,6 +5,8 @@ from dataclasses import dataclass, field
 
 @dataclass
 class RuntimeConfig:
+    """Runtime adapter and sandbox settings."""
+
     adapter: str = "opencode"
     sandbox: str = "ai-jail"
     command: str = "ai-jail opencode"
@@ -12,6 +14,8 @@ class RuntimeConfig:
 
 @dataclass
 class ModelConfig:
+    """Default model provider and Ollama connection options."""
+
     default: str = "ollama"
     ollama_model: str = "llama3"
     ollama_host: str = "http://localhost:11434"
@@ -19,18 +23,24 @@ class ModelConfig:
 
 @dataclass
 class MemoryConfig:
+    """Memory engine database location."""
+
     enabled: bool = True
     path: str = ".aios/memory.db"
 
 
 @dataclass
 class SecurityConfig:
+    """Security policy directory and engine toggle."""
+
     enabled: bool = True
     policies_dir: str = "aios/policies"
 
 
 @dataclass
 class QualityConfig:
+    """Quality pipeline environment and per-gate policy overrides."""
+
     enabled: bool = True
     auto_detect: bool = True
     environment: str = "dev"
@@ -40,12 +50,16 @@ class QualityConfig:
 
 @dataclass
 class LoggingConfig:
+    """Log level and audit-trail output path."""
+
     level: str = "INFO"
     audit_path: str = "~/.local/share/aiosdeck/audit.log"
 
 
 @dataclass
 class UIConfig:
+    """Dashboard theme, accent, refresh interval, and backlog display."""
+
     theme: str = "ocean"
     accent_intensity: float = 0.8
     compact: bool = False
@@ -55,6 +69,8 @@ class UIConfig:
 
 @dataclass
 class LearningConfig:
+    """Learning engine capture thresholds and auto-ingestion policy."""
+
     enabled: bool = True
     auto_capture: bool = True
     confidence_threshold: float = 0.5
@@ -65,6 +81,8 @@ class LearningConfig:
 
 @dataclass
 class RouteConfig:
+    """Model routing rules, fallbacks, and cost caps."""
+
     enabled: bool = True
     default_provider: str = "ollama"
     default_model: str = "llama3"
@@ -77,6 +95,8 @@ class RouteConfig:
 
 @dataclass
 class ProjectConfig:
+    """Project identity and skill set."""
+
     name: str = ""
     directory: str = "~/projects"
     skills: list[str] = field(default_factory=list)
@@ -84,6 +104,8 @@ class ProjectConfig:
 
 @dataclass
 class AiosDeckConfig:
+    """Root configuration aggregating all domain config sections."""
+
     runtime: RuntimeConfig = field(default_factory=RuntimeConfig)
     model: ModelConfig = field(default_factory=ModelConfig)
     memory: MemoryConfig = field(default_factory=MemoryConfig)

@@ -167,13 +167,13 @@ The Developer agent is the only agent that violates "one agent, one job." It exi
 
 ## Implementation Notes
 
-- [ ] Implement `agents/base.py` — Agent protocol + AgentResult dataclass
-- [ ] Implement agent registry in `agents/__init__.py`
-- [ ] Each agent must implement: name, version, required_capabilities, required_skills, execute, health_check
-- [ ] Agent execution must log: task ID, duration, files changed, success/failure
-- [ ] Skill loading must happen before task execution, not during
-- [ ] Agent errors must emit `agent.execution.failed`, not crash the Scheduler
-- [ ] Test: agent registry contains all defined agents
-- [ ] Test: agent execute with mock runtime returns AgentResult
-- [ ] Test: agent with missing capability → Security Manager denies during execution
-- [ ] Test: agent with missing skill → warning logged, execution continues
+- [x] Implement `agents/base.py` — Agent protocol + AgentResult dataclass
+- [x] Implement agent registry in `agents/__init__.py`
+- [x] Each agent must implement: name, version, required_capabilities, required_skills, execute, health_check
+- [x] Agent execution must log: task ID, duration, files changed, success/failure
+- [x] Skill loading must happen before task execution, not during
+- [x] Agent errors must emit `agent.execution.failed`, not crash the Scheduler
+- [x] Test: agent registry contains all defined agents
+- [x] Test: agent execute with mock runtime returns AgentResult
+- [x] Test: agent with missing capability → Security Manager denies during execution
+- [ ] Test: agent with missing skill → warning logged, execution continues — post-1.0 (registry skips invalid skills, but the agent-level warning path is untested)

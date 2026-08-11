@@ -318,17 +318,17 @@ policy, `aios security stats` renders the allow/deny trail from
 
 ## Implementation Notes
 
-- [ ] Implement `security/policy.py` — Load and parse YAML policy files
-- [ ] Implement `security/capabilities.py` — Capability enum, authorization logic
-- [ ] Implement `security/secrets.py` — Load secrets from env, inject into runtime
-- [ ] Implement `security/firewall.py` — Prompt sanitization pipeline
-- [ ] Implement `security/audit.py` — Structured logging to file
-- [ ] Capabilities policy (`aios/policies/agent_capabilities.yaml`) must ship with the project
-- [ ] Capability check must run before every agent action
-- [ ] Audit log must be append-only; directory created if missing
-- [ ] Secrets must be masked in logs: `OPENAI_API_KEY=***`
-- [ ] Test: coder with no git capability → git action denied
-- [ ] Test: coder writes to allowed path → action allowed
-- [ ] Test: coder writes to denied path (~/.ssh) → action denied
-- [ ] Test: prompt contains a secret → sanitized version has secret removed
-- [ ] Test: destructive action triggers approval request
+- [x] Implement `security/intent_validator.py` — `validate_intent` zero-trust allow/deny decision
+- [x] Implement `security/resolver.py` — `effective_permissions`, `decide` policy resolution
+- [x] Implement `security/capabilities.py` — `CapabilityEnforcer`, capability validation
+- [x] Implement `security/actions.py` — capability expansion to granular actions
+- [x] Implement `security/contracts.py` — IntentPolicy, EffectivePermissions, SecurityDecision
+- [x] Capabilities policy (`aios/policies/agent_capabilities.yaml`) must ship with the project
+- [x] Capability check must run before every agent action
+- [x] Audit log must be append-only; directory created if missing
+- [ ] Secrets must be masked in logs: `OPENAI_API_KEY=***` — post-1.0
+- [x] Test: coder with no git capability → git action denied
+- [x] Test: coder writes to allowed path → action allowed
+- [x] Test: coder writes to denied path (~/.ssh) → action denied
+- [ ] Test: prompt contains a secret → sanitized version has secret removed — post-1.0
+- [x] Test: destructive action triggers approval request

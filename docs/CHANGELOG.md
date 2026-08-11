@@ -5,7 +5,7 @@ All notable changes to AiosDeck are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.0.0] — 2026-08-10
 
 ### Added
 
@@ -33,10 +33,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     metadata standardized; false claims fixed (Coder→developer.py, Reviewer CLI,
     workflows implemented, `.aios/memory.db` path); phase/agent statuses
     updated; stabilization roadmap (S0-S5) replaces rigid plans;
-    `docs/migration-1.0.md` guide.
-  - **S5 RC/GA** — Backlog Runner integrated (v0.9.13 feature brought forward;
-    CLI now has 20 top-level commands); `docs/release-checklist.md`; version
+    `docs/migration-1.0.md` guide. Package layout in `docs/architecture.md`
+    rewritten to mirror `src/aios/` (events/ not event_bus/, workflow/ not
+    workflows/pipelines/, security/intent_validator|resolver|capabilities|
+    actions|contracts, integrations/projdesk/; backlog, learning, knowledge,
+    retrieval, routing, skills, telemetry, usage, prompts, research, ui,
+    storage added); README Getting Started marked v1.0-rc1; phase-01/04/05/06
+    implementation notes aligned with the shipped code.
+  - **S5 RC/GA** — Backlog Runner integrated (v0.9.13 feature brought forward);
+    CLI surface frozen with the full top-level command tree);
+    `docs/release-checklist.md`; version
     bumped to `1.0.0-rc1`; v1.0 labeling documented in `docs/architecture.md`.
+    S5.1 RC checks 2026-08-10: 1344 tests green, ruff clean, circular imports
+    verified, contract + architecture gates pass. Fire-test telemetry gates
+    rewritten for v1.0 (executions + routing mandatory; token/cost when the
+    provider reports usage); known limitations documented.
+  - **Build & Release CD** — `.github/workflows/release.yml`: tag `v*` → gates →
+    build → `twine check` → PyPI via Trusted Publishing (no token) → GitHub
+    Release with `dist/` artifacts and CHANGELOG notes; `workflow_dispatch`
+    supports `dry-run` and TestPyPI publishes; version-consistency gate blocks
+    mismatched tags. CI (`ci.yml`) also covers `feature/stable-1.0`; `build` +
+    `twine` added to the `dev` extras.
 
 ### Changed
 
@@ -46,6 +63,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (v0.9.5..v0.9.13 released, [Unreleased] only carries stabilization work).
 - `docs/fire-test.md` — generalized from a v0.9.11 routing guide to a
   stabilization fire test.
+- `aios backlog run` — gains `--branch`/`--no-branch` flags to create a
+  per-task branch (`feature/<slug>-<id>`) or commit on the current branch
+  (default remains no branch).
 
 ## [0.9.13] - 2026-08-09
 

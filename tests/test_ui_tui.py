@@ -250,7 +250,7 @@ class TestStdioRegression:
         assert out.count("q quit") == 1  # rodapé só na 1ª render
         assert out.count("<<overview>>") == 2
 
-    def test_cmd_ocean_prints_non_tty_fallback(self, monkeypatch, capsys, tmp_path) -> None:
+    def testcmd_ocean_prints_non_tty_fallback(self, monkeypatch, capsys, tmp_path) -> None:
         from types import SimpleNamespace
 
         import aios.ui
@@ -258,5 +258,5 @@ class TestStdioRegression:
 
         fake_kernel = SimpleNamespace(start=lambda render_dashboard=None: None)
         monkeypatch.setattr(aios.ui, "run_tui", lambda *a, **k: "<<overview>>")
-        ui_cli._cmd_ocean([], tmp_path, lambda project: fake_kernel)
+        ui_cli.cmd_ocean([], tmp_path, lambda project: fake_kernel)
         assert "<<overview>>" in capsys.readouterr().out

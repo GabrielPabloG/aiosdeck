@@ -80,10 +80,83 @@ class TestRenderTable:
             "by_model": {},
             "records": [],
             "cost_records": [],
+            "executions": [],
         }
         _render_table(data)
         captured = capsys.readouterr()
         assert "No usage records found" in captured.out
+
+    def test_render_deferred_token_tracking_shows_executions(self, capsys):
+        data = {
+            "totals": {
+                "input_tokens": 0,
+                "output_tokens": 0,
+                "total_tokens": 0,
+                "total_cost": 0,
+                "currency": "USD",
+            },
+            "by_agent": {},
+            "by_model": {},
+            "records": [],
+            "cost_records": [],
+            "executions": [
+                {
+                    "execution_id": "exec-1",
+                    "agent": "planner",
+                    "status": "succeeded",
+                },
+                {
+                    "execution_id": "exec-2",
+                    "agent": "developer",
+                    "status": "succeeded",
+                },
+            ],
+        }
+        _render_table(data)
+        captured = capsys.readouterr()
+        assert "No token usage recorded" in captured.out
+        assert "token tracking deferred" in captured.out
+        assert "2 execution(s) recorded" in captured.out
+        assert "No usage records found" not in captured.out
+
+    def test_render_deferred_shows_total_when_truncated(self, capsys):
+        data = {
+            "totals": {
+                "input_tokens": 0,
+                "output_tokens": 0,
+                "total_tokens": 0,
+                "total_cost": 0,
+                "currency": "USD",
+            },
+            "by_agent": {},
+            "by_model": {},
+            "records": [],
+            "cost_records": [],
+            "executions": [{"execution_id": f"exec-{i}", "agent": "planner"} for i in range(5)],
+            "total_executions": 84,
+        }
+        _render_table(data)
+        captured = capsys.readouterr()
+        assert "84 (5 shown) execution(s) recorded" in captured.out
+
+    def test_render_records_shows_total_when_truncated(self, capsys):
+        data = {
+            "totals": {
+                "input_tokens": 100,
+                "output_tokens": 50,
+                "total_tokens": 150,
+                "total_cost": 0,
+                "currency": "USD",
+            },
+            "by_agent": {},
+            "by_model": {},
+            "records": [{"execution_id": f"exec-{i}", "agent": "planner"} for i in range(3)],
+            "cost_records": [],
+            "total_records": 40,
+        }
+        _render_table(data)
+        captured = capsys.readouterr()
+        assert "40 (3 shown) usage record(s) found" in captured.out
 
     def test_render_with_data(self, capsys):
         data = {

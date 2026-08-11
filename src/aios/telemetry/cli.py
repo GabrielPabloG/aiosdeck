@@ -87,12 +87,20 @@ def _print_usage_help() -> None:
     sys.exit(1)
 
 
+def _format_count(showing: int, total: int) -> str:
+    """Render a count, disambiguating a truncated window from the full total."""
+    if total > showing:
+        return f"{total} ({showing} shown)"
+    return str(total)
+
+
 def _render_table(data: dict) -> None:
     totals = data.get("totals", {})
     by_agent = data.get("by_agent", {})
     by_model = data.get("by_model", {})
     records = data.get("records", [])
     cost_records = data.get("cost_records", [])
+    executions = data.get("executions", [])
 
     print(render_section("Usage Summary"))
     print(render_row("Total input tokens", f"{totals.get('input_tokens', 0):,}"))
@@ -125,7 +133,15 @@ def _render_table(data: dict) -> None:
         if unpriced:
             print(f"  Unpriced: {len(unpriced)} records (no pricing data available)")
 
-    if not records:
-        print("\n  No usage records found.")
-    else:
-        print(f"\n  {len(records)} usage record(s) found.")
+    if records:
+        count = _format_count(len(records), data.get("total_records", len(records)))
+        print(f"\n  {count} usage record(s) found.")
+        return
+
+    if executions:
+        print("\n  No token usage recorded — token tracking deferred.")
+        count = _format_count(len(executions), data.get("total_executions", len(executions)))
+        print(f"  {count} execution(s) recorded.")
+        return
+
+    print("\n  No usage records found.")

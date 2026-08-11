@@ -457,10 +457,10 @@ Architecture Decision Records explain **why** each foundational choice was made 
 
 ## Getting Started
 
-AiosDeck is in alpha. The following will become available as versions ship.
+AiosDeck v1.0-rc1.
 
 ```bash
-# Install (future)
+# Install
 git clone <repository-url> ~/.config/aiosdeck
 ~/.config/aiosdeck/install.sh
 

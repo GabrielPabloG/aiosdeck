@@ -27,12 +27,16 @@ from aios.agents.models import AgentResult
 
 @dataclass
 class ChangelogFragment:
+    """Portable changelog entry produced by the documentation agent."""
+
     path: Path
     written: bool
     preview: str
 
 
 class DocumentationAgent(BaseAgent):
+    """Updates documentation files, ADRs, and the CHANGELOG."""
+
     name = "documentation"
     timeout = 30.0
     required_capabilities = ["filesystem_read", "filesystem_write"]

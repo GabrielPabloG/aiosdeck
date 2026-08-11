@@ -38,6 +38,10 @@ INIT_ORDER = [
 
 
 class Kernel:
+    """Central hub of AiosDeck.  Registers engines and agents, wires the
+    event bus, manages the lifecycle (start/shutdown), and routes CLI commands
+    to the appropriate execution path (plan, plan-run, workflow)."""
+
     def __init__(self, project_path: str = ".") -> None:
         self.project_path = Path(project_path).resolve()
         self._engines: dict[str, Engine] = {}

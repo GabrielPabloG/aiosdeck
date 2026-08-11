@@ -29,7 +29,7 @@ def validate_intent(intent: IntentPolicy, capabilities: object) -> SecurityDecis
         An auditable SecurityDecision. Callers consume ``decision.allowed``
         and ``decision.effective_permissions``.
     """
-    from aios.security.actions import expand  # noqa: PLC0415 — deferred to avoid circular import
+    from aios.security.actions import expand  # noqa: PLC0415
 
     granted = expand(capabilities)
     effective = (intent.actions - intent.deny) & granted

@@ -10,7 +10,6 @@ import hashlib
 import json
 import logging
 import sqlite3
-from datetime import UTC, datetime
 from pathlib import Path
 
 from aios.knowledge.chunking import chunk_text
@@ -24,7 +23,7 @@ from aios.knowledge.models import (
     KnowledgeResult,
     KnowledgeSource,
 )
-from aios.storage.threadsafe import ThreadSafeConnection, connect_threadsafe
+from aios.storage.sqlite import BaseSQLiteStore
 
 logger = logging.getLogger("aios.knowledge.store")
 
@@ -124,51 +123,23 @@ def deterministic_source_id(source_type: str, path: str) -> str:
     return hashlib.sha256(f"{source_type}|{path}".encode()).hexdigest()
 
 
-def _now() -> str:
-    return datetime.now(UTC).isoformat()
-
-
-class SQLiteKnowledgeStore:
+class SQLiteKnowledgeStore(BaseSQLiteStore):
     def __init__(self, db_path: Path, project_id: str) -> None:
-        self._db_path = db_path
-        self._project_id = project_id
-        self._conn: ThreadSafeConnection | None = None
+        super().__init__(db_path, project_id, SCHEMA, error_class=KnowledgeError)
+        self._fts_available = False
         self._fts_available = False
 
     # ------------------------------------------------------------------
     # Lifecycle
     # ------------------------------------------------------------------
 
-    def open(self) -> None:
+    def _post_open(self) -> None:
+        """Create FTS5 virtual table if available (best-effort)."""
         try:
-            self._db_path.parent.mkdir(parents=True, exist_ok=True)
-        except OSError as exc:
-            raise KnowledgeError(f"Cannot create directory: {self._db_path.parent}") from exc
-
-        try:
-            self._conn = connect_threadsafe(self._db_path)
-            self._conn.execute("PRAGMA journal_mode=WAL")
-            self._conn.execute("PRAGMA foreign_keys = ON")
-            self._conn.executescript(SCHEMA)
-            self._fts_available = self._try_create_fts()
-            self._conn.commit()
-        except sqlite3.Error as exc:
-            self._conn = None
-            raise KnowledgeError(f"Database open failed: {exc}") from exc
-
-    def close(self) -> None:
-        if self._conn:
-            self._conn.close()
-            self._conn = None
-
-    def is_open(self) -> bool:
-        if self._conn is None:
-            return False
-        try:
-            self._conn.execute("SELECT 1")
-            return True
-        except sqlite3.Error:
-            return False
+            self._conn.execute(FTS_SCHEMA)
+            self._fts_available = True
+        except sqlite3.OperationalError:
+            self._fts_available = False
 
     # ------------------------------------------------------------------
     # Source CRUD
@@ -179,7 +150,7 @@ class SQLiteKnowledgeStore:
             source.source_id = deterministic_source_id(source.type, source.path)
         if source.type not in VALID_SOURCE_TYPES:
             raise KnowledgeError(f"Invalid source type: {source.type}")
-        now = _now()
+        now = self.self._now()
         if not source.indexed_at:
             source.indexed_at = now
         self._execute(
@@ -288,7 +259,7 @@ class SQLiteKnowledgeStore:
             self._insert_chunk(ch, source_id, doc.document_id)
             created += 1
 
-        now = _now()
+        now = self._now()
         self._execute(
             """INSERT OR REPLACE INTO knowledge_documents
                (document_id, source_id, title, path, hash, metadata_json, indexed_at, project_id)
@@ -352,7 +323,7 @@ class SQLiteKnowledgeStore:
                (run_id, started_at, sources_scanned, sources_skipped,
                 sources_reindexed, chunks_created, chunks_deleted, status, project_id)
                VALUES (?, ?, 0, 0, 0, 0, 0, 'running', ?)""",
-            (run_id, _now(), self._project_id),
+            (run_id, self._now(), self._project_id),
         )
         if self._conn:
             self._conn.commit()
@@ -377,7 +348,7 @@ class SQLiteKnowledgeStore:
                    status = 'completed'
                WHERE run_id = ? AND project_id = ?""",
             (
-                _now(),
+                self._now(),
                 scanned,
                 skipped,
                 reindexed,
@@ -439,7 +410,7 @@ class SQLiteKnowledgeStore:
                 vector_dim,
                 vector_blob,
                 embedding_hash,
-                _now(),
+                self._now(),
                 self._project_id,
             ),
         )
@@ -498,13 +469,6 @@ class SQLiteKnowledgeStore:
     # ------------------------------------------------------------------
     # Internals
     # ------------------------------------------------------------------
-
-    def _try_create_fts(self) -> bool:
-        try:
-            self._conn.execute(FTS_SCHEMA)
-            return True
-        except sqlite3.OperationalError:
-            return False
 
     def upsert_source_metadata(self, source_id: str, metadata: dict) -> None:
         self._execute(
@@ -657,26 +621,6 @@ class SQLiteKnowledgeStore:
                     self._project_id,
                 ),
             )
-
-    def _fetch_all(self, query: str, params: tuple = ()) -> list[tuple]:
-        if not self._conn:
-            return []
-        try:
-            return self._conn.execute(query, params).fetchall()
-        except sqlite3.Error:
-            return []
-
-    def _fetch_one(self, query: str, params: tuple = ()) -> tuple | None:
-        if not self._conn:
-            return None
-        try:
-            return self._conn.execute(query, params).fetchone()
-        except sqlite3.Error:
-            return None
-
-    def _execute(self, query: str, params: tuple = ()) -> None:
-        if self._conn:
-            self._conn.execute(query, params)
 
 
 def _parse_json(raw: str | None) -> dict:

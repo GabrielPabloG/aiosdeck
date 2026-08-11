@@ -76,7 +76,16 @@ class TelemetryEngine:
         limit: int = 10000,
     ) -> dict:
         if self._store is None:
-            return {"totals": {}, "by_agent": {}, "by_model": {}, "records": [], "cost_records": []}
+            return {
+                "totals": {},
+                "by_agent": {},
+                "by_model": {},
+                "records": [],
+                "cost_records": [],
+                "executions": [],
+                "total_records": 0,
+                "total_executions": 0,
+            }
         return self._store.aggregate_usage(
             agent=agent,
             model=model,

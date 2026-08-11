@@ -67,7 +67,7 @@ github:
 - PR template generation from project context
 - Automated PR labeling based on change type (feat, fix, docs, etc.)
 - CI/CD failure analysis: agent reviews failed workflow and suggests fixes
-- Issue-to-feature workflow: issue assigned → Planner → Coder → PR → close issue
+- Issue-to-feature workflow: issue assigned → Planner → Developer → PR → close issue
 
 ## Consequences
 

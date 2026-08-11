@@ -89,6 +89,11 @@ def make_request(  # noqa: PLR0913 - the request is the full run contract
 
 
 class AgentExecutor:
+    """Single execution boundary for every agent run.  Validates the task,
+    enforces capabilities, drives the lifecycle state machine, applies
+    timeout/retry/cancellation, and publishes ``agent.*`` events.  Agents
+    never hold or call the executor, so recursion is structurally impossible."""
+
     def __init__(self, event_bus=None, capabilities_enforcer=None) -> None:
         self._bus = event_bus
         self._enforcer = capabilities_enforcer

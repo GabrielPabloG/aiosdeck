@@ -160,7 +160,7 @@ class KnowledgeEngine:
             try:
                 vectors = provider.embed(texts)
             except Exception:
-                logger.warning("Embedding batch failed, stopping")
+                logger.warning("Embedding batch failed, stopping", exc_info=True)
                 break
 
             dims = provider.dimensions()

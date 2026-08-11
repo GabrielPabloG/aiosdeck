@@ -18,6 +18,7 @@ from aios.core.console import ProgressSpinner, log_step
 from aios.core.run_result import RunResult, StageSummary
 from aios.core.task import Task
 from aios.research.schema import research_result_from_dict, research_result_to_json
+from aios.security.cli import _render_intent_summary
 
 _REVIEW_LEVELS = ("architecture", "conventions", "security")
 _REVIEW_OUTPUTS = ("text", "json", "file")
@@ -236,8 +237,6 @@ def _print_research_text(result) -> None:
 
 
 def cmd_plan(raw_args: list[str], project_path: Path, kernel_factory: Callable) -> None:
-    from aios.security.cli import _render_intent_summary  # noqa: PLC0415
-
     run_mode = "--run" in (raw_args or [])
     as_json = "--json" in (raw_args or [])
     debug_context = "--debug-context" in (raw_args or [])
