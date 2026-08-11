@@ -66,3 +66,14 @@ class TestPricingTableCoverage:
         assert ("openai", "gpt-4o") in PRICING_V1
         assert ("deepseek", "deepseek-chat") in PRICING_V1
         assert ("anthropic", "claude-sonnet-4-20250514") in PRICING_V1
+
+    def test_deepseek_v4_flash_priced(self):
+        resolver = PricingResolver(version="v1")
+        for model in ("deepseek-v4-flash-0731", "deepseek-v4-flash-latest"):
+            cost = resolver.resolve("openrouter", model, 1_000_000, 500_000)
+            assert cost["status"] == "priced"
+
+    def test_deepseek_v4_flash_0731_cost(self):
+        resolver = PricingResolver(version="v1")
+        cost = resolver.resolve("openrouter", "deepseek-v4-flash-0731", 1_000_000, 500_000)
+        assert round(cost["total_cost"], 6) == round(0.08 + 0.126, 6)

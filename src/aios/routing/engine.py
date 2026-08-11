@@ -13,6 +13,8 @@ _MODEL_PRICING: dict[str, float] = {
     "openai/gpt-4o-mini": 0.15,
     "openai/gpt-4o": 2.5,
     "openrouter/deepseek/deepseek-v4-flash": 0.068,
+    "openrouter/deepseek/deepseek-v4-flash-0731": 0.08,
+    "openrouter/deepseek/deepseek-v4-flash-latest": 0.08,
     "openrouter/qwen/qwen3-coder": 0.22,
     "openrouter/openai/gpt-5-mini": 0.30,
     "openrouter/anthropic/claude-sonnet-4-5": 3.0,
@@ -155,7 +157,8 @@ class RuleBasedRouter:
 
     @staticmethod
     def _estimate_cost(model_id: str, complexity: str, context_size: int) -> float:
-        input_price = _MODEL_PRICING.get(model_id, _MODEL_PRICING.get("ollama/llama3", 0.0))
+        lookup_id = model_id.replace("~", "")
+        input_price = _MODEL_PRICING.get(lookup_id, _MODEL_PRICING.get("ollama/llama3", 0.0))
         if input_price == 0.0:
             return 0.0
         input_tokens = max(context_size, 1) * 4
