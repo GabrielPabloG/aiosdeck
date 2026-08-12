@@ -1,13 +1,16 @@
-"""Tests for aios.core.console — spinner rendering and kanban board output."""
+"""Tests for aios.core.console — spinner, progress bar, and kanban board output."""
 
 import os
+import threading
 from unittest.mock import patch
 
 from aios.core.console import (
     CLEAR_LINE,
     KANBAN_COLUMNS,
+    ProgressBar,
     ProgressSpinner,
     _fit_message,
+    render_bar,
     render_kanban,
 )
 
@@ -81,6 +84,46 @@ def test_exit_clears_line():
         pass
 
     assert stream.writes[-1] == "\r" + CLEAR_LINE
+
+
+def test_render_bar_half_filled():
+    bar = render_bar(0.5, 12)
+    assert bar == "██████░░░░░░"
+    assert len(bar) == 12
+
+
+def test_render_bar_clamps():
+    assert render_bar(1.5, 10) == "██████████"
+    assert render_bar(-0.5, 10) == "░░░░░░░░░░"
+    assert render_bar(0.0, 8) == "░░░░░░░░"
+    assert render_bar(1.0, 8) == "████████"
+
+
+def test_progress_bar_advances_indeterminate_frame():
+    stream = _FakeStream()
+    stream._tty = True
+    bar = ProgressBar(sample_total=3, stream=stream)
+    bar._report_phase_start("plan")
+
+    with patch.object(bar, "_stop", threading.Event()):
+        bar._stop.set()
+        bar._animate()
+        bar._animate()
+        bar._animate()
+
+    assert len(stream.writes) >= 1
+
+
+def test_progress_bar_falls_back_when_not_tty():
+    stream = _FakeStream()
+    bar = ProgressBar(sample_total=1, stream=stream)
+    bar._report_phase_start("plan")
+    bar._report_phase_end("plan", 51200.0)
+    bar._advance_sample()
+    bar._finish()
+
+    combined = "".join(stream.writes)
+    assert "plan" in combined
 
 
 def test_render_kanban_always_shows_all_columns():
