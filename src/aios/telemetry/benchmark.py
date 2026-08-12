@@ -20,6 +20,11 @@ Measurement contract for ``measure_lifecycle``:
 ``startup`` never includes ``kernel.start()``; ``kernel_init`` never includes
 kernel construction. The first ``kernel_factory`` call pays module-import cost;
 ``--warmup`` absorbs it so repeat runs measure steady state.
+
+With ``bare_task=True`` the ``plan`` and ``agent_exec`` phases skip agents and
+the executor entirely: they run a restricted runtime probe (fixed prompt, no
+skills, no capabilities, empty permissions) so the elapsed time is the pure
+model latency, not product latency.
 """
 
 from __future__ import annotations
@@ -47,6 +52,7 @@ PHASES = (
     "telemetry_flush",
 )
 SKIP_REASON = "requires agent runtime (--skip-agents)"
+BARE_PROMPT = "You are in benchmark bare mode. Do not call tools. Reply with exactly OK."
 
 
 def percentile(sorted_vals: list[float], q: float) -> float:
@@ -152,13 +158,15 @@ def skipped_entry(reason: str) -> dict:
     return {"skipped": True, "reason": reason}
 
 
-def measure_lifecycle(  # noqa: PLR0912, PLR0915
+def measure_lifecycle(  # noqa: PLR0912, PLR0913, PLR0915
     project_path,
     kernel_factory,
     skip_agents: bool = False,
     *,
     on_phase=None,
     profile: bool = False,
+    bare_task: bool = False,
+    bare_model: str = "",
 ) -> dict:
     """Run one full 7-phase lifecycle and return per-phase timings.
 
@@ -173,6 +181,12 @@ def measure_lifecycle(  # noqa: PLR0912, PLR0915
     With *profile=True* the kernel is constructed with ``AIOS_PROFILE`` enabled
     so the ``kernel_init`` run carries the ``kernel.timings`` breakdown
     (optional schema field since v1.1).
+
+    With *bare_task=True* the ``plan``/``agent_exec`` phases replace the agent
+    runs with a restricted runtime probe (see :data:`BARE_PROMPT`), measuring
+    pure model latency. *bare_model* pins the probe to a fixed model id so a
+    full-vs-bare comparison is never a model swap. A probe whose reply is not
+    "OK"-shaped records a ``warning`` on the run (tolerant, never a failure).
     """
     notify = on_phase or (lambda _e: None)
     result: dict[str, dict] = {}
@@ -224,14 +238,20 @@ def measure_lifecycle(  # noqa: PLR0912, PLR0915
         result["skill_load"] = elapsed(wall, user, system, error=str(exc))
 
     for phase, runner in (("plan", _run_plan), ("agent_exec", _run_agent_exec)):
-        if skip_agents:
+        if skip_agents and not bare_task:
             result[phase] = skipped_entry(SKIP_REASON)
             continue
         notify((phase, "start"))
         wall, user, system = sample_start()
         try:
-            runner(kernel)
-            entry = elapsed(wall, user, system)
+            if bare_task:
+                warning = _run_bare_probe(kernel, model=bare_model)
+                entry = elapsed(wall, user, system)
+                if warning is not None:
+                    entry["warning"] = warning
+            else:
+                runner(kernel)
+                entry = elapsed(wall, user, system)
             result[phase] = entry
             notify((phase, "end", entry["wall_time_ms"]))
         except Exception as exc:  # noqa: BLE001 - failed agent run still measures the path
@@ -278,9 +298,14 @@ def measure_startup_process(warmup: int, repeat: int) -> list[dict]:
     return [run_once() for _ in range(repeat)]
 
 
-def baseline_path(project_path) -> Path:
-    """Canonical baseline location: ``.aios/benchmarks/v<version>.json``."""
-    return Path(project_path) / ".aios" / "benchmarks" / f"v{__version__}.json"
+def baseline_path(project_path, *, bare: bool = False) -> Path:
+    """Canonical baseline location: ``.aios/benchmarks/v<version>.json``.
+
+    In bare mode the file is ``v<version>-bare.json`` so a full baseline never
+    collides with the pure-model-latency baseline of the same version.
+    """
+    suffix = "-bare" if bare else ""
+    return Path(project_path) / ".aios" / "benchmarks" / f"v{__version__}{suffix}.json"
 
 
 def save_report(path: str | Path, report: dict) -> Path:
@@ -318,6 +343,36 @@ def _run_plan(kernel) -> None:
     context = kernel.get_context() if hasattr(kernel, "get_context") else None
     task = Task(description="benchmark task", task_type="plan")
     kernel.run(task, context, mode="plan")
+
+
+def _run_bare_probe(kernel, model: str = "") -> str | None:
+    """One restricted runtime probe for pure model latency.
+
+    Skips agents and the executor entirely: the runtime is invoked directly
+    with no skills, no capabilities, and empty permissions, so every tool is
+    structurally denied by the runtime itself. ``model`` pins the probe to a
+    fixed model id (the default model) so the measurement is never a routing
+    decision. The reply is scanned only as a best-effort check — a non-"OK"
+    output returns a warning string, never a failure.
+    """
+    from aios.security.contracts import EffectivePermissions  # noqa: PLC0415
+
+    runtime = kernel.get_engine("runtime")
+    if runtime is None:
+        raise RuntimeError("runtime engine not available")
+    output = runtime.execute(
+        BARE_PROMPT,
+        [],
+        [],
+        permissions=EffectivePermissions(allowed=frozenset()),
+        agent="benchmark",
+        task_type="code",
+        complexity="low",
+        model=model,
+    )
+    if not output.strip().upper().startswith("OK"):
+        return "bare probe reply is not 'OK' (tolerant check)"
+    return None
 
 
 def _run_agent_exec(kernel) -> None:

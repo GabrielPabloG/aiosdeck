@@ -92,6 +92,9 @@ def cmd_benchmark(raw_args: list[str], project_path: Path, kernel_factory: Calla
     else:
         _error(f"Unknown benchmark target: {command}. Available: {', '.join(_AVAILABLE)}")
 
+    if opts["bare_task"] and command != "phases":
+        print("Warning: --bare-task only affects the 'phases' target", file=sys.stderr)
+
     if opts["output"]:
         path = save_report(opts["output"], report)
         report["output"] = str(path)
@@ -118,6 +121,8 @@ def _new_report(opts: dict, project_path: Path) -> dict:
         "warmup": opts["warmup"],
         "repeat": opts["repeat"],
         "skip_agents": opts["skip_agents"],
+        "benchmark_mode": "bare" if opts["bare_task"] else "full",
+        "task_prompt_type": "restricted_ok" if opts["bare_task"] else "full_task",
         "results": [],
     }
 
@@ -138,6 +143,7 @@ def _print_usage() -> None:
     print("  --skip-agents    Skip targets that require an agent runtime")
     print("  --process        startup: measure a real subprocess (not in-process)")
     print("  --profile        phases: record kernel.timings breakdown (schema v1.1)")
+    print("  --bare-task      phases: restricted runtime probe (pure model latency)")
     print()
     print("Validate:")
     print("  aios benchmark validate <file>   Check a report against the schema (exit 0/1)")
@@ -154,6 +160,7 @@ def _parse_args(raw_args: list[str]) -> dict:  # noqa: PLR0912
         "skip_agents": False,
         "process": False,
         "profile": False,
+        "bare_task": False,
     }
     i = 0
     while i < len(raw_args):
@@ -168,6 +175,8 @@ def _parse_args(raw_args: list[str]) -> dict:  # noqa: PLR0912
             opts["process"] = True
         elif arg == "--profile":
             opts["profile"] = True
+        elif arg == "--bare-task":
+            opts["bare_task"] = True
         elif arg in ("--warmup", "--repeat"):
             i += 1
             if i < len(raw_args):
@@ -207,6 +216,7 @@ def _cmd_validate(args: list[str]) -> None:
 
 def _measure_phases(project_path, kernel_factory, opts: dict) -> list[dict]:
     bar = ProgressBar(sample_total=opts["repeat"], label="phases")
+    bare_model = _default_model_id(project_path) if opts["bare_task"] else ""
 
     def _run_one():
         result = measure_lifecycle(
@@ -215,6 +225,8 @@ def _measure_phases(project_path, kernel_factory, opts: dict) -> list[dict]:
             opts["skip_agents"],
             on_phase=_on_phase_for_bar(bar),
             profile=opts["profile"],
+            bare_task=opts["bare_task"],
+            bare_model=bare_model,
         )
         bar._advance_sample()
         return result
@@ -238,7 +250,11 @@ def _measure_phases(project_path, kernel_factory, opts: dict) -> list[dict]:
                 break
             runs.append(entry)
         else:
-            results.append({"group": "phases", "target": phase, **_build_entry(runs)})
+            entry = {"group": "phases", "target": phase, **_build_entry(runs)}
+            if opts["bare_task"] and phase in ("plan", "agent_exec"):
+                entry["tool_calls_count"] = 0
+                entry["is_read_only"] = True
+            results.append(entry)
     return results
 
 
@@ -347,14 +363,26 @@ def _build_entry(runs: list[dict]) -> dict:
     errors = sum(1 for run in runs if run.get("error"))
     if errors:
         entry["errors"] = errors
+    warnings = [run.pop("warning") for run in runs if run.get("warning")]
+    if warnings:
+        entry["warnings"] = warnings
     return entry
 
 
+def _default_model_id(project_path: Path) -> str:
+    """Model id (provider/model) the bare probe pins to, matching routing."""
+    config = ConfigLoader(project_path).load()
+    provider = config.model.default or "ollama"
+    model = config.model.ollama_model or "llama3"
+    return model if "/" in model else f"{provider}/{model}"
+
+
 def _render_text(report: dict) -> None:
+    mode = report.get("benchmark_mode", "full")
     print(
         f"AiosDeck v{report['aiosdeck_version']} — benchmark "
         f"(warmup={report['warmup']}, repeat={report['repeat']}, "
-        f"skip_agents={report['skip_agents']})"
+        f"skip_agents={report['skip_agents']}, mode={mode})"
     )
     for group in GROUPS:
         entries = [result for result in report["results"] if result.get("group") == group]
