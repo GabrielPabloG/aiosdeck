@@ -87,6 +87,27 @@ def _stub_kernel():
     return kernel
 
 
+class TestSystemInfo:
+    def test_system_info_exposes_environment_provenance(self):
+        from aios.telemetry.schema import system_info
+
+        info = system_info()
+        for key in (
+            "system",
+            "platform",
+            "machine",
+            "python",
+            "distro",
+            "kernel",
+            "cpu",
+            "cpu_count",
+            "memory_mb",
+        ):
+            assert key in info, f"system_info missing {key!r}"
+        assert info["cpu_count"] >= 1
+        assert info["memory_mb"] > 0
+
+
 class TestSchemaValidation:
     def test_benchmark_schema_validation(self):
         assert validate_report(_valid_report()) == []
