@@ -10,43 +10,12 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from aios.core.kernel import Kernel
+from aios.ui.datasources import PAGE_DATA
 
 
 def _error(msg: str) -> None:
     print(f"Error: {msg}", file=sys.stderr)
     sys.exit(1)
-
-
-_PAGE_DATA: dict[str, Callable[[Kernel], Any]] = {}
-
-
-def _ensure_page_data() -> dict[str, Callable[[Kernel], Any]]:
-    if not _PAGE_DATA:
-        from aios.ui.datasources import (  # noqa: PLC0415
-            agents_data,
-            knowledge_data,
-            overview_data,
-            quality_data,
-            settings_data,
-            skills_data,
-            usage_data,
-            workflows_data,
-        )
-
-        _PAGE_DATA.update(
-            {
-                "overview": overview_data,
-                "workflows": workflows_data,
-                "agents": agents_data,
-                "skills": skills_data,
-                "knowledge": knowledge_data,
-                "usage": usage_data,
-                "quality": quality_data,
-                "settings": settings_data,
-            }
-        )
-    return _PAGE_DATA
 
 
 def _parse_ocean_args(raw_args: list[str] | None) -> tuple[dict[str, Any], int | None]:
@@ -145,17 +114,15 @@ def cmd_ocean(
     mode = detect_color_mode()
     resolver = ColorResolver(ocean_theme, mode)
 
-    page_data = _ensure_page_data()
-
     if opts["json"]:
-        show = page_data[page](kernel)
+        show = PAGE_DATA[page](kernel)
         print(json.dumps(show, indent=2, ensure_ascii=False, default=str))
         return
 
     def _render(name: str) -> str:
         return render_page(
             name,
-            page_data[name](kernel),
+            PAGE_DATA[name](kernel),
             RenderContext(resolver=resolver),
         )
 
