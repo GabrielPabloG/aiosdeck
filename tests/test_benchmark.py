@@ -152,6 +152,20 @@ class TestBenchmarkCli:
         assert "results" in out
         assert _result(out, "phases", "startup")["summaries"]["wall_time_ms"]["p50"] > 0
 
+    def test_benchmark_reports_runtime_info(self, tmp_path, capsys, monkeypatch):
+        monkeypatch.setenv("AIOS_DEFAULT_MODEL", "ollama")
+        monkeypatch.setenv("AIOS_OLLAMA_MODEL", "llama3.2")
+        monkeypatch.setenv("AIOS_OLLAMA_HOST", "http://localhost:11434")
+        cmd_benchmark(
+            ["phases", "--json", "--warmup", "0", "--repeat", "1"], tmp_path, _StubKernelFactory()
+        )
+        out = json.loads(capsys.readouterr().out)
+        assert out["runtime_info"] == {
+            "provider": "ollama",
+            "model": "llama3.2",
+            "host": "http://localhost:11434",
+        }
+
     def test_benchmark_measures_startup_time(self, tmp_path, capsys):
         cmd_benchmark(
             ["phases", "--json", "--warmup", "0", "--repeat", "2"], tmp_path, _StubKernelFactory()
