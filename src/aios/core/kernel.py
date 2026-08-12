@@ -16,6 +16,7 @@ from aios.core.console import (
     render_section,
 )
 from aios.core.engine import Engine
+from aios.core.profiler import Profiler, create_profiler
 from aios.core.run_result import RunResult, StageSummary, stage_to_summary
 from aios.core.task import Task
 
@@ -48,6 +49,12 @@ class Kernel:
         self._engine_status: dict[str, str] = {}
         self._errors: list[str] = []
         self._executor = None
+        self._profiler: Profiler = create_profiler()
+
+    @property
+    def timings(self) -> dict:
+        """Startup timing contract populated only when profiling is enabled."""
+        return self._profiler.timings
 
     def register(self, engine: Engine) -> None:
         self._engines[engine.name] = engine
@@ -61,16 +68,24 @@ class Kernel:
 
         if not quiet:
             self._print_banner()
-        self._initialize_engines()
-        self._wire_event_bus()
-        self._enrich_context_with_memory()
-        if render_dashboard:
-            self._render_dashboard()
+        self._inject_profiler()
+        with self._profiler.measure_total():
+            self._initialize_engines()
+            self._wire_event_bus()
+            self._enrich_context_with_memory()
+            if render_dashboard:
+                self._render_dashboard()
 
         if self._errors:
             logger.warning("\n Warnings:")
             for err in self._errors:
                 logger.warning("   %s", err)
+
+    def _inject_profiler(self) -> None:
+        """Share the Kernel profiler with the ContextEngine before detection."""
+        context = self._engines.get("context")
+        if context is not None and hasattr(context, "set_profiler"):
+            context.set_profiler(self._profiler)
 
     def shutdown(self) -> None:
         for name in reversed(INIT_ORDER):
@@ -89,7 +104,8 @@ class Kernel:
                 continue
 
             try:
-                engine.initialize()
+                with self._profiler.measure_engine(name):
+                    engine.initialize()
                 if engine.health_check():
                     self._engine_status[name] = "ready"
                 else:

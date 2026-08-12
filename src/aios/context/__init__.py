@@ -28,6 +28,7 @@ from aios.context.packet import (
     RuntimeInfo,
     StructureInfo,
 )
+from aios.core.profiler import NullProfiler, Profiler
 
 __all__ = [
     "DEFAULT_LAYER_CAPS",
@@ -54,6 +55,10 @@ class ContextEngine:
     def __init__(self, project_path: Path | None = None) -> None:
         self._project_path = project_path or Path.cwd()
         self.context: ContextPacket | None = None
+        self._profiler: Profiler = NullProfiler()
+
+    def set_profiler(self, profiler: Profiler) -> None:
+        self._profiler = profiler
 
     def initialize(self) -> None:
         self.context = self._detect()
@@ -84,9 +89,16 @@ class ContextEngine:
                 )
                 break
 
-        packet.git = GitInfo.detect(self._project_path)
-        packet.docker = DockerInfo.detect(self._project_path)
-        packet.runtime = RuntimeInfo.detect()
-        packet.structure = StructureInfo.detect(self._project_path)
+        packet.git = self._time_detector("git", GitInfo.detect, self._project_path)
+        packet.docker = self._time_detector("docker", DockerInfo.detect, self._project_path)
+        packet.runtime = self._time_detector("runtime", RuntimeInfo.detect)
+        packet.structure = self._time_detector(
+            "structure", StructureInfo.detect, self._project_path
+        )
 
         return packet
+
+    def _time_detector(self, name: str, detect, *args):
+        """Run a detector under the profiler; timing survives a failure."""
+        with self._profiler.measure_detector(name):
+            return detect(*args)
