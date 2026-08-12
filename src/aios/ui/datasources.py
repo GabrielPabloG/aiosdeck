@@ -8,6 +8,7 @@ crashes on a partially-initialized kernel.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
 
@@ -108,3 +109,15 @@ def _runtime_data(kernel: Kernel) -> dict[str, Any]:
     except Exception:  # noqa: BLE001
         sandbox = False
     return {"healthy": healthy, "has_sandbox": sandbox}
+
+
+PAGE_DATA: dict[str, Callable[[Kernel], Any]] = {
+    "overview": overview_data,
+    "workflows": workflows_data,
+    "agents": agents_data,
+    "skills": skills_data,
+    "knowledge": knowledge_data,
+    "usage": usage_data,
+    "quality": quality_data,
+    "settings": settings_data,
+}

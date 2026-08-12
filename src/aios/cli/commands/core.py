@@ -28,16 +28,16 @@ def cmd_dashboard(raw_args: list[str], project_path: Path, kernel_factory: Calla
         RenderContext,
         detect_color_mode,
         ocean_theme,
-        overview_data,
         render_page,
         run_tui,
     )
+    from aios.ui.datasources import PAGE_DATA  # noqa: PLC0415
 
     mode = detect_color_mode()
     resolver = ColorResolver(ocean_theme, mode)
 
     def _render(page_name: str) -> str:
-        data = overview_data(kernel)
+        data = PAGE_DATA[page_name](kernel)
         return render_page(page_name, data, RenderContext(resolver=resolver))
 
     run_tui(_render, PAGE_NAMES)
