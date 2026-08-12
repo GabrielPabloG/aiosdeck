@@ -15,10 +15,12 @@ from unittest.mock import MagicMock, patch
 
 from aios import __version__
 from aios.cli.commands.benchmark import _collect_samples, cmd_benchmark
+from aios.routing.models import RouteDecision, RouteInput
 from aios.telemetry.benchmark import (
     BARE_PROMPT,
     METRICS,
     PHASES,
+    _run_bare_probe,
     baseline_path,
     measure_lifecycle,
     percentile,
@@ -57,8 +59,24 @@ def _stub_kernel():
     kernel.get_context = MagicMock(return_value=MagicMock())
     kernel.run = MagicMock()
     kernel.run_agent = MagicMock()
-    kernel.get_engine = MagicMock(return_value=MagicMock())
+    runtime = MagicMock()
+    runtime.router = None
+    kernel.get_engine = MagicMock(return_value=runtime)
     return kernel
+
+
+class _FakeRouter:
+    """Deterministic router that returns a per-agent model decision."""
+
+    def __init__(self, by_agent: dict[str, str]) -> None:
+        self.by_agent = dict(by_agent)
+        self.inputs: list[RouteInput] = []
+
+    def route(self, input: RouteInput) -> RouteDecision:
+        self.inputs.append(input)
+        model = self.by_agent.get(input.agent, "ollama/llama3")
+        provider, _, _ = model.partition("/")
+        return RouteDecision(provider=provider or "ollama", model=model, reason="test")
 
 
 class TestBenchmarkProfile:
@@ -551,3 +569,79 @@ class TestBenchmarkBareTask:
     def test_baseline_path_bare_suffix(self, tmp_path):
         assert baseline_path(tmp_path).name == f"v{__version__}.json"
         assert baseline_path(tmp_path, bare=True).name == f"v{__version__}-bare.json"
+
+
+class TestBareRoutingParity:
+    """Full and bare must resolve the model from the same per-phase router
+    decision — an agent-specific routing rule can never diverge them."""
+
+    def _bare_kernel_with_router(self):
+        kernel = _stub_kernel()
+        runtime = kernel.get_engine.return_value
+        runtime.router = _FakeRouter(
+            {"planner": "ollama/model-b", "developer": "ollama/model-a"}
+        )
+        return kernel, runtime
+
+    def test_bare_model_matches_router_decision_for_phase(self):
+        kernel, runtime = self._bare_kernel_with_router()
+        _run_bare_probe(kernel, "plan")
+        assert runtime.execute.call_args.kwargs["model"] == "ollama/model-b"
+        _run_bare_probe(kernel, "agent_exec")
+        assert runtime.execute.call_args.kwargs["model"] == "ollama/model-a"
+
+    def test_bare_probe_builds_phase_route_input(self):
+        kernel, runtime = self._bare_kernel_with_router()
+        router = runtime.router
+        _run_bare_probe(kernel, "plan")
+        _run_bare_probe(kernel, "agent_exec")
+        plan_input = router.inputs[0]
+        agent_input = router.inputs[1]
+        assert plan_input.agent == "planner"
+        assert plan_input.task_type == "plan"
+        assert agent_input.agent == "developer"
+        assert agent_input.task_type == "code"
+
+    def test_bare_uses_agent_specific_routing_rule(self, tmp_path, capsys):
+        kernel, _ = self._bare_kernel_with_router()
+        cmd_benchmark(
+            ["phases", "--bare-task", "--json", "--warmup", "0", "--repeat", "1"],
+            tmp_path,
+            lambda _: kernel,
+        )
+        out = json.loads(capsys.readouterr().out)
+        assert _result(out, "phases", "plan")["model"] == "ollama/model-b"
+        assert _result(out, "phases", "agent_exec")["model"] == "ollama/model-a"
+
+    def test_full_records_effective_model(self, tmp_path, capsys):
+        kernel, _ = self._bare_kernel_with_router()
+        cmd_benchmark(
+            ["phases", "--json", "--warmup", "0", "--repeat", "1"],
+            tmp_path,
+            lambda _: kernel,
+        )
+        out = json.loads(capsys.readouterr().out)
+        assert _result(out, "phases", "plan")["model"] == "ollama/model-b"
+        assert _result(out, "phases", "agent_exec")["model"] == "ollama/model-a"
+
+    def test_model_empty_when_no_router(self, tmp_path, capsys):
+        cmd_benchmark(
+            ["phases", "--bare-task", "--json", "--warmup", "0", "--repeat", "1"],
+            tmp_path,
+            _StubKernelFactory(),
+        )
+        out = json.loads(capsys.readouterr().out)
+        assert _result(out, "phases", "plan")["model"] == ""
+        assert _result(out, "phases", "agent_exec")["model"] == ""
+        assert validate_report(out) == []
+
+    def test_report_never_leaks_models_channel(self, tmp_path, capsys):
+        cmd_benchmark(
+            ["phases", "--json", "--warmup", "0", "--repeat", "1"],
+            tmp_path,
+            _StubKernelFactory(),
+        )
+        out = json.loads(capsys.readouterr().out)
+        assert "_models" not in out
+        for result in out["results"]:
+            assert "_models" not in result
