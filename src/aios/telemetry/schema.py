@@ -9,9 +9,12 @@ zero-dependency validator so any tool can check a report offline.
 
 from __future__ import annotations
 
+import os
 import platform
+import re
 import subprocess
 import sys
+from pathlib import Path
 
 SCHEMA_VERSION = "1.0"
 REQUIRED_KEYS = (
@@ -90,14 +93,70 @@ def _validate_run(errors: list[str], index: int, run_index: int, run: object) ->
 
 
 def system_info() -> dict:
-    """Local platform snapshot for report provenance (zero external deps)."""
+    """Local platform snapshot for report provenance (zero external deps).
+
+    The enriched fields — distro, kernel, cpu, cpu_count, memory_mb — let a
+    baseline explain the environment that produced it, so future comparisons
+    can tell hardware drift apart from real regressions. Hardware is recorded
+    as context, not as an identity requirement.
+    """
     return {
         "system": platform.system(),
         "platform": sys.platform,
         "machine": platform.machine(),
         "processor": platform.processor() or "unknown",
         "python": platform.python_version(),
+        "distro": _distro(),
+        "kernel": platform.release(),
+        "cpu": _cpu_model(),
+        "cpu_count": _cpu_count(),
+        "memory_mb": _memory_mb(),
     }
+
+
+def _distro() -> str:
+    """OS distribution name/version from /etc/os-release, else platform()."""
+    try:
+        release = Path("/etc/os-release").read_text(encoding="utf-8")
+        fields = dict(line.split("=", 1) for line in release.splitlines() if "=" in line)
+        name = fields.get("NAME", "").strip('"')
+        version = fields.get("VERSION_ID", "").strip('"')
+        return f"{name} {version}".strip()
+    except OSError:
+        return platform.platform()
+
+
+def _cpu_model() -> str:
+    """Human-readable CPU model, falling back to platform.machine()."""
+    processor = platform.processor()
+    if processor:
+        return processor
+    try:
+        for line in Path("/proc/cpuinfo").read_text(encoding="utf-8").splitlines():
+            if line.startswith("model name"):
+                return line.split(":", 1)[1].strip()
+    except OSError:
+        pass
+    return platform.machine()
+
+
+def _cpu_count() -> int:
+    """Available logical CPUs, preferring the process affinity mask."""
+    try:
+        return len(os.sched_getaffinity(0))
+    except (AttributeError, OSError):
+        return os.cpu_count() or 0
+
+
+def _memory_mb() -> int:
+    """Total physical memory in MB via /proc/meminfo (0 when unavailable)."""
+    try:
+        for line in Path("/proc/meminfo").read_text(encoding="utf-8").splitlines():
+            if line.startswith("MemTotal"):
+                return int(re.split(r"\s+", line)[1]) // 1024
+    except (OSError, ValueError, IndexError):
+        pass
+    return 0
 
 
 def git_commit() -> str:
