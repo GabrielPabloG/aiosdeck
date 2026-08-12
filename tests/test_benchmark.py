@@ -578,9 +578,7 @@ class TestBareRoutingParity:
     def _bare_kernel_with_router(self):
         kernel = _stub_kernel()
         runtime = kernel.get_engine.return_value
-        runtime.router = _FakeRouter(
-            {"planner": "ollama/model-b", "developer": "ollama/model-a"}
-        )
+        runtime.router = _FakeRouter({"planner": "ollama/model-b", "developer": "ollama/model-a"})
         return kernel, runtime
 
     def test_bare_model_matches_router_decision_for_phase(self):

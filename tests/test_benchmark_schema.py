@@ -83,7 +83,9 @@ def _stub_kernel():
     kernel.get_context = MagicMock(return_value=MagicMock())
     kernel.run = MagicMock()
     kernel.run_agent = MagicMock()
-    kernel.get_engine = MagicMock(return_value=MagicMock())
+    runtime = MagicMock()
+    runtime.router = None
+    kernel.get_engine = MagicMock(return_value=runtime)
     return kernel
 
 
