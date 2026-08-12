@@ -14,7 +14,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from aios.agents.contracts import AgentTask
-from aios.core.console import ProgressSpinner, log_step
+from aios.core.console import ProgressBar, ProgressSpinner, log_step
 from aios.core.run_result import RunResult, StageSummary
 from aios.core.task import Task
 from aios.research.schema import research_result_from_dict, research_result_to_json
@@ -258,13 +258,35 @@ def cmd_plan(raw_args: list[str], project_path: Path, kernel_factory: Callable) 
     if debug_context:
         _render_debug_context(kernel, task, context, agent="planner", as_json=as_json)
 
-    with ProgressSpinner("Running workflow" if run_mode else "Planning"):
-        result = kernel.run(
-            task,
-            context,
-            mode=mode,
-            on_stage=_render_stage if run_mode else None,
-        )
+    bar = ProgressBar(sample_total=1, label="workflow" if run_mode else "plan")
+    bar.set_phase_label("planner" if run_mode else "planning")
+
+    def _on_stage(stage: StageSummary) -> None:
+        _render_stage(stage)
+        if stage.name == "planner" and stage.status == "success":
+            subtask_total = len(stage.details.get("plan", {}).get("subtasks", []))
+            bar.set_sample_total(max(subtask_total, 1))
+        elif stage.name.startswith("developer:"):
+            bar._advance_sample()
+            subtask_total = stage.details.get("subtask_total", bar._sample_total)
+            bar.set_phase_label(f"developer {stage.name.split(':')[1]}/{subtask_total}")
+        elif stage.name == "git":
+            bar.set_phase_label("git")
+        elif stage.name == "scheduler":
+            bar.set_phase_label("scheduler")
+        elif stage.name == "reviewer":
+            bar.set_phase_label("reviewer")
+        elif "gate" in stage.name:
+            bar.set_phase_label(stage.name)
+
+    result = kernel.run(
+        task,
+        context,
+        mode=mode,
+        on_stage=_on_stage if run_mode else None,
+    )
+
+    bar._finish()
 
     if as_json:
         print(json.dumps(_run_result_to_json(result), indent=2))
