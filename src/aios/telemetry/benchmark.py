@@ -24,7 +24,9 @@ kernel construction. The first ``kernel_factory`` call pays module-import cost;
 With ``bare_task=True`` the ``plan`` and ``agent_exec`` phases skip agents and
 the executor entirely: they run a restricted runtime probe (fixed prompt, no
 skills, no capabilities, empty permissions) so the elapsed time is the pure
-model latency, not product latency.
+model latency, not product latency. The probe resolves its model from the same
+per-phase routing decision the agent would use, so full and bare always measure
+the same model for a phase.
 """
 
 from __future__ import annotations
@@ -40,6 +42,7 @@ from pathlib import Path
 
 from aios import __version__
 from aios.core.task import Task
+from aios.routing.models import RouteInput
 from aios.telemetry.schema import METRICS
 
 PHASES = (
@@ -53,6 +56,16 @@ PHASES = (
 )
 SKIP_REASON = "requires agent runtime (--skip-agents)"
 BARE_PROMPT = "You are in benchmark bare mode. Do not call tools. Reply with exactly OK."
+
+# Routing inputs per benchmarked phase. They mirror the RouteInput each agent
+# builds in its execute() (RuntimeEngine.execute builds agent/task_type/
+# complexity; context_size is approximated as 0 — a documented limitation).
+# Full and bare must consult the *same* per-phase decision so an agent-specific
+# routing rule can never measure different models silently.
+_PHASE_ROUTING: dict[str, RouteInput] = {
+    "plan": RouteInput(agent="planner", task_type="plan", complexity="medium"),
+    "agent_exec": RouteInput(agent="developer", task_type="code", complexity="medium"),
+}
 
 
 def percentile(sorted_vals: list[float], q: float) -> float:
@@ -166,7 +179,6 @@ def measure_lifecycle(  # noqa: PLR0912, PLR0913, PLR0915
     on_phase=None,
     profile: bool = False,
     bare_task: bool = False,
-    bare_model: str = "",
 ) -> dict:
     """Run one full 7-phase lifecycle and return per-phase timings.
 
@@ -184,12 +196,18 @@ def measure_lifecycle(  # noqa: PLR0912, PLR0913, PLR0915
 
     With *bare_task=True* the ``plan``/``agent_exec`` phases replace the agent
     runs with a restricted runtime probe (see :data:`BARE_PROMPT`), measuring
-    pure model latency. *bare_model* pins the probe to a fixed model id so a
+    pure model latency. The probe resolves its model from the *same* per-phase
+    routing decision the agent would use (see :data:`_PHASE_ROUTING`), so a
     full-vs-bare comparison is never a model swap. A probe whose reply is not
     "OK"-shaped records a ``warning`` on the run (tolerant, never a failure).
+
+    The return dict carries a private ``_models`` channel mapping each measured
+    agent phase to its effective model id. It is internal transport consumed by
+    the CLI layer and must never reach a benchmark report.
     """
     notify = on_phase or (lambda _e: None)
     result: dict[str, dict] = {}
+    models: dict[str, str] = {}
 
     previous_profile = os.environ.get("AIOS_PROFILE")
     if profile:
@@ -245,13 +263,15 @@ def measure_lifecycle(  # noqa: PLR0912, PLR0913, PLR0915
         wall, user, system = sample_start()
         try:
             if bare_task:
-                warning = _run_bare_probe(kernel, model=bare_model)
+                warning, model = _run_bare_probe(kernel, phase)
                 entry = elapsed(wall, user, system)
                 if warning is not None:
                     entry["warning"] = warning
             else:
                 runner(kernel)
+                model = _resolve_phase_model(kernel, phase)
                 entry = elapsed(wall, user, system)
+            models[phase] = model
             result[phase] = entry
             notify((phase, "end", entry["wall_time_ms"]))
         except Exception as exc:  # noqa: BLE001 - failed agent run still measures the path
@@ -271,6 +291,7 @@ def measure_lifecycle(  # noqa: PLR0912, PLR0913, PLR0915
         result["telemetry_flush"] = entry
         notify(("telemetry_flush", "end", entry["wall_time_ms"]))
 
+    result["_models"] = models
     return result
 
 
@@ -345,34 +366,54 @@ def _run_plan(kernel) -> None:
     kernel.run(task, context, mode="plan")
 
 
-def _run_bare_probe(kernel, model: str = "") -> str | None:
+def _resolve_phase_model(kernel, phase: str) -> str:
+    """Effective model id the router would pick for the benchmarked phase.
+
+    Returns ``""`` when no router is wired (the runtime then falls back to its
+    own default, matching the full path). The per-phase input mirrors what the
+    agent builds, so a routing rule specific to planner/developer applies to
+    both full and bare.
+    """
+    runtime = kernel.get_engine("runtime")
+    router = getattr(runtime, "router", None)
+    if router is None:
+        return ""
+    decision = router.route(_PHASE_ROUTING[phase])
+    return decision.model
+
+
+def _run_bare_probe(kernel, phase: str) -> tuple[str | None, str]:
     """One restricted runtime probe for pure model latency.
 
     Skips agents and the executor entirely: the runtime is invoked directly
     with no skills, no capabilities, and empty permissions, so every tool is
-    structurally denied by the runtime itself. ``model`` pins the probe to a
-    fixed model id (the default model) so the measurement is never a routing
-    decision. The reply is scanned only as a best-effort check — a non-"OK"
-    output returns a warning string, never a failure.
+    structurally denied by the runtime itself. The probe resolves its model
+    from the same per-phase routing decision the agent would use (passed as an
+    override), so the measurement is the pure model latency under the phase's
+    routing decision. The reply is scanned only as a best-effort check — a
+    non-"OK" output returns a warning string, never a failure. Returns the
+    warning (or ``None``) and the effective model id.
     """
     from aios.security.contracts import EffectivePermissions  # noqa: PLC0415
 
     runtime = kernel.get_engine("runtime")
     if runtime is None:
         raise RuntimeError("runtime engine not available")
+    route_input = _PHASE_ROUTING[phase]
+    model = _resolve_phase_model(kernel, phase)
     output = runtime.execute(
         BARE_PROMPT,
         [],
         [],
         permissions=EffectivePermissions(allowed=frozenset()),
-        agent="benchmark",
-        task_type="code",
-        complexity="low",
+        agent=route_input.agent,
+        task_type=route_input.task_type,
+        complexity=route_input.complexity,
         model=model,
     )
     if not output.strip().upper().startswith("OK"):
-        return "bare probe reply is not 'OK' (tolerant check)"
-    return None
+        return "bare probe reply is not 'OK' (tolerant check)", model
+    return None, model
 
 
 def _run_agent_exec(kernel) -> None:

@@ -216,7 +216,6 @@ def _cmd_validate(args: list[str]) -> None:
 
 def _measure_phases(project_path, kernel_factory, opts: dict) -> list[dict]:
     bar = ProgressBar(sample_total=opts["repeat"], label="phases")
-    bare_model = _default_model_id(project_path) if opts["bare_task"] else ""
 
     def _run_one():
         result = measure_lifecycle(
@@ -226,7 +225,6 @@ def _measure_phases(project_path, kernel_factory, opts: dict) -> list[dict]:
             on_phase=_on_phase_for_bar(bar),
             profile=opts["profile"],
             bare_task=opts["bare_task"],
-            bare_model=bare_model,
         )
         bar._advance_sample()
         return result
@@ -251,6 +249,8 @@ def _measure_phases(project_path, kernel_factory, opts: dict) -> list[dict]:
             runs.append(entry)
         else:
             entry = {"group": "phases", "target": phase, **_build_entry(runs)}
+            if phase in ("plan", "agent_exec"):
+                entry["model"] = profiles[0].get("_models", {}).get(phase, "")
             if opts["bare_task"] and phase in ("plan", "agent_exec"):
                 entry["tool_calls_count"] = 0
                 entry["is_read_only"] = True
@@ -367,14 +367,6 @@ def _build_entry(runs: list[dict]) -> dict:
     if warnings:
         entry["warnings"] = warnings
     return entry
-
-
-def _default_model_id(project_path: Path) -> str:
-    """Model id (provider/model) the bare probe pins to, matching routing."""
-    config = ConfigLoader(project_path).load()
-    provider = config.model.default or "ollama"
-    model = config.model.ollama_model or "llama3"
-    return model if "/" in model else f"{provider}/{model}"
 
 
 def _render_text(report: dict) -> None:

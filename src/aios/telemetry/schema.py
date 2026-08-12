@@ -9,9 +9,10 @@ zero-dependency validator so any tool can check a report offline.
 Mode is metadata, never a metric: since v1.1 a report may carry
 ``benchmark_mode`` (``"full"``/``"bare"``) and ``task_prompt_type``
 (``"full_task"``/``"restricted_ok"``) on the envelope, and results may carry
-result-level extras such as ``tool_calls_count``, ``is_read_only``, and
-``warnings``. Per-run metrics stay exactly ``METRICS`` (plus optional
-``error``/``timings``); nothing else is allowed inside a run.
+result-level extras such as ``tool_calls_count``, ``is_read_only``, ``model``
+(the effective routing decision for a phase), and ``warnings``. Per-run
+metrics stay exactly ``METRICS`` (plus optional ``error``/``timings``);
+nothing else is allowed inside a run.
 """
 
 from __future__ import annotations
