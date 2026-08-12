@@ -152,8 +152,13 @@ def skipped_entry(reason: str) -> dict:
     return {"skipped": True, "reason": reason}
 
 
-def measure_lifecycle(  # noqa: PLR0915
-    project_path, kernel_factory, skip_agents: bool = False, *, on_phase=None
+def measure_lifecycle(  # noqa: PLR0912, PLR0915
+    project_path,
+    kernel_factory,
+    skip_agents: bool = False,
+    *,
+    on_phase=None,
+    profile: bool = False,
 ) -> dict:
     """Run one full 7-phase lifecycle and return per-phase timings.
 
@@ -164,26 +169,45 @@ def measure_lifecycle(  # noqa: PLR0915
     When *on_phase* is provided it is called with ``(("phase_name", "start"))``
     before and ``(("phase_name", "end", elapsed_ms))`` after the slow ``plan``,
     ``agent_exec``, and ``telemetry_flush`` phases.
+
+    With *profile=True* the kernel is constructed with ``AIOS_PROFILE`` enabled
+    so the ``kernel_init`` run carries the ``kernel.timings`` breakdown
+    (optional schema field since v1.1).
     """
     notify = on_phase or (lambda _e: None)
     result: dict[str, dict] = {}
 
-    wall, user, system = sample_start()
+    previous_profile = os.environ.get("AIOS_PROFILE")
+    if profile:
+        os.environ["AIOS_PROFILE"] = "1"
     try:
-        kernel = kernel_factory(project_path)
-        result["startup"] = elapsed(wall, user, system)
-    except Exception as exc:  # noqa: BLE001 - minimal mode: measure without a kernel
-        result["startup"] = elapsed(wall, user, system, error=str(exc))
-        for phase in PHASES[1:]:
-            result[phase] = error_entry("kernel unavailable")
-        return result
+        wall, user, system = sample_start()
+        try:
+            kernel = kernel_factory(project_path)
+            result["startup"] = elapsed(wall, user, system)
+        except Exception as exc:  # noqa: BLE001 - minimal mode: measure without a kernel
+            result["startup"] = elapsed(wall, user, system, error=str(exc))
+            for phase in PHASES[1:]:
+                result[phase] = error_entry("kernel unavailable")
+            return result
 
-    wall, user, system = sample_start()
-    try:
-        kernel.start(quiet=True)
-        result["kernel_init"] = elapsed(wall, user, system)
-    except Exception as exc:  # noqa: BLE001
-        result["kernel_init"] = elapsed(wall, user, system, error=str(exc))
+        wall, user, system = sample_start()
+        try:
+            kernel.start(quiet=True)
+            result["kernel_init"] = elapsed(wall, user, system)
+        except Exception as exc:  # noqa: BLE001
+            result["kernel_init"] = elapsed(wall, user, system, error=str(exc))
+    finally:
+        if profile:
+            if previous_profile is None:
+                os.environ.pop("AIOS_PROFILE", None)
+            else:
+                os.environ["AIOS_PROFILE"] = previous_profile
+
+    if profile:
+        timings = getattr(kernel, "timings", None)
+        if isinstance(timings, dict) and timings:
+            result["kernel_init"]["timings"] = timings
 
     wall, user, system = sample_start()
     try:

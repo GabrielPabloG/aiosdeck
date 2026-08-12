@@ -137,12 +137,13 @@ def _print_usage() -> None:
     print("  --output PATH    Save the report to PATH")
     print("  --skip-agents    Skip targets that require an agent runtime")
     print("  --process        startup: measure a real subprocess (not in-process)")
+    print("  --profile        phases: record kernel.timings breakdown (schema v1.1)")
     print()
     print("Validate:")
     print("  aios benchmark validate <file>   Check a report against the schema (exit 0/1)")
 
 
-def _parse_args(raw_args: list[str]) -> dict:
+def _parse_args(raw_args: list[str]) -> dict:  # noqa: PLR0912
     opts = {
         "command": None,
         "help": False,
@@ -152,6 +153,7 @@ def _parse_args(raw_args: list[str]) -> dict:
         "output": None,
         "skip_agents": False,
         "process": False,
+        "profile": False,
     }
     i = 0
     while i < len(raw_args):
@@ -164,6 +166,8 @@ def _parse_args(raw_args: list[str]) -> dict:
             opts["skip_agents"] = True
         elif arg == "--process":
             opts["process"] = True
+        elif arg == "--profile":
+            opts["profile"] = True
         elif arg in ("--warmup", "--repeat"):
             i += 1
             if i < len(raw_args):
@@ -210,6 +214,7 @@ def _measure_phases(project_path, kernel_factory, opts: dict) -> list[dict]:
             kernel_factory,
             opts["skip_agents"],
             on_phase=_on_phase_for_bar(bar),
+            profile=opts["profile"],
         )
         bar._advance_sample()
         return result

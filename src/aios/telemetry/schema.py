@@ -16,7 +16,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-SCHEMA_VERSION = "1.0"
+SCHEMA_VERSION = "1.1"
+SUPPORTED_SCHEMA_VERSIONS = ("1.0", "1.1")
 REQUIRED_KEYS = (
     "schema_version",
     "aiosdeck_version",
@@ -35,7 +36,8 @@ def validate_report(report: dict) -> list[str]:
     Checks the envelope (required keys, schema version), that ``results`` is a
     list, and that every result carries a known ``group``/``target`` plus
     either a skipped marker or non-empty ``runs`` whose metrics are exactly
-    ``METRICS``.
+    ``METRICS``. Since v1.1 a run may carry an optional ``timings`` breakdown
+    (``kernel.timings`` contract); 1.0 reports remain valid.
     """
     errors: list[str] = []
 
@@ -43,7 +45,7 @@ def validate_report(report: dict) -> list[str]:
         if key not in report:
             errors.append(f"missing top-level key: {key}")
 
-    if "schema_version" in report and report["schema_version"] != SCHEMA_VERSION:
+    if "schema_version" in report and report["schema_version"] not in SUPPORTED_SCHEMA_VERSIONS:
         errors.append(f"schema_version {report['schema_version']!r} != expected {SCHEMA_VERSION!r}")
 
     if "results" not in report:
@@ -88,8 +90,11 @@ def _validate_run(errors: list[str], index: int, run_index: int, run: object) ->
         if metric not in run:
             errors.append(f"{label} missing metric {metric}")
     for key in run:
-        if key not in METRICS and key != "error":
+        if key not in METRICS and key not in ("error", "timings"):
             errors.append(f"{label} unknown key {key!r}")
+    timings = run.get("timings")
+    if timings is not None and not isinstance(timings, dict):
+        errors.append(f"{label} timings must be an object")
 
 
 def system_info() -> dict:
