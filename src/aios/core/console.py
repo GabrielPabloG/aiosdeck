@@ -17,7 +17,6 @@ CLEAR_LINE = "\033[K"
 KANBAN_COLUMNS = ("Backlog", "Todo", "InProgress", "Review", "Done")
 
 BAR_WIDTH = 12
-MARQUEE_WINDOW = 4
 
 
 def _fit_message(message: str, width: int) -> str:
@@ -76,19 +75,8 @@ class ProgressSpinner:
             index += 1
 
 
-def _marquee_bar(tick: int, width: int) -> str:
-    """Indeterminate marquee bar — an animated window moved by ``tick``."""
-    total = width + MARQUEE_WINDOW
-    pos = tick % total
-    cells = ["\u2591"] * width
-    for i in range(MARQUEE_WINDOW):
-        idx = (pos + i) % width
-        cells[idx] = "\u2588"
-    return "".join(cells)
-
-
 class ProgressBar:
-    """Two-line progress bar: sample (deterministic) + phase (indeterminate marquee).
+    """Two-line progress bar: sample (deterministic) + phase (indeterminate spinner).
 
     Writes to *stderr* with ANSI escape codes on TTYs. On non-TTY streams
     it delegates to ``log_step`` so piped/CI output stays clean.
@@ -122,11 +110,11 @@ class ProgressBar:
             prefix = f"{self._label} " if self._label else ""
             fraction = self._sample_current / self._sample_total
             sbar = render_bar(fraction, self._bar_width)
-            sample_label = f"sample {self._sample_current}/{self._sample_total}"
+            sample_label = f"{self._sample_current}/{self._sample_total}"
             line = f"\r{CLEAR_LINE}{prefix}{sbar} {sample_label}"
             if self._phase_active:
-                pbar = _marquee_bar(self._phase_ticks, self._bar_width)
-                line += f"\n{CLEAR_LINE}  {pbar} {self._phase_label}..."
+                frame = SPINNER_FRAMES[self._phase_ticks % len(SPINNER_FRAMES)]
+                line += f"\n{CLEAR_LINE}  {frame} {self._phase_label}..."
                 line += "\r\033[A"
             self._stream.write(line)
             self._stream.flush()

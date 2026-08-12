@@ -140,6 +140,21 @@ def test_progress_bar_set_phase_label_updates():
     assert bar._phase_label == "reviewer"
 
 
+def test_progress_bar_phase_uses_spinner_frame():
+    stream = _FakeStream()
+    bar = ProgressBar(sample_total=1, stream=stream)
+    bar._report_phase_start("plan")
+
+    bar._phase_ticks = 0
+    bar._redraw()
+    assert "⠋" in stream.writes[-1]
+
+    bar._phase_ticks = 1
+    bar._redraw()
+    assert "⠙" in stream.writes[-1]
+    bar._finish()
+
+
 def test_render_kanban_always_shows_all_columns():
     output = render_kanban({"Done": 6})
     assert output == "  Backlog (0) | Todo (0) | InProgress (0) | Review (0) | Done (6)"

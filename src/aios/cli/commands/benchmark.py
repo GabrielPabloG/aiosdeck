@@ -276,7 +276,7 @@ def _collect_samples(run_once: Callable, opts: dict, label: str = "") -> list[di
         run_once()
     results: list[dict] = []
     for i in range(opts["repeat"]):
-        log_step("▶", f"{prefix}sample {i + 1}/{opts['repeat']}")
+        log_step("▶", f"{prefix}{i + 1}/{opts['repeat']}")
         results.append(run_once())
     return results
 

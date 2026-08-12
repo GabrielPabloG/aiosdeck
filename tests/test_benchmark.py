@@ -301,8 +301,8 @@ class TestBenchmarkCli:
         err = capsys.readouterr().err
         assert "phases" in err
         assert "warmup 1/1" in err
-        assert "sample 1/2" in err
-        assert "sample 2/2" in err
+        assert "1/2" in err
+        assert "2/2" in err
         assert len(calls) == 3
 
     def test_collect_samples_progress_does_not_touch_stdout(self, capsys):
@@ -312,7 +312,7 @@ class TestBenchmarkCli:
         _collect_samples(run_once, {"warmup": 0, "repeat": 1}, label="doctor")
         captured = capsys.readouterr()
         assert captured.out == ""
-        assert "sample 1/1" in captured.err
+        assert "1/1" in captured.err
 
     def test_collect_samples_no_label_omits_prefix(self, capsys):
         def run_once() -> dict:
@@ -320,7 +320,7 @@ class TestBenchmarkCli:
 
         _collect_samples(run_once, {"warmup": 0, "repeat": 1}, label="")
         err = capsys.readouterr().err
-        assert "sample 1/1" in err
+        assert "1/1" in err
 
     def test_measure_lifecycle_reports_phase_start_end(self):
         calls: list[tuple] = []
