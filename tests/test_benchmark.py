@@ -13,10 +13,13 @@ structures.
 import json
 from unittest.mock import MagicMock, patch
 
+from aios import __version__
 from aios.cli.commands.benchmark import _collect_samples, cmd_benchmark
 from aios.telemetry.benchmark import (
+    BARE_PROMPT,
     METRICS,
     PHASES,
+    baseline_path,
     measure_lifecycle,
     percentile,
     summarize,
@@ -180,6 +183,7 @@ class TestBenchmarkCli:
             "--skip-agents",
             "--process",
             "--profile",
+            "--bare-task",
         ):
             assert option in out
 
@@ -457,3 +461,93 @@ class TestBenchmarkCli:
         assert "schema_version" in report
         assert "results" in report
         assert out_text.strip().startswith("{")
+
+
+class TestBenchmarkBareTask:
+    def test_bare_task_flag_parsing(self):
+        from aios.cli.commands.benchmark import _parse_args
+
+        assert _parse_args(["phases", "--bare-task"])["bare_task"] is True
+        assert _parse_args(["phases"])["bare_task"] is False
+
+    def test_benchmark_bare_task_uses_restricted_task(self, tmp_path, capsys):
+        kernel = _stub_kernel()
+        runtime = kernel.get_engine.return_value
+        cmd_benchmark(
+            ["phases", "--bare-task", "--json", "--warmup", "0", "--repeat", "1"],
+            tmp_path,
+            lambda _: kernel,
+        )
+        json.loads(capsys.readouterr().out)
+        assert runtime.execute.called
+        prompt, skills, capabilities = runtime.execute.call_args.args
+        assert skills == []
+        assert capabilities == []
+        permissions = runtime.execute.call_args.kwargs["permissions"]
+        assert permissions.allowed == frozenset()
+        assert prompt == BARE_PROMPT
+
+    def test_phases_bare_task_skips_agent(self, tmp_path, capsys):
+        kernel = _stub_kernel()
+        runtime = kernel.get_engine.return_value
+        cmd_benchmark(
+            ["phases", "--bare-task", "--json", "--warmup", "0", "--repeat", "1"],
+            tmp_path,
+            lambda _: kernel,
+        )
+        json.loads(capsys.readouterr().out)
+        kernel.run.assert_not_called()
+        kernel.run_agent.assert_not_called()
+        assert runtime.execute.call_count == 2
+
+    def test_bare_task_measures_plan_phases(self, tmp_path, capsys):
+        cmd_benchmark(
+            ["phases", "--bare-task", "--json", "--warmup", "0", "--repeat", "1"],
+            tmp_path,
+            _StubKernelFactory(),
+        )
+        out = json.loads(capsys.readouterr().out)
+        for phase in ("plan", "agent_exec"):
+            entry = _result(out, "phases", phase)
+            assert "runs" in entry
+            assert entry["summaries"]["wall_time_ms"]["p50"] > 0
+
+    def test_bare_task_sets_mode_metadata(self, tmp_path, capsys):
+        cmd_benchmark(
+            ["phases", "--bare-task", "--json", "--warmup", "0", "--repeat", "1"],
+            tmp_path,
+            _StubKernelFactory(),
+        )
+        out = json.loads(capsys.readouterr().out)
+        assert out["benchmark_mode"] == "bare"
+        assert out["task_prompt_type"] == "restricted_ok"
+        for phase in ("plan", "agent_exec"):
+            entry = _result(out, "phases", phase)
+            assert entry["tool_calls_count"] == 0
+            assert entry["is_read_only"] is True
+
+    def test_full_mode_keeps_default_metadata(self, tmp_path, capsys):
+        cmd_benchmark(
+            ["phases", "--json", "--warmup", "0", "--repeat", "1"],
+            tmp_path,
+            _StubKernelFactory(),
+        )
+        out = json.loads(capsys.readouterr().out)
+        assert out["benchmark_mode"] == "full"
+        assert out["task_prompt_type"] == "full_task"
+        for phase in ("plan", "agent_exec"):
+            assert "tool_calls_count" not in _result(out, "phases", phase)
+            assert "is_read_only" not in _result(out, "phases", phase)
+
+    def test_bare_task_report_passes_schema(self, tmp_path, capsys):
+        cmd_benchmark(
+            ["phases", "--bare-task", "--json", "--warmup", "0", "--repeat", "2"],
+            tmp_path,
+            _StubKernelFactory(),
+        )
+        out = json.loads(capsys.readouterr().out)
+        assert validate_report(out) == []
+
+    def test_baseline_path_bare_suffix(self, tmp_path):
+        assert baseline_path(tmp_path).name == f"v{__version__}.json"
+        assert baseline_path(tmp_path, bare=True).name == f"v{__version__}-bare.json"

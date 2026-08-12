@@ -9,9 +9,38 @@ aios benchmark validate .aios/benchmarks/<arquivo>.json
 
 ## Estrutura
 
-- `v<versão>.json` — baseline ativa da versão.
+- `v<versão>.json` — baseline ativa da versão (modo `full`).
+- `v<versão>-bare.json` — baseline do modo `bare` (latência pura de modelo) da
+  mesma versão, em arquivo separado para não colidir com a baseline `full`.
 - `history/<arquivo>.json` — snapshot histórico imutável da mesma medição.
 - A baseline é a referência contra a qual otimizações futuras são comparadas.
+
+## Modos de benchmark
+
+`aios benchmark phases --bare-task` substitui as fases `plan`/`agent_exec`
+(que rodam o agente completo) por um **probe restrito direto no runtime**:
+prompt fixo, sem skills, sem capabilities e com permissions vazias — todo tool
+é negado estruturalmente. O resultado é a latência pura do modelo (sem retry
+de parsing, sem agente, sem produto).
+
+- Envelope: `benchmark_mode: "bare"` e `task_prompt_type: "restricted_ok"`.
+- Resultado (`plan`/`agent_exec`): `tool_calls_count: 0` e `is_read_only: true`
+  por construção.
+- O probe é fixado no modelo default (`provider/model`), então full-vs-bare
+  nunca compara modelos diferentes.
+- Se a resposta não for "OK"-ish, um `warnings[]` é registrado no resultado —
+  nunca falha a medição (a garantia é o permission vazio, não o texto).
+
+Reprodução do modo bare:
+
+```bash
+export AIOS_OLLAMA_MODEL=llama3.2
+aios benchmark phases --bare-task --output .aios/benchmarks/v1.0.0-bare.json
+aios benchmark validate .aios/benchmarks/v1.0.0-bare.json
+```
+
+Runtime-dependent benchmarks require a fixed local Ollama model configuration.
+Comparações só são válidas com o mesmo modelo e ambiente (`system_info`).
 
 ## Baseline v1.0.0
 
