@@ -29,6 +29,7 @@ from aios.backlog.cli import cmd_backlog_run
 from aios.cli.commands.core import cmd_dashboard, cmd_doctor
 from aios.cli.commands.exec_cmds import cmd_plan
 from aios.cli.commands.memory import cmd_memory_list
+from aios.config.loader import ConfigLoader
 from aios.core.console import ProgressBar, log_step
 from aios.skills.cli import cmd_skills_discover
 from aios.telemetry.benchmark import (
@@ -74,7 +75,7 @@ def cmd_benchmark(raw_args: list[str], project_path: Path, kernel_factory: Calla
 
     opts = _parse_args(raw_args)
 
-    report = _new_report(opts)
+    report = _new_report(opts, project_path)
 
     command = opts["command"]
     if command is None or opts["help"]:
@@ -101,13 +102,19 @@ def cmd_benchmark(raw_args: list[str], project_path: Path, kernel_factory: Calla
         _render_text(report)
 
 
-def _new_report(opts: dict) -> dict:
+def _new_report(opts: dict, project_path: Path) -> dict:
+    config = ConfigLoader(project_path).load()
     return {
         "schema_version": SCHEMA_VERSION,
         "aiosdeck_version": __version__,
         "git_commit": git_commit(),
         "timestamp": datetime.now(UTC).isoformat(),
         "system_info": system_info(),
+        "runtime_info": {
+            "provider": config.model.default,
+            "model": config.model.ollama_model,
+            "host": config.model.ollama_host,
+        },
         "warmup": opts["warmup"],
         "repeat": opts["repeat"],
         "skip_agents": opts["skip_agents"],
