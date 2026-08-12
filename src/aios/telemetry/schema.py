@@ -5,6 +5,13 @@ Every measurement pipeline emits one flat list of results; no parallel
 ``phases``/``commands``/``startup`` structures survive at the top level of a
 report. This module owns the schema constants and a hand-rolled,
 zero-dependency validator so any tool can check a report offline.
+
+Mode is metadata, never a metric: since v1.1 a report may carry
+``benchmark_mode`` (``"full"``/``"bare"``) and ``task_prompt_type``
+(``"full_task"``/``"restricted_ok"``) on the envelope, and results may carry
+result-level extras such as ``tool_calls_count``, ``is_read_only``, and
+``warnings``. Per-run metrics stay exactly ``METRICS`` (plus optional
+``error``/``timings``); nothing else is allowed inside a run.
 """
 
 from __future__ import annotations
@@ -37,7 +44,10 @@ def validate_report(report: dict) -> list[str]:
     list, and that every result carries a known ``group``/``target`` plus
     either a skipped marker or non-empty ``runs`` whose metrics are exactly
     ``METRICS``. Since v1.1 a run may carry an optional ``timings`` breakdown
-    (``kernel.timings`` contract); 1.0 reports remain valid.
+    (``kernel.timings`` contract); 1.0 reports remain valid. Result-level keys
+    beyond ``group``/``target``/``runs``/``summaries``/``skipped``/``reason``
+    (e.g. bare-mode ``tool_calls_count``, ``is_read_only``, ``warnings``) are
+    accepted — the run-level metrics are the closed set.
     """
     errors: list[str] = []
 
