@@ -25,9 +25,10 @@ de parsing, sem agente, sem produto).
 
 - Envelope: `benchmark_mode: "bare"` e `task_prompt_type: "restricted_ok"`.
 - Resultado (`plan`/`agent_exec`): `tool_calls_count: 0` e `is_read_only: true`
-  por construção.
-- O probe é fixado no modelo default (`provider/model`), então full-vs-bare
-  nunca compara modelos diferentes.
+  por construção, e `model` com a decisão de routing efetiva da fase.
+- O probe resolve o modelo da **mesma decisão de routing da fase** (o mesmo
+  `RouteInput` que o agente usaria), então full-vs-bare nunca comparam modelos
+  diferentes — nem mesmo com regras de routing específicas por agente.
 - Se a resposta não for "OK"-ish, um `warnings[]` é registrado no resultado —
   nunca falha a medição (a garantia é o permission vazio, não o texto).
 

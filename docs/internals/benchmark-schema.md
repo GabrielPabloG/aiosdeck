@@ -132,6 +132,55 @@ Anything descriptive about a run (mode, read-onlyness, tool-call counts,
 warnings) lives at the **result level**, which accepts extra keys — never
 inside a run, where unknown keys are rejected.
 
+## Model parity between modes
+
+Full and bare must measure the **same model** for a phase, or the comparison
+is meaningless. Both paths resolve the model from the *same per-phase routing
+decision*:
+
+```
+RouteInput(phase) ──► Router ──► effective model ──► runtime.execute(...)
+```
+
+- **full** (plan/agent_exec): the agent runs and the router decides as usual.
+- **bare**: the probe resolves the same per-phase decision and passes it as an
+  override, so the router is consulted once for the same input.
+
+The effective model is recorded on each `plan`/`agent_exec` result:
+
+| Result key | Type | Meaning |
+|------------|------|---------|
+| `model` | string | Effective model id for the phase (`""` when no router is wired) |
+
+An agent-specific routing rule (e.g. `developer → model-a`,
+`planner → model-b`) therefore applies to both modes identically — a
+`plan_bare` result can never silently measure a different model than `plan`.
+
+### Interpreting `full − bare`
+
+`bare` sends a minimal prompt and expects a minimal reply; `full` sends the
+complete prompt, context, skills, instructions, and structured JSON output.
+So the difference is **not** an exact orchestration-overhead measurement. Read
+it as:
+
+```
+full − bare ≈ upper bound of orchestration overhead + extra LLM workload
+              (bigger prompt, more output tokens), under equal model/runtime
+```
+
+Use it to separate "the model is slow" (bare is high) from "the product is
+slow" (full is much higher than bare) — not as a precise breakdown.
+
+### Documented limitations
+
+- **`context_size ≈ 0` in the bare probe** — the routing decision may differ
+  from full when `routing.context_limits` are configured (real prompts are
+  thousands of tokens). Full always uses the real prompt size.
+- **Primary decision only** — `model` records the first routing decision. If
+  the full run fell back to another model, that fallback is not captured.
+- **Override path** — the bare probe passes the resolved model as an override,
+  which disables fallback/retry for the probe itself.
+
 ### `peak_memory_kb` semantics
 
 `ru_maxrss` is normalized to **kilobytes** by a platform adapter: Linux returns
@@ -156,8 +205,8 @@ It enforces: all required top-level keys present, `schema_version` matches,
 results carry a `reason`, and measured results have a non-empty `runs` list
 whose metrics are exactly the four above (unknown keys inside a run are
 rejected). Result-level extra keys (`tool_calls_count`, `is_read_only`,
-`warnings`, ...) and envelope metadata (`benchmark_mode`, `task_prompt_type`)
-are accepted.
+`model`, `warnings`, ...) and envelope metadata (`benchmark_mode`,
+`task_prompt_type`) are accepted.
 
 ## Hyperfine mapping
 
