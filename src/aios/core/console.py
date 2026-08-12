@@ -122,10 +122,8 @@ class ProgressBar:
             prefix = f"{self._label} " if self._label else ""
             fraction = self._sample_current / self._sample_total
             sbar = render_bar(fraction, self._bar_width)
-            line = (
-                f"\r{CLEAR_LINE}{prefix}{sbar}"
-                f" sample {self._sample_current}/{self._sample_total}"
-            )
+            sample_label = f"sample {self._sample_current}/{self._sample_total}"
+            line = f"\r{CLEAR_LINE}{prefix}{sbar} {sample_label}"
             if self._phase_active:
                 pbar = _marquee_bar(self._phase_ticks, self._bar_width)
                 line += f"\n{CLEAR_LINE}  {pbar} {self._phase_label}..."
