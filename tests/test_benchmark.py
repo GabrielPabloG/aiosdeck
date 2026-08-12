@@ -21,7 +21,7 @@ from aios.telemetry.benchmark import (
     percentile,
     summarize,
 )
-from aios.telemetry.schema import SCHEMA_VERSION
+from aios.telemetry.schema import SCHEMA_VERSION, validate_report
 
 ALL_COMMANDS = ("dashboard", "doctor", "skills", "memory", "plan", "backlog")
 
@@ -56,6 +56,58 @@ def _stub_kernel():
     kernel.run_agent = MagicMock()
     kernel.get_engine = MagicMock(return_value=MagicMock())
     return kernel
+
+
+class TestBenchmarkProfile:
+    def _profiled_kernel(self):
+        kernel = _stub_kernel()
+        kernel.timings = {
+            "kernel_start_total_ms": 12.5,
+            "engines": {"config_init_ms": 1.0, "context_init_ms": 2.0},
+            "context_detectors": {"git_ms": 0.5, "docker_ms": 1.0},
+        }
+        return kernel
+
+    def test_profile_flag_parsing(self):
+        from aios.cli.commands.benchmark import _parse_args
+
+        assert _parse_args(["phases", "--profile"])["profile"] is True
+        assert _parse_args(["phases"])["profile"] is False
+
+    def test_report_includes_timings_and_passes_validate_report(self, tmp_path, capsys):
+        factory = lambda project_path: self._profiled_kernel()  # noqa: E731
+        cmd_benchmark(
+            ["phases", "--profile", "--json", "--warmup", "0", "--repeat", "1"],
+            tmp_path,
+            factory,
+        )
+        out = json.loads(capsys.readouterr().out)
+        assert validate_report(out) == []
+        kernel_init = _result(out, "phases", "kernel_init")
+        assert "timings" in kernel_init["runs"][0]
+        assert kernel_init["runs"][0]["timings"]["kernel_start_total_ms"] == 12.5
+        assert "engines" in kernel_init["runs"][0]["timings"]
+
+    def test_timings_absent_when_profile_off(self, tmp_path, capsys):
+        factory = lambda project_path: self._profiled_kernel()  # noqa: E731
+        cmd_benchmark(
+            ["phases", "--json", "--warmup", "0", "--repeat", "1"],
+            tmp_path,
+            factory,
+        )
+        out = json.loads(capsys.readouterr().out)
+        kernel_init = _result(out, "phases", "kernel_init")
+        assert "timings" not in kernel_init["runs"][0]
+        assert validate_report(out) == []
+
+    def test_measure_lifecycle_profile_restores_env(self):
+        kernel = _stub_kernel()
+        kernel.timings = {"kernel_start_total_ms": 1.0, "engines": {}, "context_detectors": {}}
+        result = measure_lifecycle(".", lambda _: kernel, skip_agents=True, profile=True)
+        assert result["kernel_init"]["timings"]["kernel_start_total_ms"] == 1.0
+        import os
+
+        assert os.environ.get("AIOS_PROFILE") is None
 
 
 class TestPercentile:
@@ -120,7 +172,15 @@ class TestBenchmarkCli:
             "backlog",
         ):
             assert target in out
-        for option in ("--json", "--warmup", "--repeat", "--output", "--skip-agents", "--process"):
+        for option in (
+            "--json",
+            "--warmup",
+            "--repeat",
+            "--output",
+            "--skip-agents",
+            "--process",
+            "--profile",
+        ):
             assert option in out
 
     def test_benchmark_help_flag_shows_targets(self, tmp_path, capsys):
