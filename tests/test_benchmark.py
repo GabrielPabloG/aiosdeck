@@ -230,7 +230,7 @@ class TestBenchmarkCli:
         )
         out = json.loads(capsys.readouterr().out)
         assert out["schema_version"] == SCHEMA_VERSION
-        assert out["aiosdeck_version"] == "1.0.0"
+        assert out["aiosdeck_version"] == __version__
         assert "results" in out
         assert _result(out, "phases", "startup")["summaries"]["wall_time_ms"]["p50"] > 0
 

@@ -8,8 +8,8 @@ of specialized agents — each with one responsibility, governed by a kernel tha
 manages context, memory, scheduling, workflows, and security.
 
 - **Status**: Implemented — core orchestration, agents, workflows, security,
-  and telemetry are shipped and tested (1300+ tests). v1.0 stabilization in
-  progress; see [docs/README.md](docs/README.md).
+  and telemetry are shipped and tested (1400+ tests). v1.1 benchmark
+  instrumentation shipped; see [docs/README.md](docs/README.md).
 - **Platform**: Linux
 - **Language**: Python 3.12+ (zero runtime dependencies)
 

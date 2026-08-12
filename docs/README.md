@@ -17,7 +17,9 @@
 </p>
 
 **Status: Implemented** — core orchestration, agents, workflows, security, and
-telemetry are implemented and covered by the test suite (1300+ tests).
+telemetry are implemented and covered by the test suite (1400+ tests). v1.1
+benchmark instrumentation (profiling hooks, bare mode, routing parity) is
+shipped; see [CHANGELOG](CHANGELOG.md).
 
 AiosDeck is an intelligent orchestration platform that transforms AI-assisted development from isolated conversations into **collaborative software engineering**.
 
@@ -129,10 +131,10 @@ The contract between them is a **project manifest** (`aios/project.yaml`) — a 
 
 ## Roadmaps
 
-AiosDeck maintains one active roadmap: the v1.0 stabilization. Everything else
-is directional context.
+AiosDeck maintains one active roadmap: post-1.0 instrumentation and stability.
+Everything else is directional context.
 
-### Stabilization Roadmap — The Active Plan
+### Stabilization Roadmap — v1.0 (released)
 
 Short, shippable milestones toward a stable, predictable v1.0. Each phase is
 atomic and verified (`pytest tests/ -q` + `ruff`).
@@ -143,8 +145,19 @@ atomic and verified (`pytest tests/ -q` + `ruff`).
 | S1 | Reliability (timeout/retry/error mapping, fire test) | **Implemented** |
 | S2 | Security closure (intent enforcement, event audit) | **Implemented** |
 | S3 | Simplification & dedup (dead code, skills, CLI) | **Implemented** |
-| S4 | Docs & product parity (CHANGELOG, status, ADRs) | **In progress** |
-| S5 | RC/GA (release candidate, regression, tag v1.0.0) | Planned |
+| S4 | Docs & product parity (CHANGELOG, status, ADRs) | **Implemented** |
+| S5 | RC/GA (release candidate, regression, tag v1.0.0) | **Released** |
+
+### Instrumentation Roadmap — v1.1 (released)
+
+Benchmark observability so performance becomes a machine-checkable artifact.
+
+| Item | Focus | Status |
+|------|-------|--------|
+| #48–#50 | `aios benchmark` CLI + versioned schema v1.1 | **Released** |
+| #37 | Startup profiling hooks (`kernel.timings`, `AIOS_PROFILE`) | **Released** |
+| #51 | Bare task mode (`--bare-task`, pure model latency) | **Released** |
+| #63 | Routing parity (same model full/bare) | **Released** |
 
 **v1.0 core** — learning governance (approval pipeline), `RuleBasedRouter`
 (deterministic model routing), and the basic console. Everything else is a
@@ -175,7 +188,8 @@ The following phases are shipped and verified by the test suite.
 | v0.7 Reviewer | **Implemented** | Architecture critique, convention enforcement, `aios review` CLI |
 | v0.8 Scheduler (Kanban/Scrum) | **Implemented** | Persistent board, TDD gate, terminal DX (spinners, TODO.md backlog) |
 | v0.9 Workflows + Agents | **Implemented** | Multi-agent pipeline (planner→developer→reviewer→tester→docs→git), quality gates, skills, research, learning governance |
-| v1.0 Stabilization | **In progress** | Contract freeze, reliability, security closure, docs parity |
+| v1.0 Stabilization | **Implemented** | Contract freeze, reliability, security closure, docs parity |
+| v1.1 Instrumentation | **Implemented** | Benchmark CLI + schema, profiling hooks, bare mode, routing parity |
 
 > Workflows, the quality pipeline, skills, research, learning governance, and
 > all agents are **implemented and tested** — not merely specified. The plugin
@@ -187,8 +201,9 @@ The only roadmap that matters day to day. Everything else is blocked.
 
 | Component | Version | Task |
 |-----------|---------|------|
-| Stabilization S4 | v1.0 | Docs & product parity (CHANGELOG, status blocks, ADRs) |
-| Stabilization S5 | v1.0 | RC checklist, regression, tag v1.0.0 |
+| Baseline refresh | v1.1.x | Re-record `v1.1.0` baseline on local Ollama |
+| Ocean profile view | v1.1.x | TUI visualization of `kernel.timings` + bare/full deltas |
+| `aios benchmark compare` | v1.1.x | Baseline diff with per-mode guards (full vs bare) |
 
 **Rule**: Every abstraction must solve an existing problem. Never an anticipated one. If a component is not in this table, it has not earned its existence yet.
 
@@ -457,7 +472,7 @@ Architecture Decision Records explain **why** each foundational choice was made 
 
 ## Getting Started
 
-AiosDeck v1.0-rc1.
+AiosDeck v1.1.0.
 
 ```bash
 # Install

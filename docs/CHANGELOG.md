@@ -5,6 +5,57 @@ All notable changes to AiosDeck are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] — 2026-08-12
+
+### Added
+
+- **Benchmark instrumentation** — the observability layer that turns performance
+  into a machine-checkable artifact:
+  - **`aios benchmark` CLI** — measures startup (in-process and `--process`),
+    the 7 lifecycle phases, and named commands (`dashboard`, `doctor`, `skills`,
+    `memory`, `plan`, `backlog`); reports p50/p95/p99 percentiles, preserves
+    raw samples, and supports `--json`/`--output`. `aios benchmark validate`
+    checks a report against the versioned schema.
+  - **Versioned benchmark schema v1.1** — `results[]` is the single canonical
+    representation of every measurement; versioned envelope, hand-rolled
+    zero-dependency validator, 1.0 reports remain valid.
+  - **Startup profiling hooks (#37)** — `kernel.timings` after `start()` with
+    `kernel_start_total_ms`, per-engine `engines.*_init_ms`, and per-detector
+    `context_detectors.*_ms`. Enabled via `AIOS_PROFILE` (`true`/`1`/`yes`);
+    a zero-cost `NullProfiler` guarantees no timing is recorded and
+    `time.perf_counter` is never called when disabled. `aios benchmark
+    --profile` records the breakdown in the `kernel_init` run.
+  - **Bare task mode (#51)** — `aios benchmark phases --bare-task` measures
+    pure model latency: `plan`/`agent_exec` run a restricted runtime probe
+    (fixed prompt, no skills, no capabilities, empty permissions) instead of
+    the full agent, with `benchmark_mode`/`task_prompt_type`/`tool_calls_count`/
+    `is_read_only` metadata and a separate `v<version>-bare.json` baseline.
+  - **Routing parity (#63)** — full and bare resolve the model from the same
+    per-phase routing decision, so an agent-specific routing rule can never
+    silently diverge the two modes; the effective model is recorded on each
+    `plan`/`agent_exec` result.
+  - **Benchmark progress feedback** — progress bars for samples and LLM phases
+    (stderr, `--quiet` kernel start) and a workflow progress bar for plan-run
+    stages.
+  - **Baselines** — first `v1.0.0` baseline captured (Ollama/llama3.2);
+    `system_info` enriched with environment provenance (distro, kernel, CPU,
+    memory).
+- **DeepSeek v4 Flash pricing** — routing cost model updated with
+  `deepseek-v4-flash` variants.
+
+### Fixed
+
+- **Dashboard per-page data** — each dashboard page feeds its own data source
+  instead of reusing one dataset.
+- **Phase spinner label** — dropped the stray "sample" word in the console
+  spinner; formatter-compatible line breaks in the benchmark `ProgressBar`.
+
+### Changed
+
+- **Schema version** — benchmark reports now emit `schema_version: 1.1`
+  (`1.0` still accepted by the validator); optional `timings`/mode fields
+  documented in `docs/internals/benchmark-schema.md`.
+
 ## [1.0.0] — 2026-08-10
 
 ### Added
@@ -579,7 +630,9 @@ they are planned, not yet shipped.
   release.
 - Requires Python 3.12+. Status: **Alpha**.
 
-[Unreleased]: https://github.com/GabrielPabloG/aiosdeck/compare/v0.9.13...main
+[Unreleased]: https://github.com/GabrielPabloG/aiosdeck/compare/v1.0.0...main
+[1.1.0]: https://github.com/GabrielPabloG/aiosdeck/releases/tag/v1.1.0
+[1.0.0]: https://github.com/GabrielPabloG/aiosdeck/releases/tag/v1.0.0
 [0.9.13]: https://github.com/GabrielPabloG/aiosdeck/releases/tag/v0.9.13
 [0.9.12]: https://github.com/GabrielPabloG/aiosdeck/releases/tag/v0.9.12
 [0.9.11]: https://github.com/GabrielPabloG/aiosdeck/releases/tag/v0.9.11

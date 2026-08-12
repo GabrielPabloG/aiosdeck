@@ -6,6 +6,24 @@
 This checklist gates the v1.0.0 release candidate. Every item must pass before
 tagging `v1.0.0-rc1`; the GA (`v1.0.0`) adds only the release/regression gates.
 
+## v1.1.0 — Benchmark Instrumentation Milestone
+
+**Status**: Prepared (2026-08-12) — tag `v1.1.0` pending
+**Scope**: `aios benchmark` CLI + versioned schema v1.1, startup profiling
+hooks (#37), bare task mode (#51), routing parity (#63), progress feedback,
+deepseek v4 flash pricing.
+
+Automated gates (all green at preparation time, on `main`):
+
+- [x] `pytest tests/ -q` — 1455 tests, 0 failures.
+- [x] `ruff check src/ tests/` — zero errors.
+- [x] `ruff format --check src/ tests/` — zero reformatting.
+- [x] Version consistency — `pyproject.toml` = `aios.__version__` = `1.1.0`.
+- [x] Baseline `v1.0.0` still validated (`aios benchmark validate`).
+- [x] `docs/CHANGELOG.md` `[1.1.0]` section matches the released notes.
+- [ ] Tag `v1.1.0` (annotated) on `main`; push triggers the CD pipeline
+      (gates → build → `twine check` → PyPI → GitHub Release).
+
 ## S5.1 — Technical RC Checklist
 
 Run on the `feature/stable-1.0` branch.
