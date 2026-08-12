@@ -1,7 +1,7 @@
 # Benchmarks
 
 Medições de desempenho do AiosDeck. Cada arquivo `.json` nesta pasta é um
-report versionado (`schema_version: 1.0`), validável com:
+report versionado (`schema_version: 1.1`, validável também com 1.0), com:
 
 ```bash
 aios benchmark validate .aios/benchmarks/<arquivo>.json

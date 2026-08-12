@@ -130,6 +130,25 @@ class TestSchemaValidation:
         errors = validate_report(report)
         assert any("unknown key" in error for error in errors)
 
+    def test_schema_accepts_optional_timings_in_runs(self):
+        report = _valid_report()
+        report["results"][0]["runs"][0]["timings"] = {
+            "kernel_start_total_ms": 12.5,
+            "engines": {"config_init_ms": 1.0, "context_init_ms": 2.0},
+            "context_detectors": {"git_ms": 0.5, "docker_ms": 1.0},
+        }
+        assert validate_report(report) == []
+
+    def test_schema_rejects_non_object_timings(self):
+        report = _valid_report()
+        report["results"][0]["runs"][0]["timings"] = "not-an-object"
+        errors = validate_report(report)
+        assert any("timings must be an object" in error for error in errors)
+
+    def test_schema_accepts_legacy_1_0_reports(self):
+        report = _valid_report(schema_version="1.0")
+        assert validate_report(report) == []
+
 
 class TestValidateCli:
     def test_validate_cli_accepts_good_file(self, tmp_path, capsys):
