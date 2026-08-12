@@ -126,6 +126,20 @@ def test_progress_bar_falls_back_when_not_tty():
     assert "plan" in combined
 
 
+def test_progress_bar_set_sample_total_updates():
+    stream = _FakeStream()
+    bar = ProgressBar(sample_total=1, stream=stream)
+    bar.set_sample_total(3)
+    assert bar._sample_total == 3
+
+
+def test_progress_bar_set_phase_label_updates():
+    stream = _FakeStream()
+    bar = ProgressBar(sample_total=1, stream=stream)
+    bar.set_phase_label("reviewer")
+    assert bar._phase_label == "reviewer"
+
+
 def test_render_kanban_always_shows_all_columns():
     output = render_kanban({"Done": 6})
     assert output == "  Backlog (0) | Todo (0) | InProgress (0) | Review (0) | Done (6)"

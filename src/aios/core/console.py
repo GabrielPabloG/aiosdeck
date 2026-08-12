@@ -135,6 +135,15 @@ class ProgressBar:
         with self._lock:
             self._sample_current += 1
 
+    def set_sample_total(self, n: int) -> None:
+        with self._lock:
+            self._sample_total = max(n, 1)
+
+    def set_phase_label(self, label: str) -> None:
+        with self._lock:
+            self._phase_label = label
+            self._phase_active = True
+
     def _report_phase_start(self, label: str) -> None:
         with self._lock:
             self._phase_active = True

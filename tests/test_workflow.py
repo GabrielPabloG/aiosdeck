@@ -385,6 +385,29 @@ def test_workflow_on_stage_callback(tmp_path):
     assert [s.name for s in received] == [s.name for s in result.stages]
 
 
+def test_developer_stage_carries_subtask_total(tmp_path):
+    """Developer stage details include subtask_total for progress bars."""
+    planner_runtime = MagicMock()
+    planner_runtime.execute.return_value = json.dumps(VALID_PLAN)
+    dev_runtime = MagicMock()
+    dev_runtime.execute.return_value = "Implementation complete."
+
+    workflow, scheduler = _make_workflow_no_optionals(tmp_path, planner_runtime, dev_runtime)
+    try:
+        result = workflow.execute(
+            Task(description="Add endpoint /health"),
+            _make_context(str(tmp_path)),
+        )
+    finally:
+        scheduler.shutdown()
+
+    assert result.success is True
+    dev_stages = [s for s in result.stages if s.name.startswith("developer:")]
+    assert len(dev_stages) == 2
+    for s in dev_stages:
+        assert s.details.get("subtask_total") == 2
+
+
 def test_workflow_health_with_missing_optionals(tmp_path):
     """Missing optional agents do not make the pipeline unhealthy."""
     workflow, scheduler = _make_workflow_no_optionals(tmp_path)

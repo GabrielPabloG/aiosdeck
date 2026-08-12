@@ -431,7 +431,10 @@ class WorkflowEngine:
                         name=f"developer:{i + 1}",
                         success=False,
                         error=error,
-                        details={"description": subtask["description"]},
+                        details={
+                            "description": subtask["description"],
+                            "subtask_total": len(subtasks),
+                        },
                     )
                 )
                 notify(ctx.stages[-1])
@@ -446,7 +449,10 @@ class WorkflowEngine:
                 WorkflowStage(
                     name=f"developer:{i + 1}",
                     success=True,
-                    details={"description": subtask["description"]},
+                    details={
+                        "description": subtask["description"],
+                        "subtask_total": len(subtasks),
+                    },
                 )
             )
             notify(ctx.stages[-1])

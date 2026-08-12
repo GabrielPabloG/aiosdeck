@@ -1,11 +1,14 @@
 import json
 import subprocess
+from unittest.mock import MagicMock, patch
 
 from aios.cli.commands.exec_cmds import (
     _gate_label,
     _gates_json,
     _render_gate_trail,
+    _render_stage,
     _run_result_to_json,
+    cmd_plan,
 )
 from aios.core.run_result import RunResult, StageSummary
 from aios.quality.contracts import GateFinding, Severity
@@ -412,3 +415,51 @@ def test_render_gate_trail_human(capsys):
 def test_render_gate_trail_empty_when_no_gates(capsys):
     _render_gate_trail(RunResult(success=True, stages=(_stage("planner"),), errors=()))
     assert capsys.readouterr().err == ""
+
+
+def test_render_stage_keeps_permanent_lines(capsys):
+    stage = StageSummary(name="developer:1", status="success", details={"description": "task a"})
+    _render_stage(stage)
+    captured = capsys.readouterr()
+    assert "[✓] task a" in captured.out
+
+
+def test_plan_run_uses_progress_bar(tmp_path):
+    with patch("aios.cli.commands.exec_cmds.ProgressBar") as mock_bar_cls:
+        mock_bar = MagicMock()
+        mock_bar_cls.return_value = mock_bar
+
+        mock_kernel = MagicMock()
+        mock_kernel.get_context.return_value = None
+        mock_kernel.run.return_value = RunResult(success=True, stages=())
+
+        cmd_plan(["--run", "test task"], tmp_path, lambda _: mock_kernel)
+
+        assert mock_bar_cls.called
+
+
+def test_plan_run_json_stdout_clean(tmp_path, capsys):
+    with patch("aios.cli.commands.exec_cmds.ProgressBar"):
+        mock_kernel = MagicMock()
+        mock_kernel.get_context.return_value = None
+        stages = (StageSummary(name="planner", status="success"),)
+        mock_kernel.run.return_value = RunResult(success=True, stages=stages)
+
+        cmd_plan(["--run", "test", "--json"], tmp_path, lambda pp: mock_kernel)
+        out_text = capsys.readouterr().out
+        report = json.loads(out_text)
+        assert report["success"] is True
+
+
+def test_plan_planning_uses_indeterminate_bar(tmp_path):
+    with patch("aios.cli.commands.exec_cmds.ProgressBar") as mock_bar_cls:
+        mock_bar = MagicMock()
+        mock_bar_cls.return_value = mock_bar
+
+        mock_kernel = MagicMock()
+        mock_kernel.get_context.return_value = None
+        mock_kernel.run.return_value = RunResult(success=True, stages=())
+
+        cmd_plan(["plan test task"], tmp_path, lambda _: mock_kernel)
+
+        assert mock_bar_cls.called
