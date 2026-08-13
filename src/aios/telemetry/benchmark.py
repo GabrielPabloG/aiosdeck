@@ -15,11 +15,19 @@ Measurement contract for ``measure_lifecycle``:
 ``t3 -> SkillRegistry + discover -> t4``       skill_load    = registry + discovery
 ``t4 -> kernel.run(... mode="plan") -> t5``    plan          = planner via executor (real runtime)
 ``t5 -> kernel.run_agent("developer") -> t6``  agent_exec    = developer via executor (real runtime)
-``t6 -> kernel.shutdown() -> t7``              telemetry_flush = engine shutdown / store flush
+``t6 -> kernel.shutdown() -> t7``              telemetry_flush = writer stop/join + final drain
 
 ``startup`` never includes ``kernel.start()``; ``kernel_init`` never includes
 kernel construction. The first ``kernel_factory`` call pays module-import cost;
 ``--warmup`` absorbs it so repeat runs measure steady state.
+
+Telemetry writes are buffered and batched (see ``TelemetryWriter``), so the
+hot-path phases (plan/agent_exec) no longer pay per-event INSERT+COMMIT cost.
+The ``telemetry_flush`` phase measures the deferred cost: stopping the writer
+thread and draining the remaining buffer at shutdown. The definition of done
+for the batching work is a *measurable reduction* of telemetry overhead in
+the hot-path phases across repeated runs — no absolute number is promised,
+since the win depends on event volume and storage latency.
 
 With ``bare_task=True`` the ``plan`` and ``agent_exec`` phases skip agents and
 the executor entirely: they run a restricted runtime probe (fixed prompt, no

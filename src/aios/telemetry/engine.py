@@ -1,9 +1,16 @@
 """TelemetryEngine — observes execution events and persists telemetry.
 
 Subscribes to ``agent.lifecycle.changed`` and ``agent.execution.*`` topics
-via the EventBus. For every event, it persists an execution record. When a
-``completed`` event carries a ``usage`` payload, it persists a normalized
-``UsageRecord`` and calculates cost via ``PricingResolver``.
+via the EventBus. For every event, it builds a record and hands it to a
+:class:`~aios.telemetry.writer.TelemetryWriter`, which buffers it in O(1)
+and flushes batches asynchronously — no INSERT or COMMIT ever runs on the
+EventBus hot path. When a ``completed`` event carries a ``usage`` payload,
+it also enqueues a normalized ``UsageRecord`` and calculates cost via
+``PricingResolver``.
+
+Reads (the public ``query_*`` methods) drain the writer buffer first, so
+they always observe their own writes. The writer is stopped and drained
+inside :meth:`shutdown`, before the store closes.
 
 The engine is a passive observer — it never interferes with execution.
 Agents, the executor, and the event bus work identically with or without
@@ -19,6 +26,7 @@ from typing import TYPE_CHECKING
 from aios.storage.pool import ConnectionPool
 from aios.telemetry.pricing import PricingResolver
 from aios.telemetry.store import TelemetryStore, _now
+from aios.telemetry.writer import TelemetryWriter
 
 if TYPE_CHECKING:
     from aios.events.bus import EventBus
@@ -46,6 +54,7 @@ class TelemetryEngine:
         self._project_id = self._project_path.resolve().as_posix()
         self._db_path = db_path or str(self._project_path / ".aios" / "memory.db")
         self._store: TelemetryStore | None = None
+        self._writer: TelemetryWriter | None = None
         self._bus: EventBus | None = None
         self._pricing = PricingResolver(version="v1")
         self._subscription_count = 0
@@ -62,6 +71,7 @@ class TelemetryEngine:
             connection = self._connection_pool.get(self._db_path)
         self._store = TelemetryStore(Path(self._db_path), self._project_id, connection=connection)
         self._store.open()
+        self._writer = TelemetryWriter(self._store)
         self._subscribe()
 
     def health_check(self) -> bool:
@@ -71,6 +81,9 @@ class TelemetryEngine:
 
     def shutdown(self) -> None:
         self._unsubscribe()
+        if self._writer is not None:
+            self._writer.shutdown()
+            self._writer = None
         if self._store:
             self._store.close()
             self._store = None
@@ -96,6 +109,7 @@ class TelemetryEngine:
                 "total_records": 0,
                 "total_executions": 0,
             }
+        self._flush_on_read()
         return self._store.aggregate_usage(
             agent=agent,
             model=model,
@@ -106,19 +120,20 @@ class TelemetryEngine:
         )
 
     def record_retrieval(self, metrics: dict) -> None:
-        if self._store is None:
+        if self._writer is None:
             return
-        self._store.insert_retrieval(metrics)
+        self._writer.enqueue("retrieval", metrics)
 
     def query_retrieval(self, *, agent: str | None = None, limit: int = 100) -> list[dict]:
         if self._store is None:
             return []
+        self._flush_on_read()
         return self._store.query_retrieval(agent=agent, limit=limit)
 
     def record_skill_usage(self, record: dict) -> None:
-        if self._store is None:
+        if self._writer is None:
             return
-        self._store.insert_skill_usage(record)
+        self._writer.enqueue("skills", record)
 
     def query_skill_stats(
         self,
@@ -131,6 +146,7 @@ class TelemetryEngine:
     ) -> list[dict]:
         if self._store is None:
             return []
+        self._flush_on_read()
         return self._store.query_skill_stats(
             skill=skill,
             agent=agent,
@@ -150,6 +166,7 @@ class TelemetryEngine:
     ) -> list[dict]:
         if self._store is None:
             return []
+        self._flush_on_read()
         return self._store.query_gate_stats(
             gate=gate,
             status=status,
@@ -169,6 +186,7 @@ class TelemetryEngine:
     ) -> list[dict]:
         if self._store is None:
             return []
+        self._flush_on_read()
         return self._store.query_gate_records(
             gate=gate,
             status=status,
@@ -188,6 +206,7 @@ class TelemetryEngine:
     ) -> list[dict]:
         if self._store is None:
             return []
+        self._flush_on_read()
         return self._store.query_security_stats(
             decision=decision,
             agent=agent,
@@ -208,6 +227,7 @@ class TelemetryEngine:
     ) -> list[dict]:
         if self._store is None:
             return []
+        self._flush_on_read()
         return self._store.query_security_records(
             decision=decision,
             agent=agent,
@@ -268,7 +288,7 @@ class TelemetryEngine:
                 self._persist_cost(usage, payload)
 
     def _on_gate_event(self, event) -> None:
-        if self._store is None:
+        if self._writer is None:
             return
         payload = event.payload if hasattr(event, "payload") else event
         if not isinstance(payload, dict):
@@ -296,10 +316,10 @@ class TelemetryEngine:
             "overridden": bool(payload.get("overridden")),
             "timestamp": payload.get("timestamp", _now()),
         }
-        self._store.insert_gate_record(record)
+        self._writer.enqueue("gates", record)
 
     def _on_security_event(self, event) -> None:
-        if self._store is None:
+        if self._writer is None:
             return
         payload = event.payload if hasattr(event, "payload") else event
         if not isinstance(payload, dict):
@@ -316,10 +336,10 @@ class TelemetryEngine:
             or (getattr(event, "correlation_id", "") or ""),
             "timestamp": payload.get("timestamp", _now()),
         }
-        self._store.insert_security_decision(record)
+        self._writer.enqueue("security", record)
 
     def _on_routing_event(self, event) -> None:
-        if self._store is None:
+        if self._writer is None:
             return
         payload = event.payload if hasattr(event, "payload") else event
         if not isinstance(payload, dict):
@@ -341,7 +361,7 @@ class TelemetryEngine:
             or (getattr(event, "correlation_id", "") or ""),
             "timestamp": payload.get("timestamp", _now()),
         }
-        self._store.insert_routing(record)
+        self._writer.enqueue("routing", record)
 
     def query_routing_stats(
         self,
@@ -354,6 +374,7 @@ class TelemetryEngine:
     ) -> list[dict]:
         if self._store is None:
             return []
+        self._flush_on_read()
         return self._store.query_routing_stats(
             agent=agent, model=model, date_from=date_from, date_to=date_to, limit=limit
         )
@@ -369,6 +390,7 @@ class TelemetryEngine:
     ) -> list[dict]:
         if self._store is None:
             return []
+        self._flush_on_read()
         return self._store.query_routing_records(
             agent=agent, model=model, date_from=date_from, date_to=date_to, limit=limit
         )
@@ -376,6 +398,7 @@ class TelemetryEngine:
     def query_route_accuracy(self, *, limit: int = 100) -> list[dict]:
         if self._store is None:
             return []
+        self._flush_on_read()
         return self._store.query_route_accuracy(limit=limit)
 
     # ------------------------------------------------------------------
@@ -383,7 +406,7 @@ class TelemetryEngine:
     # ------------------------------------------------------------------
 
     def _persist_execution(self, event) -> None:
-        if self._store is None:
+        if self._writer is None:
             return
         payload = event.payload if hasattr(event, "payload") else event
         if not isinstance(payload, dict):
@@ -403,10 +426,10 @@ class TelemetryEngine:
             "duration_ms": payload.get("duration_ms"),
             "timestamp": payload.get("timestamp", _now()),
         }
-        self._store.insert_execution(record)
+        self._writer.enqueue("executions", record)
 
     def _persist_usage(self, usage: dict, event_payload: dict) -> None:
-        if self._store is None:
+        if self._writer is None:
             return
         record = {
             "execution_id": event_payload.get("execution_id", ""),
@@ -424,10 +447,10 @@ class TelemetryEngine:
         }
         if not record["total_tokens"] and record["input_tokens"] and record["output_tokens"]:
             record["total_tokens"] = record["input_tokens"] + record["output_tokens"]
-        self._store.insert_usage(record)
+        self._writer.enqueue("usage", record)
 
     def _persist_cost(self, usage: dict, event_payload: dict) -> None:
-        if self._store is None:
+        if self._writer is None:
             return
         provider = usage.get("provider", "")
         model = usage.get("model", "")
@@ -436,14 +459,14 @@ class TelemetryEngine:
 
         cost = self._pricing.resolve(provider, model, input_tokens, output_tokens)
         cost["execution_id"] = event_payload.get("execution_id", "")
-        self._store.insert_cost(cost)
+        self._writer.enqueue("costs", cost)
 
     # ------------------------------------------------------------------
     # Backlog event handlers
     # ------------------------------------------------------------------
 
     def _on_backlog_event(self, event) -> None:
-        if self._store is None:
+        if self._writer is None:
             return
         payload = event.payload if hasattr(event, "payload") else event
         if not isinstance(payload, dict):
@@ -461,7 +484,7 @@ class TelemetryEngine:
             "source": payload.get("source", ""),
             "timestamp": payload.get("timestamp", _now()),
         }
-        self._store.insert_backlog_run(record)
+        self._writer.enqueue("backlog", record)
 
     def query_backlog_stats(
         self,
@@ -474,6 +497,7 @@ class TelemetryEngine:
     ) -> list[dict]:
         if self._store is None:
             return []
+        self._flush_on_read()
         return self._store.query_backlog_stats(
             run_id=run_id,
             status=status,
@@ -481,3 +505,18 @@ class TelemetryEngine:
             date_to=date_to,
             limit=limit,
         )
+
+    # ------------------------------------------------------------------
+    # Read consistency boundary
+    # ------------------------------------------------------------------
+
+    def _flush_on_read(self) -> None:
+        """Drain the writer buffer before querying the store.
+
+        Reads go through the engine's public query_* methods, which flush
+        first: read-your-writes holds and no query can observe a drained
+        buffer whose transaction has not committed. Reads never touch the
+        hot path, so the synchronous drain is free for execution latency.
+        """
+        if self._writer is not None:
+            self._writer.flush()

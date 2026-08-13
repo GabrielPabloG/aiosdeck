@@ -1,9 +1,17 @@
 """SQLite storage backend for telemetry — single-responsibility module.
 
 Owns all SQLite operations for the telemetry domain: schema creation
-(9 tables: executions, tokens, costs, events, routing, skills, quality,
-security, generic), write paths (record + aggregate), read paths (query,
-stats, accuracy), and connection lifecycle (open, close, migrate).
+(9 tables: executions, usage, costs, retrieval, skills, gates, security,
+routing, backlog), write paths (unit insert_* + batched insert_many),
+read paths (query, stats, accuracy), and connection lifecycle (open, close,
+migrate). The INSERT SQL and record normalization live in one ``_INSERTS``
+map shared by both write paths, so a unit insert and a batched insert can
+never diverge.
+
+Batching contract: ``insert_many(table, rows)`` uses ``executemany`` and
+raises on failure; it never commits by itself. The caller (TelemetryWriter)
+owns the transaction — a multi-table flush wraps ``atomic()`` around every
+table's ``insert_many`` so one flush is one BEGIN/COMMIT.
 
 This file intentionally stays as one module — splitting the SQLite
 orchestration across multiple files would spread schema coupling and
@@ -17,6 +25,7 @@ separate modules when schema migration complexity warrants it.
 import json
 import logging
 import sqlite3
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -214,6 +223,249 @@ CREATE INDEX IF NOT EXISTS idx_tb_timestamp ON telemetry_backlog(timestamp);
 """
 
 
+def _row_execution(record: dict, project_id: str) -> tuple:
+    return (
+        record.get("execution_id", ""),
+        record.get("event_id", ""),
+        record.get("correlation_id", ""),
+        record.get("task_id", ""),
+        record.get("workflow_id"),
+        record.get("agent", ""),
+        record.get("model"),
+        record.get("provider"),
+        record.get("runtime"),
+        record.get("attempt", 1),
+        record.get("status", ""),
+        record.get("duration_ms"),
+        record.get("timestamp", _now()),
+        project_id,
+    )
+
+
+def _row_usage(record: dict, project_id: str) -> tuple:
+    provider_raw = record.get("provider_raw")
+    return (
+        record.get("execution_id", ""),
+        record.get("agent", ""),
+        record.get("model", ""),
+        record.get("provider", ""),
+        record.get("input_tokens"),
+        record.get("output_tokens"),
+        record.get("total_tokens"),
+        record.get("cached_tokens"),
+        record.get("reasoning_tokens"),
+        record.get("context_tokens"),
+        json.dumps(provider_raw, ensure_ascii=False) if provider_raw else None,
+        record.get("timestamp", _now()),
+        project_id,
+    )
+
+
+def _row_cost(record: dict, project_id: str) -> tuple:
+    return (
+        record.get("execution_id", ""),
+        record.get("pricing_version", ""),
+        record.get("pricing_source", "builtin"),
+        record.get("input_cost", 0.0),
+        record.get("output_cost", 0.0),
+        record.get("cached_cost"),
+        record.get("reasoning_cost"),
+        record.get("total_cost", 0.0),
+        record.get("currency", "USD"),
+        record.get("status", "unpriced"),
+        record.get("calculated_at", _now()),
+        project_id,
+    )
+
+
+def _row_retrieval(record: dict, project_id: str) -> tuple:
+    return (
+        record.get("agent", ""),
+        record.get("query", ""),
+        record.get("chunks_retrieved", 0),
+        record.get("chunks_selected", 0),
+        record.get("tokens_before", 0),
+        record.get("tokens_after", 0),
+        record.get("compression_ratio", 0.0),
+        record.get("retrieval_latency_ms", 0.0),
+        record.get("retriever", ""),
+        record.get("timestamp", _now()),
+        project_id,
+    )
+
+
+def _row_skill(record: dict, project_id: str) -> tuple:
+    return (
+        record.get("execution_id", ""),
+        record.get("correlation_id", ""),
+        record.get("skill_name", ""),
+        record.get("skill_version", "1"),
+        record.get("intent", ""),
+        record.get("agent", ""),
+        record.get("considered", 0),
+        record.get("selected", 0),
+        record.get("used", 0),
+        record.get("relevance_score", 0.0),
+        record.get("tokens_contributed", 0),
+        record.get("downstream_success"),
+        record.get("timestamp", _now()),
+        project_id,
+    )
+
+
+def _row_gate(record: dict, project_id: str) -> tuple:
+    return (
+        record.get("gate", ""),
+        record.get("status", ""),
+        record.get("correlation_id", ""),
+        record.get("duration_ms"),
+        record.get("findings_low", 0),
+        record.get("findings_medium", 0),
+        record.get("findings_high", 0),
+        record.get("findings_critical", 0),
+        1 if record.get("blocked") else 0,
+        1 if record.get("overridden") else 0,
+        record.get("timestamp", _now()),
+        project_id,
+    )
+
+
+def _row_security(record: dict, project_id: str) -> tuple:
+    violations = record.get("violations") or []
+    if not isinstance(violations, str):
+        violations = json.dumps(list(violations), ensure_ascii=False)
+    return (
+        record.get("decision", ""),
+        record.get("agent", ""),
+        record.get("action", ""),
+        1 if record.get("allowed") else 0,
+        record.get("reason", ""),
+        violations,
+        record.get("intent_source", ""),
+        record.get("correlation_id", ""),
+        record.get("timestamp", _now()),
+        project_id,
+    )
+
+
+def _row_routing(record: dict, project_id: str) -> tuple:
+    return (
+        record.get("agent", ""),
+        record.get("task_type", ""),
+        record.get("complexity", ""),
+        record.get("provider", ""),
+        record.get("model", ""),
+        record.get("variant", ""),
+        record.get("reason", ""),
+        record.get("estimated_cost", 0.0),
+        record.get("context_size", 0),
+        record.get("source", ""),
+        1 if record.get("fallback_used") else 0,
+        record.get("fallback_reason", ""),
+        record.get("correlation_id", ""),
+        record.get("timestamp", _now()),
+        project_id,
+    )
+
+
+def _row_backlog(record: dict, project_id: str) -> tuple:
+    return (
+        record.get("run_id", ""),
+        record.get("task_index", 0),
+        record.get("task_title", ""),
+        record.get("task_type", ""),
+        record.get("task_scope", ""),
+        record.get("status", ""),
+        record.get("commit_sha", ""),
+        record.get("duration_ms"),
+        record.get("error", ""),
+        record.get("source", ""),
+        record.get("timestamp", _now()),
+        project_id,
+    )
+
+
+# table key -> (INSERT SQL, record -> parameter row). The single source of
+# truth shared by the unit insert_* methods and insert_many batches.
+_INSERTS: dict[str, tuple[str, Callable[[dict, str], tuple]]] = {
+    "executions": (
+        """INSERT OR IGNORE INTO telemetry_executions
+           (execution_id, event_id, correlation_id, task_id, workflow_id,
+            agent, model, provider, runtime, attempt, status, duration_ms,
+            timestamp, project_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        _row_execution,
+    ),
+    "usage": (
+        """INSERT INTO telemetry_usage
+           (execution_id, agent, model, provider,
+            input_tokens, output_tokens, total_tokens,
+            cached_tokens, reasoning_tokens, context_tokens,
+            provider_raw, timestamp, project_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        _row_usage,
+    ),
+    "costs": (
+        """INSERT INTO telemetry_costs
+           (execution_id, pricing_version, pricing_source,
+            input_cost, output_cost, cached_cost, reasoning_cost,
+            total_cost, currency, status, calculated_at, project_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        _row_cost,
+    ),
+    "retrieval": (
+        """INSERT INTO telemetry_retrieval
+           (agent, query, chunks_retrieved, chunks_selected,
+            tokens_before, tokens_after, compression_ratio,
+            retrieval_latency_ms, retriever, timestamp, project_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        _row_retrieval,
+    ),
+    "skills": (
+        """INSERT INTO telemetry_skills
+           (execution_id, correlation_id, skill_name, skill_version,
+            intent, agent, considered, selected, used,
+            relevance_score, tokens_contributed, downstream_success,
+            timestamp, project_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        _row_skill,
+    ),
+    "gates": (
+        """INSERT INTO telemetry_gates
+           (gate, status, correlation_id, duration_ms,
+            findings_low, findings_medium, findings_high, findings_critical,
+            blocked, overridden, timestamp, project_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        _row_gate,
+    ),
+    "security": (
+        """INSERT INTO telemetry_security
+           (decision, agent, action, allowed, reason,
+            violations, intent_source, correlation_id,
+            timestamp, project_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        _row_security,
+    ),
+    "routing": (
+        """INSERT INTO telemetry_routing
+           (agent, task_type, complexity, provider, model, variant,
+            reason, estimated_cost, context_size, source,
+            fallback_used, fallback_reason, correlation_id,
+            timestamp, project_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        _row_routing,
+    ),
+    "backlog": (
+        """INSERT INTO telemetry_backlog
+           (run_id, task_index, task_title, task_type, task_scope,
+            status, commit_sha, duration_ms, error, source,
+            timestamp, project_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        _row_backlog,
+    ),
+}
+
+
 class TelemetryError(Exception):
     """Domain error for telemetry storage failures."""
 
@@ -286,112 +538,67 @@ class TelemetryStore:
         except sqlite3.Error:
             return False
 
+    def atomic(self):
+        """Public transaction boundary shared with TelemetryWriter.
+
+        Yields inside ``BEGIN IMMEDIATE``/COMMIT on the connection, rolling
+        back on error. A multi-table batch flush wraps one atomic block so
+        the whole batch is one transaction.
+        """
+        if self._conn is None:
+            raise TelemetryError("store is closed")
+        return self._conn.atomic()
+
+    def _insert_one(self, table: str, record: dict) -> None:
+        """Single synchronous insert — the pre-batching write path.
+
+        Kept for tests and seed writes; the engine hot path goes through
+        TelemetryWriter + insert_many instead.
+        """
+        if not self._conn:
+            return
+        sql, build = _INSERTS[table]
+        try:
+            self._conn.execute(sql, build(record, self._project_id))
+            self._conn.commit()
+        except sqlite3.Error as exc:
+            logger.warning("insert %s failed: %s", table, exc)
+
+    def insert_many(self, table: str, rows: list[dict]) -> None:
+        """Batch-write rows into *table* with ``executemany``.
+
+        Raises on failure instead of swallowing it so the caller can retry
+        or count a drop — unlike the unit insert paths, which log and
+        continue. The caller owns the transaction: wrap a multi-table flush
+        in :meth:`atomic` so every table lands in a single BEGIN/COMMIT.
+        """
+        if self._conn is None:
+            raise TelemetryError("store is closed")
+        if table not in _INSERTS:
+            raise TelemetryError(f"unknown telemetry table: {table}")
+        sql, build = _INSERTS[table]
+        self._conn.executemany(sql, [build(record, self._project_id) for record in rows])
+
     # ------------------------------------------------------------------
     # Execution records (event log)
     # ------------------------------------------------------------------
 
     def insert_execution(self, event: dict) -> None:
-        if not self._conn:
-            return
-        try:
-            self._conn.execute(
-                """INSERT OR IGNORE INTO telemetry_executions
-                   (execution_id, event_id, correlation_id, task_id, workflow_id,
-                    agent, model, provider, runtime, attempt, status, duration_ms,
-                    timestamp, project_id)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (
-                    event.get("execution_id", ""),
-                    event.get("event_id", ""),
-                    event.get("correlation_id", ""),
-                    event.get("task_id", ""),
-                    event.get("workflow_id"),
-                    event.get("agent", ""),
-                    event.get("model"),
-                    event.get("provider"),
-                    event.get("runtime"),
-                    event.get("attempt", 1),
-                    event.get("status", ""),
-                    event.get("duration_ms"),
-                    event.get("timestamp", _now()),
-                    self._project_id,
-                ),
-            )
-            self._conn.commit()
-        except sqlite3.Error as exc:
-            logger.warning("insert_execution failed: %s", exc)
+        self._insert_one("executions", event)
 
     # ------------------------------------------------------------------
     # Usage records
     # ------------------------------------------------------------------
 
     def insert_usage(self, usage: dict) -> None:
-        if not self._conn:
-            return
-        provider_raw_str = None
-        if usage.get("provider_raw"):
-            provider_raw_str = json.dumps(usage["provider_raw"], ensure_ascii=False)
-
-        try:
-            self._conn.execute(
-                """INSERT INTO telemetry_usage
-                   (execution_id, agent, model, provider,
-                    input_tokens, output_tokens, total_tokens,
-                    cached_tokens, reasoning_tokens, context_tokens,
-                    provider_raw, timestamp, project_id)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (
-                    usage.get("execution_id", ""),
-                    usage.get("agent", ""),
-                    usage.get("model", ""),
-                    usage.get("provider", ""),
-                    usage.get("input_tokens"),
-                    usage.get("output_tokens"),
-                    usage.get("total_tokens"),
-                    usage.get("cached_tokens"),
-                    usage.get("reasoning_tokens"),
-                    usage.get("context_tokens"),
-                    provider_raw_str,
-                    usage.get("timestamp", _now()),
-                    self._project_id,
-                ),
-            )
-            self._conn.commit()
-        except sqlite3.Error as exc:
-            logger.warning("insert_usage failed: %s", exc)
+        self._insert_one("usage", usage)
 
     # ------------------------------------------------------------------
     # Cost records
     # ------------------------------------------------------------------
 
     def insert_cost(self, cost: dict) -> None:
-        if not self._conn:
-            return
-        try:
-            self._conn.execute(
-                """INSERT INTO telemetry_costs
-                   (execution_id, pricing_version, pricing_source,
-                    input_cost, output_cost, cached_cost, reasoning_cost,
-                    total_cost, currency, status, calculated_at, project_id)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (
-                    cost.get("execution_id", ""),
-                    cost.get("pricing_version", ""),
-                    cost.get("pricing_source", "builtin"),
-                    cost.get("input_cost", 0.0),
-                    cost.get("output_cost", 0.0),
-                    cost.get("cached_cost"),
-                    cost.get("reasoning_cost"),
-                    cost.get("total_cost", 0.0),
-                    cost.get("currency", "USD"),
-                    cost.get("status", "unpriced"),
-                    cost.get("calculated_at", _now()),
-                    self._project_id,
-                ),
-            )
-            self._conn.commit()
-        except sqlite3.Error as exc:
-            logger.warning("insert_cost failed: %s", exc)
+        self._insert_one("costs", cost)
 
     # ------------------------------------------------------------------
     # Queries
@@ -755,32 +962,7 @@ class TelemetryStore:
     # ------------------------------------------------------------------
 
     def insert_retrieval(self, record: dict) -> None:
-        if not self._conn:
-            return
-        try:
-            self._conn.execute(
-                """INSERT INTO telemetry_retrieval
-                   (agent, query, chunks_retrieved, chunks_selected,
-                    tokens_before, tokens_after, compression_ratio,
-                    retrieval_latency_ms, retriever, timestamp, project_id)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (
-                    record.get("agent", ""),
-                    record.get("query", ""),
-                    record.get("chunks_retrieved", 0),
-                    record.get("chunks_selected", 0),
-                    record.get("tokens_before", 0),
-                    record.get("tokens_after", 0),
-                    record.get("compression_ratio", 0.0),
-                    record.get("retrieval_latency_ms", 0.0),
-                    record.get("retriever", ""),
-                    record.get("timestamp", _now()),
-                    self._project_id,
-                ),
-            )
-            self._conn.commit()
-        except sqlite3.Error as exc:
-            logger.warning("insert_retrieval failed: %s", exc)
+        self._insert_one("retrieval", record)
 
     def query_retrieval(
         self,
@@ -836,36 +1018,7 @@ class TelemetryStore:
     # ------------------------------------------------------------------
 
     def insert_skill_usage(self, record: dict) -> None:
-        if not self._conn:
-            return
-        try:
-            self._conn.execute(
-                """INSERT INTO telemetry_skills
-                   (execution_id, correlation_id, skill_name, skill_version,
-                    intent, agent, considered, selected, used,
-                    relevance_score, tokens_contributed, downstream_success,
-                    timestamp, project_id)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (
-                    record.get("execution_id", ""),
-                    record.get("correlation_id", ""),
-                    record.get("skill_name", ""),
-                    record.get("skill_version", "1"),
-                    record.get("intent", ""),
-                    record.get("agent", ""),
-                    record.get("considered", 0),
-                    record.get("selected", 0),
-                    record.get("used", 0),
-                    record.get("relevance_score", 0.0),
-                    record.get("tokens_contributed", 0),
-                    record.get("downstream_success"),
-                    record.get("timestamp", _now()),
-                    self._project_id,
-                ),
-            )
-            self._conn.commit()
-        except sqlite3.Error as exc:
-            logger.warning("insert_skill_usage failed: %s", exc)
+        self._insert_one("skills", record)
 
     def query_skill_stats(
         self,
@@ -933,33 +1086,7 @@ class TelemetryStore:
     # ------------------------------------------------------------------
 
     def insert_gate_record(self, record: dict) -> None:
-        if not self._conn:
-            return
-        try:
-            self._conn.execute(
-                """INSERT INTO telemetry_gates
-                   (gate, status, correlation_id, duration_ms,
-                    findings_low, findings_medium, findings_high, findings_critical,
-                    blocked, overridden, timestamp, project_id)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (
-                    record.get("gate", ""),
-                    record.get("status", ""),
-                    record.get("correlation_id", ""),
-                    record.get("duration_ms"),
-                    record.get("findings_low", 0),
-                    record.get("findings_medium", 0),
-                    record.get("findings_high", 0),
-                    record.get("findings_critical", 0),
-                    1 if record.get("blocked") else 0,
-                    1 if record.get("overridden") else 0,
-                    record.get("timestamp", _now()),
-                    self._project_id,
-                ),
-            )
-            self._conn.commit()
-        except sqlite3.Error as exc:
-            logger.warning("insert_gate_record failed: %s", exc)
+        self._insert_one("gates", record)
 
     def query_gate_stats(  # noqa: PLR0913
         self,
@@ -1102,34 +1229,7 @@ class TelemetryStore:
     # ------------------------------------------------------------------
 
     def insert_security_decision(self, record: dict) -> None:
-        if not self._conn:
-            return
-        violations = record.get("violations") or []
-        if not isinstance(violations, str):
-            violations = json.dumps(list(violations), ensure_ascii=False)
-        try:
-            self._conn.execute(
-                """INSERT INTO telemetry_security
-                   (decision, agent, action, allowed, reason,
-                    violations, intent_source, correlation_id,
-                    timestamp, project_id)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (
-                    record.get("decision", ""),
-                    record.get("agent", ""),
-                    record.get("action", ""),
-                    1 if record.get("allowed") else 0,
-                    record.get("reason", ""),
-                    violations,
-                    record.get("intent_source", ""),
-                    record.get("correlation_id", ""),
-                    record.get("timestamp", _now()),
-                    self._project_id,
-                ),
-            )
-            self._conn.commit()
-        except sqlite3.Error as exc:
-            logger.warning("insert_security_decision failed: %s", exc)
+        self._insert_one("security", record)
 
     def query_security_stats(  # noqa: PLR0913
         self,
@@ -1255,37 +1355,7 @@ class TelemetryStore:
     # ------------------------------------------------------------------
 
     def insert_routing(self, record: dict) -> None:
-        if not self._conn:
-            return
-        try:
-            self._conn.execute(
-                """INSERT INTO telemetry_routing
-                   (agent, task_type, complexity, provider, model, variant,
-                    reason, estimated_cost, context_size, source,
-                    fallback_used, fallback_reason, correlation_id,
-                    timestamp, project_id)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (
-                    record.get("agent", ""),
-                    record.get("task_type", ""),
-                    record.get("complexity", ""),
-                    record.get("provider", ""),
-                    record.get("model", ""),
-                    record.get("variant", ""),
-                    record.get("reason", ""),
-                    record.get("estimated_cost", 0.0),
-                    record.get("context_size", 0),
-                    record.get("source", ""),
-                    1 if record.get("fallback_used") else 0,
-                    record.get("fallback_reason", ""),
-                    record.get("correlation_id", ""),
-                    record.get("timestamp", _now()),
-                    self._project_id,
-                ),
-            )
-            self._conn.commit()
-        except sqlite3.Error as exc:
-            logger.warning("insert_routing failed: %s", exc)
+        self._insert_one("routing", record)
 
     def query_routing_stats(  # noqa: PLR0913
         self,
@@ -1450,33 +1520,7 @@ class TelemetryStore:
     # ------------------------------------------------------------------
 
     def insert_backlog_run(self, record: dict) -> None:
-        if not self._conn:
-            return
-        try:
-            self._conn.execute(
-                """INSERT INTO telemetry_backlog
-                   (run_id, task_index, task_title, task_type, task_scope,
-                    status, commit_sha, duration_ms, error, source,
-                    timestamp, project_id)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (
-                    record.get("run_id", ""),
-                    record.get("task_index", 0),
-                    record.get("task_title", ""),
-                    record.get("task_type", ""),
-                    record.get("task_scope", ""),
-                    record.get("status", ""),
-                    record.get("commit_sha", ""),
-                    record.get("duration_ms"),
-                    record.get("error", ""),
-                    record.get("source", ""),
-                    record.get("timestamp", _now()),
-                    self._project_id,
-                ),
-            )
-            self._conn.commit()
-        except sqlite3.Error as exc:
-            logger.warning("insert_backlog_run failed: %s", exc)
+        self._insert_one("backlog", record)
 
     def query_backlog_stats(
         self,

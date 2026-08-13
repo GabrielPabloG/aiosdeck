@@ -132,11 +132,34 @@ def test_lifecycle_event_persisted_only_as_execution(tmp_path):
     }
     engine._on_lifecycle_event(event)
 
-    rows = engine._store.query_executions(agent="planner")
+    rows = engine.query(agent="planner")["executions"]
     assert len(rows) == 1
 
     result = engine.query(agent="planner")
     assert len(result["records"]) == 0
+
+    engine.shutdown()
+
+
+def test_query_flushes_pending_events_before_read(tmp_path):
+    db = tmp_path / "test.db"
+    engine = TelemetryEngine(project_path=tmp_path, db_path=str(db))
+    engine.initialize()
+
+    event = MagicMock()
+    event.payload = {
+        "execution_id": "exec-001",
+        "event_id": "evt-001",
+        "agent": "planner",
+        "status": "running",
+    }
+    engine._on_lifecycle_event(event)
+
+    assert engine._writer.metrics()["buffer_size"] == 1  # still buffered
+
+    result = engine.query(agent="planner")
+    assert len(result["executions"]) == 1
+    assert engine._writer.metrics()["buffer_size"] == 0
 
     engine.shutdown()
 

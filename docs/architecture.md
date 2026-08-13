@@ -279,9 +279,10 @@ aios/
 │
 ├── telemetry/                   # Telemetry
 │   ├── __init__.py
-│   ├── engine.py                # Telemetry engine
+│   ├── engine.py                # Telemetry engine (subscribes, builds records)
+│   ├── writer.py                # Buffered async batch writer
 │   ├── pricing.py               # Cost tracking
-│   ├── store.py                 # Telemetry store
+│   ├── store.py                 # Telemetry store (schema, SQL, queries)
 │   └── cli.py                   # telemetry CLI commands
 │
 ├── usage/                       # Usage records
