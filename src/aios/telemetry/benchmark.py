@@ -371,7 +371,7 @@ def _measure_skill_load(project_path) -> None:
 def _run_plan(kernel) -> None:
     context = kernel.get_context() if hasattr(kernel, "get_context") else None
     task = Task(description="benchmark task", task_type="plan")
-    kernel.run(task, context, mode="plan")
+    _raise_if_failed(kernel.run(task, context, mode="plan"))
 
 
 def _resolve_phase_model(kernel, phase: str) -> str:
@@ -427,4 +427,21 @@ def _run_bare_probe(kernel, phase: str) -> tuple[str | None, str]:
 def _run_agent_exec(kernel) -> None:
     context = kernel.get_context() if hasattr(kernel, "get_context") else None
     task = Task(description="benchmark task", task_type="code")
-    kernel.run_agent("developer", task, context)
+    _raise_if_failed(kernel.run_agent("developer", task, context))
+
+
+def _raise_if_failed(result) -> None:
+    """Surface a failed agent run as a phase error.
+
+    ``kernel.run``/``run_agent`` return a ``RunResult`` with ``success``;
+    a failed run (e.g. planner invalid JSON) must not be measured as a clean
+    model call. Stub/None results are tolerated for legacy callers.
+    """
+    if result is None:
+        return
+    success = getattr(result, "success", None)
+    if success is None or bool(success):
+        return
+    errors = getattr(result, "errors", None)
+    message = str(errors[0]) if errors else "agent run failed"
+    raise RuntimeError(message)

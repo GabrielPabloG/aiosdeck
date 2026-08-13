@@ -27,3 +27,4 @@ TODO.md
 scripts/
 .aios/benchmarks/tmp/
 .aios/benchmarks/*.tmp
+.bench_llama/
