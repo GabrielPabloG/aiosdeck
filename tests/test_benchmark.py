@@ -481,6 +481,58 @@ class TestBenchmarkCli:
         assert out_text.strip().startswith("{")
 
 
+class TestBenchmarkAgentFailure:
+    """A failed agent run (e.g. planner invalid JSON) must surface as a phase
+    error — otherwise a degraded run is silently measured as success."""
+
+    def _failed_kernel(self, *, plan_fail: bool, agent_fail: bool):
+        kernel = _stub_kernel()
+
+        def run_result(*args, **kwargs):  # noqa: ARG001
+            if plan_fail:
+                return MagicMock(success=False, errors=("Planner failed",))
+            return MagicMock(success=True, errors=())
+
+        def agent_result(*args, **kwargs):  # noqa: ARG001
+            if agent_fail:
+                return MagicMock(success=False, errors=("Developer failed",))
+            return MagicMock(success=True, errors=())
+
+        kernel.run = MagicMock(side_effect=run_result)
+        kernel.run_agent = MagicMock(side_effect=agent_result)
+        return kernel
+
+    def test_failed_plan_records_error(self, tmp_path, capsys):
+        cmd_benchmark(
+            ["phases", "--json", "--warmup", "0", "--repeat", "1"],
+            tmp_path,
+            lambda _: self._failed_kernel(plan_fail=True, agent_fail=False),
+        )
+        out = json.loads(capsys.readouterr().out)
+        run = _result(out, "phases", "plan")["runs"][0]
+        assert run["error"] == "Planner failed"
+
+    def test_failed_agent_exec_records_error(self, tmp_path, capsys):
+        cmd_benchmark(
+            ["phases", "--json", "--warmup", "0", "--repeat", "1"],
+            tmp_path,
+            lambda _: self._failed_kernel(plan_fail=False, agent_fail=True),
+        )
+        out = json.loads(capsys.readouterr().out)
+        run = _result(out, "phases", "agent_exec")["runs"][0]
+        assert run["error"] == "Developer failed"
+
+    def test_successful_runs_record_no_error(self, tmp_path, capsys):
+        cmd_benchmark(
+            ["phases", "--json", "--warmup", "0", "--repeat", "1"],
+            tmp_path,
+            lambda _: self._failed_kernel(plan_fail=False, agent_fail=False),
+        )
+        out = json.loads(capsys.readouterr().out)
+        for phase in ("plan", "agent_exec"):
+            assert "error" not in _result(out, "phases", phase)["runs"][0]
+
+
 class TestBenchmarkBareTask:
     def test_bare_task_flag_parsing(self):
         from aios.cli.commands.benchmark import _parse_args
