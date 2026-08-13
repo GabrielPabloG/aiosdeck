@@ -45,8 +45,10 @@ def test_e2e_execution_persisted(tmp_path):
     outcome = executor.execute(make_request(_FakeAgent(), _task()))
     assert outcome.status == "succeeded"
 
-    rows = engine._store.query_executions()
-    assert len(rows) >= 2
+    result = engine.query()  # flush-on-read: buffered events become visible
+    assert len(result["executions"]) >= 2
+
+    engine.shutdown()
 
 
 def test_e2e_usage_persisted(tmp_path):
