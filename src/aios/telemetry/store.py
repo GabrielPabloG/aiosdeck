@@ -1,9 +1,17 @@
 """SQLite storage backend for telemetry — single-responsibility module.
 
 Owns all SQLite operations for the telemetry domain: schema creation
-(9 tables: executions, tokens, costs, events, routing, skills, quality,
-security, generic), write paths (record + aggregate), read paths (query,
-stats, accuracy), and connection lifecycle (open, close, migrate).
+(9 tables: executions, usage, costs, retrieval, skills, gates, security,
+routing, backlog), write paths (unit insert_* + batched insert_many),
+read paths (query, stats, accuracy), and connection lifecycle (open, close,
+migrate). The INSERT SQL and record normalization live in one ``_INSERTS``
+map shared by both write paths, so a unit insert and a batched insert can
+never diverge.
+
+Batching contract: ``insert_many(table, rows)`` uses ``executemany`` and
+raises on failure; it never commits by itself. The caller (TelemetryWriter)
+owns the transaction — a multi-table flush wraps ``atomic()`` around every
+table's ``insert_many`` so one flush is one BEGIN/COMMIT.
 
 This file intentionally stays as one module — splitting the SQLite
 orchestration across multiple files would spread schema coupling and

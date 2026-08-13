@@ -1,34 +1,28 @@
 """Buffered async batch writer for telemetry events.
 
-TelemetryWriter owns every concern of write-path concurrency:
+Owns every concern of write-path concurrency:
 
-- Handlers enqueue ``(table, record)`` pairs in O(1) under a deque lock — no
-  SQLite work ever touches the EventBus hot path.
-- A background daemon thread flushes when the buffer reaches ``batch_size``
-  (50 by default) or ``flush_interval`` elapses (500ms by default).
-- ``flush()`` drains the buffer, groups records by table, and writes each
-  group with ``executemany`` inside a single ``store.atomic()`` transaction
-  (one ``BEGIN IMMEDIATE``, one ``COMMIT`` per flush).
-- A dedicated ``flush_lock`` serializes flushes. Reads that call ``flush()``
-  first — the consistency boundary owned by TelemetryEngine — can never
-  observe a buffer drained before its transaction committed.
+- Handlers enqueue ``(table, record)`` in O(1) — no SQLite work ever
+  touches the EventBus hot path.
+- A daemon thread flushes at ``batch_size`` (50) or ``flush_interval``
+  (500ms), grouping records by table into one ``executemany`` per table
+  inside a single ``store.atomic()`` transaction.
+- A dedicated ``flush_lock`` serializes flushes: reads that call
+  ``flush()`` first (TelemetryEngine's consistency boundary) can never see
+  a drained buffer whose transaction has not committed.
 
-Failure contract (no automatic synchronous fallback): an error inside the
-transaction rolls the whole batch back (the store's atomic block). Locked
-errors are retryable — the batch is re-enqueued and retried with backoff
-(100/250/500ms by default). Any other error, or a lock that survives every
-retry, logs and increments ``events_dropped_total``. The hot path never
-falls back to a synchronous write.
+Failure contract (no automatic synchronous fallback): a transaction error
+rolls the batch back. Locked errors re-enqueue the batch and retry with
+backoff (100/250/500ms); anything else, or a persistent lock, logs and
+increments ``events_dropped_total``.
 
-Loss window (honest documentation): on graceful shutdown (SIGINT/SIGTERM,
-``shutdown()``, or atexit) the buffer is fully drained by the final flush —
-nothing buffered is lost. On crash or SIGKILL, events still in the buffer
-are lost; the nominal window is the flush interval (~500ms) plus the time to
-write the current batch. There is no durability guarantee for unflushed
-events.
+Loss window (honest): graceful shutdown (SIGINT/SIGTERM, ``shutdown()``,
+atexit) fully drains the buffer — zero loss. On crash or SIGKILL, unflushed
+events are lost; the nominal window is the flush interval (~500ms) plus the
+current batch write. No durability guarantee for unflushed events.
 
-An ``atexit`` hook registered once per process (idempotent via the active
-set) covers library embedding where ``shutdown()`` is never called.
+The atexit hook is registered once per process and is idempotent (active
+set), covering library embedding where ``shutdown()`` is never called.
 """
 
 from __future__ import annotations
@@ -36,12 +30,12 @@ from __future__ import annotations
 import atexit
 import collections
 import logging
-import math
 import sqlite3
 import threading
 import time
 import weakref
 
+from aios.telemetry.benchmark import percentile
 from aios.telemetry.store import TelemetryError
 
 logger = logging.getLogger("aios.telemetry.writer")
@@ -57,19 +51,6 @@ _ACTIVE: weakref.WeakSet = weakref.WeakSet()
 def _is_locked(exc: sqlite3.Error) -> bool:
     message = str(exc).lower()
     return "locked" in message or "busy" in message
-
-
-def _percentile(sorted_vals: list[float], q: float) -> float:
-    if not sorted_vals:
-        return 0.0
-    if len(sorted_vals) == 1:
-        return float(sorted_vals[0])
-    k = (len(sorted_vals) - 1) * (q / 100.0)
-    floor = math.floor(k)
-    ceil = math.ceil(k)
-    if floor == ceil:
-        return float(sorted_vals[int(k)])
-    return sorted_vals[floor] * (ceil - k) + sorted_vals[ceil] * (k - floor)
 
 
 class TelemetryWriter:
@@ -107,8 +88,8 @@ class TelemetryWriter:
     # ------------------------------------------------------------------
 
     def enqueue(self, table: str, record: dict) -> None:
-        """Buffer one record. O(1); when the buffer is full the oldest entry
-        is evicted and counted in ``events_dropped_total``."""
+        """Buffer one record in O(1); a full buffer evicts the oldest entry
+        and counts it in ``events_dropped_total``."""
         with self._buffer_lock:
             if len(self._buffer) == self._buffer.maxlen:
                 self._dropped_total += 1
@@ -165,11 +146,10 @@ class TelemetryWriter:
     # ------------------------------------------------------------------
 
     def shutdown(self) -> None:
-        """Stop the worker thread and drain the remaining buffer.
+        """Stop the worker (join up to 5s) and drain the remaining buffer.
 
-        Idempotent: repeated calls are no-ops. The thread is joined (up to
-        5s) and a final synchronous flush writes whatever is left, so a
-        graceful shutdown loses nothing.
+        Idempotent: repeated calls are no-ops, so graceful shutdown loses
+        nothing buffered.
         """
         if self._shutdown:
             return
@@ -193,8 +173,8 @@ class TelemetryWriter:
                 "flush_count": self._flush_count,
                 "events_flushed_total": self._flushed_total,
                 "events_dropped_total": self._dropped_total,
-                "flush_duration_p50_ms": _percentile(durations, 50),
-                "flush_duration_p95_ms": _percentile(durations, 95),
+                "flush_duration_p50_ms": percentile(durations, 50),
+                "flush_duration_p95_ms": percentile(durations, 95),
             }
 
     # ------------------------------------------------------------------
