@@ -34,12 +34,8 @@ def test_pool_connects_once_per_path(tmp_path, monkeypatch):
     pool.get(tmp_path / "memory.db")
     assert len(connects) == 1
     assert fake_conn.execute.call_count == 2
-    assert any(
-        "journal_mode=WAL" in str(call.args[0]) for call in fake_conn.execute.call_args_list
-    )
-    assert any(
-        "foreign_keys" in str(call.args[0]) for call in fake_conn.execute.call_args_list
-    )
+    assert any("journal_mode=WAL" in str(call.args[0]) for call in fake_conn.execute.call_args_list)
+    assert any("foreign_keys" in str(call.args[0]) for call in fake_conn.execute.call_args_list)
 
 
 def test_pool_different_paths_different_connections(tmp_path):
