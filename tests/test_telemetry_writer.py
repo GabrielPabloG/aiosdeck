@@ -154,6 +154,7 @@ class TestBatching:
         conn = ThreadSafeConnection(spy)
         store = TelemetryStore(Path(":memory:"), "project-1", connection=conn)
         store.open()
+        spy.statements.clear()  # scope the assertion to the flush transaction
         writer = TelemetryWriter(store, batch_size=100, flush_interval=5.0)
 
         for i in range(3):
