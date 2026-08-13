@@ -12,6 +12,15 @@ lost updates across threads, so stores wrap them in :meth:`ThreadSafeConnection.
 which starts an immediate transaction behind the lock and commits or rolls back
 as one unit. ``busy_timeout`` makes concurrent writers wait instead of failing
 immediately with ``sqlite3.OperationalError: database is locked``.
+
+Shared-connection ownership contract (Issue #38): a
+:class:`~aios.storage.pool.ConnectionPool` owns the physical connection
+lifecycle for connections it hands out. Stores that receive a connection via
+injection borrow it — ``open()`` skips connect/PRAGMAs and ``close()`` only
+releases the reference. The pool closes connections exclusively through
+``close_all()``, after every engine has shut down. ``executescript`` issues an
+implicit COMMIT, which is safe because it only runs inside ``open()`` on the
+single initializing thread.
 """
 
 from __future__ import annotations

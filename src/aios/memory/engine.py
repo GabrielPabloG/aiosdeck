@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 
 from aios.memory.models import ProjectKnowledge, StorageError
 from aios.memory.store import SQLiteStore
+from aios.storage.pool import ConnectionPool
 
 if TYPE_CHECKING:
     from aios.context.packet import ContextPacket
@@ -27,15 +28,24 @@ logger = logging.getLogger("aios.memory")
 class MemoryEngine:
     name = "memory"
 
-    def __init__(self, project_path: Path | None = None, db_path: str | None = None) -> None:
+    def __init__(
+        self,
+        project_path: Path | None = None,
+        db_path: str | None = None,
+        connection_pool: ConnectionPool | None = None,
+    ) -> None:
         self._project_path = project_path or Path.cwd()
         self._project_id = self._project_path.resolve().as_posix()
         self._db_path = self._resolve_db_path(db_path)
         self._store: SQLiteStore | None = None
+        self._connection_pool = connection_pool
 
     def initialize(self) -> None:
         try:
-            self._store = SQLiteStore(self._db_path, self._project_id)
+            connection = None
+            if self._connection_pool is not None:
+                connection = self._connection_pool.get(self._db_path)
+            self._store = SQLiteStore(self._db_path, self._project_id, connection=connection)
             self._store.open()
         except StorageError as exc:
             self._store = None

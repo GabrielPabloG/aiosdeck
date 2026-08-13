@@ -39,6 +39,7 @@ from aios.skills.discovery import SkillDiscoveryService
 from aios.skills.registry import SkillRegistry
 from aios.skills.retrieval import SkillRetrievalService
 from aios.skills.telemetry import SkillUsageRecorder
+from aios.storage.pool import ConnectionPool
 from aios.telemetry import TelemetryEngine
 from aios.workflow import WorkflowEngine
 
@@ -48,24 +49,31 @@ logger = logging.getLogger("aios.core.factory")
 def create_kernel(project_path: Path) -> Kernel:
     """Build a fully-wired Kernel with all engines and agents registered."""
     kernel = Kernel(project_path=str(project_path))
+    pool = ConnectionPool()
+    kernel.set_storage_pool(pool)
     kernel.register(ConfigEngine(project_path=project_path))
     kernel.register(ContextEngine(project_path=project_path))
-    kernel.register(MemoryEngine(project_path=project_path))
+    kernel.register(MemoryEngine(project_path=project_path, connection_pool=pool))
     kernel.register(
         LearningEngine(
             project_path=project_path,
             memory=kernel.get_engine("memory"),
+            connection_pool=pool,
         )
     )
-    kernel.register(KanbanEngine(project_path=project_path))
+    kernel.register(KanbanEngine(project_path=project_path, connection_pool=pool))
     events = EventsEngine()
     kernel.register(events)
-    kernel.register(TelemetryEngine(project_path=project_path))
+    kernel.register(TelemetryEngine(project_path=project_path, connection_pool=pool))
     embedding_host = os.environ.get("AIOS_OLLAMA_HOST", "http://localhost:11434")
     embedding_model = os.environ.get("AIOS_EMBEDDING_MODEL", "nomic-embed-text")
     embedding_provider = OllamaEmbeddingProvider(model=embedding_model, host=embedding_host)
     kernel.register(
-        KnowledgeEngine(project_path=project_path, embedding_provider=embedding_provider)
+        KnowledgeEngine(
+            project_path=project_path,
+            embedding_provider=embedding_provider,
+            connection_pool=pool,
+        )
     )
     security = SecurityEngine(project_path=project_path)
     kernel.register(security)

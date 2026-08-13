@@ -33,6 +33,11 @@ class BaseSQLiteStore:
         error_class: Exception class raised when ``open()`` fails. Defaults
                      to :class:`StoreError`; domain stores should pass their
                      own type (e.g. ``KanbanError``).
+        connection: Optional shared ``ThreadSafeConnection`` injected by a
+                    :class:`~aios.storage.pool.ConnectionPool`. When set, the
+                    store borrows the connection (no connect, no PRAGMAs)
+                    and ``close()`` only releases the reference — the pool
+                    owns the physical connection lifecycle.
     """
 
     def __init__(
@@ -42,19 +47,32 @@ class BaseSQLiteStore:
         schema: str,
         *,
         error_class: type[Exception] = StoreError,
+        connection: ThreadSafeConnection | None = None,
     ) -> None:
         self._db_path = db_path
         self._project_id = project_id
         self._schema = schema
         self._error_class = error_class
         self._conn: ThreadSafeConnection | None = None
+        self._injected = connection is not None
+        self._shared = connection
 
     # ------------------------------------------------------------------
     # Lifecycle
     # ------------------------------------------------------------------
 
     def open(self) -> None:
-        """Create directory, open connection, apply PRAGMAs, run schema."""
+        """Create directory, open connection, apply PRAGMAs, run schema.
+
+        With an injected shared connection the connect/PRAGMA steps are
+        skipped (the pool applied them) and the schema runs directly on
+        the shared connection. A failure never closes the shared
+        connection — only this store's reference is dropped.
+        """
+        if self._injected:
+            self._open_injected()
+            return
+
         try:
             self._db_path.parent.mkdir(parents=True, exist_ok=True)
         except OSError as exc:
@@ -71,11 +89,25 @@ class BaseSQLiteStore:
             self._conn = None
             raise self._error_class(f"Database open failed: {exc}") from exc
 
+    def _open_injected(self) -> None:
+        """Run schema on a shared connection without owning its lifecycle."""
+        try:
+            self._conn = self._shared
+            self._conn.executescript(self._schema)
+            self._post_open()
+            self._conn.commit()
+        except sqlite3.Error as exc:
+            self._conn = None
+            raise self._error_class(f"Database open failed: {exc}") from exc
+
     def _post_open(self) -> None:
         """Hook for subclasses that need post-schema initialization
         (migrations, FTS setup, etc.).  Called inside the open transaction."""
 
     def close(self) -> None:
+        if self._injected:
+            self._conn = None
+            return
         if self._conn:
             self._conn.close()
             self._conn = None

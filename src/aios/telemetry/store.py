@@ -219,12 +219,31 @@ class TelemetryError(Exception):
 
 
 class TelemetryStore:
-    def __init__(self, db_path: Path, project_id: str) -> None:
+    def __init__(
+        self,
+        db_path: Path,
+        project_id: str,
+        *,
+        connection: ThreadSafeConnection | None = None,
+    ) -> None:
         self._db_path = db_path
         self._project_id = project_id
         self._conn: ThreadSafeConnection | None = None
+        self._injected = connection is not None
+        self._shared = connection
 
     def open(self) -> None:
+        """Create directory, open connection, apply PRAGMAs, run schema.
+
+        With an injected shared connection the connect/PRAGMA steps are
+        skipped (the pool applied them) and the schema runs directly on
+        the shared connection. A failure never closes the shared
+        connection — only this store's reference is dropped.
+        """
+        if self._injected:
+            self._open_injected()
+            return
+
         try:
             self._db_path.parent.mkdir(parents=True, exist_ok=True)
         except OSError as exc:
@@ -240,7 +259,20 @@ class TelemetryStore:
             self._conn = None
             raise TelemetryError(f"Database open failed: {exc}") from exc
 
+    def _open_injected(self) -> None:
+        """Run schema on a shared connection without owning its lifecycle."""
+        try:
+            self._conn = self._shared
+            self._conn.executescript(SCHEMA)
+            self._conn.commit()
+        except sqlite3.Error as exc:
+            self._conn = None
+            raise TelemetryError(f"Database open failed: {exc}") from exc
+
     def close(self) -> None:
+        if self._injected:
+            self._conn = None
+            return
         if self._conn:
             self._conn.close()
             self._conn = None

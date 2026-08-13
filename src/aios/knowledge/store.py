@@ -24,6 +24,7 @@ from aios.knowledge.models import (
     KnowledgeSource,
 )
 from aios.storage.sqlite import BaseSQLiteStore
+from aios.storage.threadsafe import ThreadSafeConnection
 
 logger = logging.getLogger("aios.knowledge.store")
 
@@ -124,9 +125,16 @@ def deterministic_source_id(source_type: str, path: str) -> str:
 
 
 class SQLiteKnowledgeStore(BaseSQLiteStore):
-    def __init__(self, db_path: Path, project_id: str) -> None:
-        super().__init__(db_path, project_id, SCHEMA, error_class=KnowledgeError)
-        self._fts_available = False
+    def __init__(
+        self,
+        db_path: Path,
+        project_id: str,
+        *,
+        connection: ThreadSafeConnection | None = None,
+    ) -> None:
+        super().__init__(
+            db_path, project_id, SCHEMA, error_class=KnowledgeError, connection=connection
+        )
         self._fts_available = False
 
     # ------------------------------------------------------------------
