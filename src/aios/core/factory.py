@@ -32,6 +32,8 @@ from aios.retrieval.providers import OllamaEmbeddingProvider
 from aios.retrieval.selector import ContextBudget
 from aios.routing.engine import RuleBasedRouter
 from aios.runtime import RuntimeEngine
+from aios.runtime.ollama import OllamaAdapter
+from aios.runtime.opencode import OpenCodeAdapter
 from aios.scheduler import KanbanEngine
 from aios.security import SecurityEngine
 from aios.skills.assembler import SkillAssembler
@@ -81,12 +83,14 @@ def create_kernel(project_path: Path) -> Kernel:
     executor.set_event_bus(events.bus)
     kernel.set_executor(executor)
 
-    routing_config = ConfigLoader(project_path=project_path).load().routing
+    config = ConfigLoader(project_path=project_path).load()
+    routing_config = config.routing
     router = None
     if routing_config and routing_config.enabled:
         router = RuleBasedRouter(routing_config)
 
-    runtime = RuntimeEngine(router=router)
+    adapter = OllamaAdapter() if config.runtime.adapter == "ollama" else OpenCodeAdapter()
+    runtime = RuntimeEngine(adapter=adapter, router=router)
     kernel.register(runtime)
 
     assembler = _build_skill_assembler(project_path, kernel)
