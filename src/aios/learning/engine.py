@@ -32,6 +32,7 @@ from aios.learning.models import (
     ObservationRecord,
 )
 from aios.learning.store import LearningStore
+from aios.storage.pool import ConnectionPool
 
 if TYPE_CHECKING:
     from aios.memory.engine import MemoryEngine
@@ -47,6 +48,7 @@ class LearningEngine:
         project_path: Path | None = None,
         db_path: str | None = None,
         memory: MemoryEngine | None = None,
+        connection_pool: ConnectionPool | None = None,
     ) -> None:
         self._project_path = project_path or Path.cwd()
         self._project_id = self._project_path.resolve().as_posix()
@@ -54,6 +56,7 @@ class LearningEngine:
         self._store: LearningStore | None = None
         self._bus = None
         self._memory = memory
+        self._connection_pool = connection_pool
         self._confidence_threshold: float = 0.5
         self._min_evidence: int = 1
         self._recurrence_threshold: int = 2
@@ -74,7 +77,10 @@ class LearningEngine:
 
     def initialize(self) -> None:
         try:
-            self._store = LearningStore(self._db_path, self._project_id)
+            connection = None
+            if self._connection_pool is not None:
+                connection = self._connection_pool.get(self._db_path)
+            self._store = LearningStore(self._db_path, self._project_id, connection=connection)
             self._store.open()
         except RuntimeError:
             self._store = None

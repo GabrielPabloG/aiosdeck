@@ -16,6 +16,7 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from aios.storage.pool import ConnectionPool
 from aios.telemetry.pricing import PricingResolver
 from aios.telemetry.store import TelemetryStore, _now
 
@@ -35,7 +36,12 @@ _GATE_TOPIC_STATUS = {
 class TelemetryEngine:
     name = "telemetry"
 
-    def __init__(self, project_path: Path | None = None, db_path: str | None = None) -> None:
+    def __init__(
+        self,
+        project_path: Path | None = None,
+        db_path: str | None = None,
+        connection_pool: ConnectionPool | None = None,
+    ) -> None:
         self._project_path = project_path or Path.cwd()
         self._project_id = self._project_path.resolve().as_posix()
         self._db_path = db_path or str(self._project_path / ".aios" / "memory.db")
@@ -43,6 +49,7 @@ class TelemetryEngine:
         self._bus: EventBus | None = None
         self._pricing = PricingResolver(version="v1")
         self._subscription_count = 0
+        self._connection_pool = connection_pool
 
     def set_event_bus(self, bus: EventBus) -> None:
         self._bus = bus
@@ -50,7 +57,10 @@ class TelemetryEngine:
             self._subscribe()
 
     def initialize(self) -> None:
-        self._store = TelemetryStore(Path(self._db_path), self._project_id)
+        connection = None
+        if self._connection_pool is not None:
+            connection = self._connection_pool.get(self._db_path)
+        self._store = TelemetryStore(Path(self._db_path), self._project_id, connection=connection)
         self._store.open()
         self._subscribe()
 

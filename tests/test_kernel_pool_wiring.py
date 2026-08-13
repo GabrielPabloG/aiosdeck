@@ -14,12 +14,12 @@ _STORE_ENGINES = ("memory", "learning", "scheduler", "telemetry", "knowledge")
 
 
 class _SpyPool(ConnectionPool):
-    def __init__(self) -> None:
+    def __init__(self, events: list[str]) -> None:
         super().__init__()
-        self.events: list[str] = []
+        self._events = events
 
     def close_all(self) -> None:
-        self.events.append("pool.close_all")
+        self._events.append("pool.close_all")
         super().close_all()
 
 
@@ -83,8 +83,8 @@ def test_shared_connection_survives_engine_close(tmp_path, monkeypatch):
 
 def test_kernel_shutdown_closes_pool_after_engines(tmp_path, monkeypatch):
     monkeypatch.delenv("AIOS_MEMORY_PATH", raising=False)
-    pool = _SpyPool()
     events: list[str] = []
+    pool = _SpyPool(events)
     kernel = Kernel(project_path=str(tmp_path))
     kernel.register(
         _RecordingEngine(MemoryEngine(project_path=tmp_path, connection_pool=pool), events)

@@ -19,6 +19,7 @@ from aios.core.engine import Engine
 from aios.core.profiler import Profiler, create_profiler
 from aios.core.run_result import RunResult, StageSummary, stage_to_summary
 from aios.core.task import Task
+from aios.storage.pool import ConnectionPool
 
 logger = logging.getLogger("aios.kernel")
 INIT_ORDER = [
@@ -50,6 +51,7 @@ class Kernel:
         self._errors: list[str] = []
         self._executor = None
         self._profiler: Profiler = create_profiler()
+        self._storage_pool: ConnectionPool | None = None
 
     @property
     def timings(self) -> dict:
@@ -62,6 +64,15 @@ class Kernel:
     def set_executor(self, executor) -> None:
         """Attach the single AgentExecutor execution boundary."""
         self._executor = executor
+
+    def set_storage_pool(self, pool: ConnectionPool) -> None:
+        """Attach the shared SQLite connection pool.
+
+        The pool owns the physical connection lifecycle: engines borrow
+        connections from it and :meth:`shutdown` closes the pool only
+        after every engine has released its stores.
+        """
+        self._storage_pool = pool
 
     def start(self, render_dashboard: bool = True, quiet: bool = False) -> None:
         logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -95,6 +106,8 @@ class Kernel:
                     engine.shutdown()
                 except Exception as exc:  # noqa: BLE001
                     logger.warning(" Error shutting down %s: %s", name, exc)
+        if self._storage_pool is not None:
+            self._storage_pool.close_all()
 
     def _initialize_engines(self) -> None:
         for name in INIT_ORDER:

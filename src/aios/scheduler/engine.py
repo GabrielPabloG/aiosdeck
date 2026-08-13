@@ -20,6 +20,7 @@ from aios.events.events import (
 )
 from aios.scheduler.models import KanbanBoard, KanbanCard, KanbanError, KanbanSubtask
 from aios.scheduler.store import KanbanStore
+from aios.storage.pool import ConnectionPool
 
 logger = logging.getLogger("aios.scheduler")
 
@@ -32,16 +33,21 @@ class KanbanEngine:
         project_path: Path | None = None,
         db_path: str | None = None,
         event_bus=None,
+        connection_pool: ConnectionPool | None = None,
     ) -> None:
         self._project_path = project_path or Path.cwd()
         self._project_id = self._project_path.resolve().as_posix()
         self._db_path = self._resolve_db_path(db_path)
         self._store: KanbanStore | None = None
         self._bus = event_bus
+        self._connection_pool = connection_pool
 
     def initialize(self) -> None:
         try:
-            self._store = KanbanStore(self._db_path, self._project_id)
+            connection = None
+            if self._connection_pool is not None:
+                connection = self._connection_pool.get(self._db_path)
+            self._store = KanbanStore(self._db_path, self._project_id, connection=connection)
             self._store.open()
         except KanbanError as exc:
             self._store = None

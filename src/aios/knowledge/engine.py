@@ -21,6 +21,7 @@ from aios.knowledge.store import SQLiteKnowledgeStore
 from aios.retrieval.providers import EmbeddingProvider
 from aios.retrieval.retrievers import KeywordRetriever, VectorRetriever
 from aios.retrieval.selector import ContextBudget, ContextSelector, SelectionResult
+from aios.storage.pool import ConnectionPool
 
 logger = logging.getLogger("aios.knowledge")
 
@@ -33,16 +34,23 @@ class KnowledgeEngine:
         project_path: Path | None = None,
         db_path: str | None = None,
         embedding_provider: EmbeddingProvider | None = None,
+        connection_pool: ConnectionPool | None = None,
     ) -> None:
         self._project_path = project_path or Path.cwd()
         self._project_id = self._project_path.resolve().as_posix()
         self._db_path = db_path or str(self._project_path / ".aios" / "memory.db")
         self._store: SQLiteKnowledgeStore | None = None
         self._embedding_provider = embedding_provider
+        self._connection_pool = connection_pool
 
     def initialize(self) -> None:
         try:
-            self._store = SQLiteKnowledgeStore(Path(self._db_path), self._project_id)
+            connection = None
+            if self._connection_pool is not None:
+                connection = self._connection_pool.get(self._db_path)
+            self._store = SQLiteKnowledgeStore(
+                Path(self._db_path), self._project_id, connection=connection
+            )
             self._store.open()
         except KnowledgeError as exc:
             self._store = None
