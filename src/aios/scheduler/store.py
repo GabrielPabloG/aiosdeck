@@ -6,6 +6,7 @@ from pathlib import Path
 
 from aios.scheduler.models import COLUMNS, KanbanBoard, KanbanCard, KanbanError, KanbanSubtask
 from aios.storage.sqlite import BaseSQLiteStore
+from aios.storage.threadsafe import ThreadSafeConnection
 
 logger = logging.getLogger("aios.scheduler.store")
 
@@ -45,8 +46,16 @@ CREATE TABLE IF NOT EXISTS kanban_subtasks (
 
 
 class KanbanStore(BaseSQLiteStore):
-    def __init__(self, db_path: Path, project_id: str) -> None:
-        super().__init__(db_path, project_id, SCHEMA, error_class=KanbanError)
+    def __init__(
+        self,
+        db_path: Path,
+        project_id: str,
+        *,
+        connection: ThreadSafeConnection | None = None,
+    ) -> None:
+        super().__init__(
+            db_path, project_id, SCHEMA, error_class=KanbanError, connection=connection
+        )
 
     def _post_open(self) -> None:
         if self._conn is None:

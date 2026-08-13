@@ -15,6 +15,7 @@ from aios.learning.models import (
     ObservationRecord,
 )
 from aios.storage.sqlite import BaseSQLiteStore
+from aios.storage.threadsafe import ThreadSafeConnection
 
 logger = logging.getLogger("aios.learning.store")
 
@@ -86,8 +87,16 @@ def _json_loads(text: str, default: Any = None) -> Any:
 
 
 class LearningStore(BaseSQLiteStore):
-    def __init__(self, db_path: Path, project_id: str) -> None:
-        super().__init__(db_path, project_id, SCHEMA, error_class=LearningStorageError)
+    def __init__(
+        self,
+        db_path: Path,
+        project_id: str,
+        *,
+        connection: ThreadSafeConnection | None = None,
+    ) -> None:
+        super().__init__(
+            db_path, project_id, SCHEMA, error_class=LearningStorageError, connection=connection
+        )
 
     def _execute(self, query: str, params: tuple = ()) -> sqlite3.Cursor | None:
         if self._conn:

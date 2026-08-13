@@ -11,6 +11,7 @@ from aios.memory.models import (
     StorageError,
 )
 from aios.storage.sqlite import BaseSQLiteStore
+from aios.storage.threadsafe import ThreadSafeConnection
 
 logger = logging.getLogger("aios.memory.store")
 
@@ -58,8 +59,16 @@ CREATE TABLE IF NOT EXISTS mistakes (
 
 
 class SQLiteStore(BaseSQLiteStore):
-    def __init__(self, db_path: Path, project_id: str) -> None:
-        super().__init__(db_path, project_id, SCHEMA, error_class=StorageError)
+    def __init__(
+        self,
+        db_path: Path,
+        project_id: str,
+        *,
+        connection: ThreadSafeConnection | None = None,
+    ) -> None:
+        super().__init__(
+            db_path, project_id, SCHEMA, error_class=StorageError, connection=connection
+        )
 
     def get_conventions(self) -> list[Convention]:
         rows = self._fetch_all(
