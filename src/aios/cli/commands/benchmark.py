@@ -115,7 +115,7 @@ def cmd_benchmark(raw_args: list[str], project_path: Path, kernel_factory: Calla
 def _new_report(opts: dict, project_path: Path) -> dict:
     config = ConfigLoader(project_path).load()
     provider = config.routing.default_provider
-    model = config.routing.default_model
+    model = _runtime_model(config, provider)
     if "/" in model:
         provider, _, model = model.partition("/")
     return {
@@ -136,6 +136,15 @@ def _new_report(opts: dict, project_path: Path) -> dict:
         "task_prompt_type": "restricted_ok" if opts["bare_task"] else "full_task",
         "results": [],
     }
+
+
+def _runtime_model(config, provider: str) -> str:
+    """Resolve the model represented by benchmark runtime metadata."""
+    if config._sources.get("routing.default_model"):
+        return config.routing.default_model
+    if provider == "ollama":
+        return config.model.ollama_model
+    return config.routing.default_model
 
 
 def _print_usage() -> None:
