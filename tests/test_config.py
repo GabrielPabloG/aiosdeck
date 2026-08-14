@@ -1,7 +1,12 @@
+import json
 import os
+from pathlib import Path
 
 from aios.config.loader import ConfigLoader
 from aios.config.schema import AiosDeckConfig
+
+
+PROJECT_ROOT = Path(__file__).parents[1]
 
 
 def test_defaults():
@@ -33,6 +38,42 @@ def test_project_name_from_manifest(tmp_path):
 
     assert config.project.name == "test-project"
     assert config.runtime.adapter == "opencode"
+
+
+def test_project_manifest_runtime_wins_over_ollama_adapter_env(tmp_path, monkeypatch):
+    (tmp_path / ".aios").mkdir()
+    (tmp_path / ".aios" / "project.yaml").write_text("runtime: opencode\n")
+    monkeypatch.setenv("AIOS_RUNTIME_ADAPTER", "ollama")
+
+    config = ConfigLoader(project_path=tmp_path).load()
+
+    assert config.runtime.adapter == "opencode"
+
+
+def test_project_manifest_sets_reproducible_routing_defaults(tmp_path):
+    (tmp_path / ".aios").mkdir()
+    (tmp_path / ".aios" / "project.yaml").write_text(
+        "runtime: opencode\nrouting:\n  default_provider: ollama\n  default_model: llama3.2\n"
+    )
+
+    config = ConfigLoader(project_path=tmp_path).load()
+
+    assert config.routing.default_provider == "ollama"
+    assert config.routing.default_model == "llama3.2"
+
+
+def test_project_opencode_config_registers_ollama_model():
+    config_path = PROJECT_ROOT / ".opencode" / "opencode.json"
+    config = json.loads(config_path.read_text())
+    provider = config["provider"]["ollama"]
+
+    assert provider["npm"] == "@ai-sdk/openai-compatible"
+    assert provider["options"]["baseURL"] == "http://localhost:11434/v1"
+    assert "llama3.2" in provider["models"]
+    assert not any(
+        secret_name in json.dumps(provider).lower()
+        for secret_name in ("api_key", "apikey", "token", "password")
+    )
 
 
 def test_env_boolean_coercion(monkeypatch):

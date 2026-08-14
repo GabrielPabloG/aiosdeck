@@ -113,5 +113,22 @@ def test_execute_never_passes_stdin():
         assert "stdout" not in kwargs
 
 
+def test_execute_passes_ollama_model_to_opencode():
+    adapter = OpenCodeAdapter()
+    adapter._resolved_command = "opencode"
+    adapter._opencode_installed = True
+
+    with patch("aios.runtime.opencode.subprocess.run") as mock_run:
+        mock_run.return_value.returncode = 0
+        mock_run.return_value.stdout = "done"
+        mock_run.return_value.stderr = ""
+
+        adapter.execute("test", skills=[], model="ollama/llama3.2")
+
+    args = mock_run.call_args.args[0]
+    assert args[args.index("-m") + 1] == "ollama/llama3.2"
+    assert args[-1] == "--auto"
+
+
 def test_developer_agent_capabilities_do_not_include_question():
     assert "question" not in DeveloperAgent.required_capabilities

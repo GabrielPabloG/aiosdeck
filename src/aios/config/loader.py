@@ -160,6 +160,13 @@ class ConfigLoader:
             config.project.skills = skills
             self._sources["project.skills"] = source
 
+        routing = data.get("routing")
+        if isinstance(routing, dict):
+            for key in ("default_provider", "default_model", "default_variant"):
+                value = routing.get(key)
+                if value is not None:
+                    self._set_field(config, f"routing.{key}", value, source)
+
         return config
 
     def _apply_detection(self, config: AiosDeckConfig) -> AiosDeckConfig:

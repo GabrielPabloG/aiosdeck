@@ -23,20 +23,21 @@ Every route request and decision travels through two dataclasses:
 
 ```python
 class RouteInput:
-    agent: str            # "planner" | "developer" | ...
-    task_type: str = "code"     # "plan" | "code" | "test" | "documentation" | ...
+    agent: str  # "planner" | "developer" | ...
+    task_type: str = "code"  # "plan" | "code" | "test" | "documentation" | ...
     complexity: str = "medium"  # "low" | "medium" | "high"
-    context_size: int = 0       # estimated prompt tokens
-    model_override: str = ""    # explicit model (skips rules, audited)
+    context_size: int = 0  # estimated prompt tokens
+    model_override: str = ""  # explicit model (skips rules, audited)
+
 
 class RouteDecision:
     provider: str
-    model: str            # "provider/model" (opencode -m format)
-    variant: str = ""     # --variant
-    reason: str           # "policy:0" | "heuristic:default" | "explicit_override"
+    model: str  # "provider/model" (opencode -m format)
+    variant: str = ""  # --variant
+    reason: str  # "policy:0" | "heuristic:default" | "explicit_override"
     estimated_cost: float = 0.0
     fallback_chain: list[dict]  # [{"provider", "model", "variant"}, ...]
-    source: str = "router"      # "router" | "override"
+    source: str = "router"  # "router" | "override"
 ```
 
 `ModelRouter` is a `Protocol` with a single method `route(input) -> RouteDecision`.
@@ -89,6 +90,10 @@ Rules match on `agent` + `complexity` and honor `context_limits`
 `cost_cap`: if a matched model's `estimated_cost` exceeds the cap, the router
 re-routes to the cheapest fallback provider that fits the budget; if none fits,
 it raises a `Cost cap exceeded` error instead of silently overspending.
+
+The project manifest may set `routing.default_provider` and
+`routing.default_model` for reproducible project-local routing. This is
+separate from OpenCode provider registration in `.opencode/opencode.json`.
 
 ### Pipeline
 
