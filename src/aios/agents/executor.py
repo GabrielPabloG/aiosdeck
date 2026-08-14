@@ -89,15 +89,18 @@ def make_request(  # noqa: PLR0913 - the request is the full run contract
 
 
 class AgentExecutor:
-    """Single execution boundary for every agent run.  Validates the task,
-    enforces capabilities, drives the lifecycle state machine, applies
-    timeout/retry/cancellation, and publishes ``agent.*`` events.  Agents
-    never hold or call the executor, so recursion is structurally impossible."""
+    """Single execution boundary for every agent run.
+
+    A persistent four-worker pool backs all invocations and remains usable
+    after a timed-out call. Call :meth:`shutdown` when the owning lifecycle
+    ends. Calls are not promised to be thread-safe when made concurrently.
+    """
 
     def __init__(self, event_bus=None, capabilities_enforcer=None) -> None:
         self._bus = event_bus
         self._enforcer = capabilities_enforcer
         self._cancelled = False
+        self._pool = ThreadPoolExecutor(max_workers=4, thread_name_prefix="aios-agent")
         self.executor_id = str(uuid.uuid4())
 
     def set_event_bus(self, event_bus) -> None:
@@ -107,6 +110,10 @@ class AgentExecutor:
     def cancel(self) -> None:
         """Request cancellation. Best-effort: running work is not hard-killed."""
         self._cancelled = True
+
+    def shutdown(self) -> None:
+        """Release the persistent worker pool. Safe to call more than once."""
+        self._pool.shutdown(wait=True, cancel_futures=True)
 
     def execute(self, request: ExecutionRequest) -> ExecutionOutcome:  # noqa: PLR0911, PLR0915
         self._cancelled = False
@@ -370,17 +377,12 @@ class AgentExecutor:
     # ------------------------------------------------------------------
 
     def _invoke(self, request: ExecutionRequest, timeout: float | None):
-        if timeout is None:
-            return request.agent.execute(request.task, request.context)
-        pool = ThreadPoolExecutor(max_workers=1)
+        future = self._pool.submit(request.agent.execute, request.task, request.context)
         try:
-            future = pool.submit(request.agent.execute, request.task, request.context)
             return future.result(timeout=timeout)
         except TimeoutError:
             future.cancel()
             raise
-        finally:
-            pool.shutdown(wait=False, cancel_futures=True)
 
     @staticmethod
     def _attach_intent(request: ExecutionRequest) -> None:

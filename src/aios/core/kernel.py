@@ -99,6 +99,11 @@ class Kernel:
             context.set_profiler(self._profiler)
 
     def shutdown(self) -> None:
+        if self._executor is not None:
+            try:
+                self._executor.shutdown()
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(" Error shutting down agent executor: %s", exc)
         for name in reversed(INIT_ORDER):
             engine = self._engines.get(name)
             if engine:
