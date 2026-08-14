@@ -6,6 +6,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from aios.routing.models import RouteInput
+from aios.runtime.diagnostics import RuntimeDiagnostic
 from aios.runtime.opencode import OpenCodeAdapter
 
 if TYPE_CHECKING:
@@ -26,10 +27,13 @@ class RuntimeEngine:
         adapter: OpenCodeAdapter | None = None,
         router: ModelRouter | None = None,
         bus: object | None = None,
+        config: object | None = None,
     ) -> None:
         self.adapter = adapter or OpenCodeAdapter()
         self._router = router
         self._bus = bus
+        self._config = config
+        self.runtime_diagnostics: RuntimeDiagnostic | None = None
 
     @property
     def router(self) -> ModelRouter | None:
@@ -40,6 +44,28 @@ class RuntimeEngine:
 
     def health_check(self) -> bool:
         return self.adapter.health_check()
+
+    def diagnose(self) -> RuntimeDiagnostic | None:
+        """Run adapter-specific deep diagnostics without changing health_check()."""
+        diagnose = getattr(self.adapter, "diagnose", None)
+        if diagnose is None:
+            return None
+        provider = ""
+        model = ""
+        source = "default"
+        if self._router is not None:
+            decision = self._router.route(RouteInput(agent=""))
+            provider = decision.provider
+            model = decision.model
+            route_sources = getattr(self._config, "_sources", {})
+            source = route_sources.get("routing.default_model", "default")
+        elif self._config is not None:
+            model_config = getattr(self._config, "model", None)
+            if model_config is not None:
+                provider = getattr(model_config, "default", "")
+                model = f"{provider}/{getattr(model_config, 'ollama_model', '')}"
+                source = getattr(self._config, "_sources", {}).get("model.default", "default")
+        return diagnose(provider=provider, model=model, source=source)
 
     def shutdown(self) -> None:
         self.adapter.shutdown()

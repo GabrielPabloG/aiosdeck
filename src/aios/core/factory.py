@@ -90,7 +90,7 @@ def create_kernel(project_path: Path) -> Kernel:
         router = RuleBasedRouter(routing_config)
 
     adapter = OllamaAdapter() if config.runtime.adapter == "ollama" else OpenCodeAdapter()
-    runtime = RuntimeEngine(adapter=adapter, router=router)
+    runtime = RuntimeEngine(adapter=adapter, router=router, config=config)
     kernel.register(runtime)
 
     assembler = _build_skill_assembler(project_path, kernel)

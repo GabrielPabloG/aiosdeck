@@ -25,7 +25,7 @@ Never directly:
 opencode  # Not allowed
 ```
 
-The Runtime Adapter (`runtime/opencode.py`) handles this. If ai-jail is not installed, a warning is logged and OpenCode is invoked directly — but this is degraded mode, not the intended path.
+The Runtime Adapter (`runtime/opencode.py`) handles this. If ai-jail is not installed, a warning is logged and OpenCode execution is refused. There is no unsandboxed degraded mode.
 
 ### Skill Loading
 

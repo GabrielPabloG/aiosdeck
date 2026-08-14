@@ -105,7 +105,7 @@ If an integration is unavailable, the system continues without it:
 |----------------|--------|
 | ProjDesk | No workspace automation. Project path must be specified manually. |
 | OpenCode | **Critical**. Cannot execute agents. |
-| ai-jail | Agents run without sandbox. Warning logged. |
+| ai-jail | Runtime execution is disabled when the sandbox is unavailable. |
 | Ollama | Cloud LLM fallback (if configured). Otherwise, **critical**. |
 | Docker | No containerized services. Development services run manually. |
 | VS Code | No IDE integration. File changes are filesystem-only. |
