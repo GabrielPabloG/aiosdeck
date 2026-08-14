@@ -46,6 +46,10 @@ from aios.telemetry.benchmark import (
     skipped_entry,
     summarize_runs,
 )
+from aios.telemetry.compare import (
+    DEFAULT_THRESHOLD_PCT,
+    compare_reports,
+)
 from aios.telemetry.schema import (
     GROUPS,
     SCHEMA_VERSION,
@@ -55,7 +59,7 @@ from aios.telemetry.schema import (
 )
 
 _ALL_TARGETS = ("dashboard", "doctor", "skills", "memory", "plan", "backlog")
-_AVAILABLE = ("all", "startup", "phases", "validate", *_ALL_TARGETS)
+_AVAILABLE = ("all", "startup", "phases", "validate", "compare", *_ALL_TARGETS)
 
 # name -> (command function, fixed args, requires agent runtime, timeout_sec)
 _COMMAND_ARGS: dict[str, tuple[Callable, list[str], bool, float | None]] = {
@@ -71,6 +75,9 @@ _COMMAND_ARGS: dict[str, tuple[Callable, list[str], bool, float | None]] = {
 def cmd_benchmark(raw_args: list[str], project_path: Path, kernel_factory: Callable) -> None:
     if raw_args and raw_args[0] == "validate":
         _cmd_validate(raw_args[1:])
+        return
+    if raw_args and raw_args[0] == "compare":
+        _cmd_compare(raw_args[1:], project_path, kernel_factory)
         return
 
     opts = _parse_args(raw_args)
@@ -147,6 +154,12 @@ def _print_usage() -> None:
     print()
     print("Validate:")
     print("  aios benchmark validate <file>   Check a report against the schema (exit 0/1)")
+    print()
+    print("Compare:")
+    print("  aios benchmark compare <base> [<cur>]   Compare a baseline report")
+    print("    one file      measure current (live full) then compare")
+    print("    two files     deterministic file-to-file comparison")
+    print("    --skip-agents live mode: Core phases only (skips plan/agent_exec)")
 
 
 def _parse_args(raw_args: list[str]) -> dict:  # noqa: PLR0912
@@ -212,6 +225,145 @@ def _cmd_validate(args: list[str]) -> None:
         sys.exit(1)
     print(f"Valid benchmark report: {args[0]}")
     sys.exit(0)
+
+
+def _cmd_compare(args: list[str], project_path: Path, kernel_factory: Callable) -> None:
+    opts = _parse_compare_args(args)
+    if opts["help"]:
+        _print_compare_usage()
+        sys.exit(0)
+    if not opts["files"]:
+        _error("compare requires a baseline file: aios benchmark compare <baseline> [<current>]")
+
+    try:
+        baseline = load_report(opts["files"][0])
+    except Exception as exc:  # noqa: BLE001 - any read/parse failure is a bad report
+        _error(f"cannot read baseline report: {exc}")
+
+    baseline_errors = validate_report(baseline)
+    if baseline_errors:
+        _error(f"invalid baseline report: {baseline_errors[0]}")
+
+    live_run = len(opts["files"]) == 1
+    if live_run:
+        measure_opts = {
+            "warmup": 1,
+            "repeat": 5,
+            "skip_agents": opts["skip_agents"],
+            "bare_task": False,
+            "profile": False,
+        }
+        current = _new_report(measure_opts, project_path)
+        current["results"].extend(_measure_phases(project_path, kernel_factory, measure_opts))
+        current["output"] = "(live run)"
+    else:
+        try:
+            current = load_report(opts["files"][1])
+        except Exception as exc:  # noqa: BLE001
+            _error(f"cannot read current report: {exc}")
+        current_errors = validate_report(current)
+        if current_errors:
+            _error(f"invalid current report: {current_errors[0]}")
+
+    compare = compare_reports(baseline, current, threshold=opts["threshold"], live=live_run)
+    if live_run:
+        compare["compare"]["baseline"]["file"] = opts["files"][0]
+
+    if opts["json"]:
+        print(json_dumps(compare))
+    else:
+        _render_compare(compare, live_run=live_run)
+    sys.exit(compare["compare"]["exit_code"])
+
+
+def _parse_compare_args(args: list[str]) -> dict:
+    opts = {
+        "help": False,
+        "json": False,
+        "threshold": DEFAULT_THRESHOLD_PCT,
+        "skip_agents": False,
+        "files": [],
+    }
+    i = 0
+    while i < len(args):
+        arg = args[i]
+        if arg in ("--help", "-h"):
+            opts["help"] = True
+        elif arg == "--json":
+            opts["json"] = True
+        elif arg == "--skip-agents":
+            opts["skip_agents"] = True
+        elif arg == "--threshold":
+            i += 1
+            if i < len(args):
+                opts["threshold"] = float(args[i])
+        elif arg.startswith("-"):
+            _error(f"unknown option: {arg}")
+        else:
+            opts["files"].append(arg)
+        i += 1
+    return opts
+
+
+def _print_compare_usage() -> None:
+    print("Usage: aios benchmark compare <baseline.json> [<current.json>] [options]")
+    print()
+    print("Compare a baseline report against a current report.")
+    print("  compare baseline.json               measure current (live full run) then compare")
+    print("  compare baseline.json cur.json      deterministic file-to-file comparison")
+    print()
+    print("Options:")
+    print("  -h, --help       Show this help and exit")
+    print("  --json           Print the comparison report as JSON")
+    print("  --threshold PCT  Regression gate on p50 (default: 10)")
+    print("  --skip-agents    live mode: benchmark Core phases only (skips plan/agent_exec)")
+    print()
+    print("Exit codes: 0 = ok, 1 = Core regression, 2 = environment/runtime divergence")
+    print("(2 > 1 > 0; a regression in an incompatible environment is never real)")
+
+
+def _render_compare(report: dict, *, live_run: bool) -> None:
+    summary = report["compare"]
+    mode = "live (measured)" if live_run else "file-to-file"
+    print(f"Compare mode: {mode} — threshold {summary['threshold_pct']:g}%")
+    print(
+        f"  baseline v{summary['baseline']['aiosdeck_version']} "
+        f"({summary['baseline']['git_commit']}) vs current "
+        f"v{summary['current']['aiosdeck_version']} ({summary['current']['git_commit']})"
+    )
+    if summary["env_divergence"]:
+        print(f"  environment divergence: {', '.join(summary['env_divergence'])}")
+    if summary["runtime_divergence"]:
+        print(f"  runtime divergence: {', '.join(summary['runtime_divergence'])}")
+    for group in GROUPS:
+        entries = [r for r in report["results"] if r.get("group") == group]
+        if not entries:
+            continue
+        print(f"\n{group}:")
+        for entry in entries:
+            _render_compare_entry(entry)
+    if summary["core_regressions"]:
+        print(f"\nCore regressions ({len(summary['core_regressions'])}):")
+        for item in summary["core_regressions"]:
+            print(f"  {item['group']}/{item['target']} +{item['delta_pct']:+.1f}%")
+    if summary["runtime_warnings"]:
+        print(f"\nRuntime-dependent warnings ({len(summary['runtime_warnings'])}):")
+        for item in summary["runtime_warnings"]:
+            print(f"  {item['group']}/{item['target']} +{item['delta_pct']:+.1f}% (corroborative)")
+    print(f"\nExit code: {summary['exit_code']}")
+
+
+def _render_compare_entry(entry: dict) -> None:
+    label = f"  {entry['target']:<16} [{entry['category']}]"
+    if entry.get("skipped"):
+        print(f"{label} skipped ({entry.get('reason')})")
+        return
+    verdict = entry["verdict"]
+    print(
+        f"{label} {verdict:<10} "
+        f"p50 {entry['baseline_p50_ms']:.2f} -> {entry['current_p50_ms']:.2f} "
+        f"({entry['delta_pct']:+.1f}%)"
+    )
 
 
 def _measure_phases(project_path, kernel_factory, opts: dict) -> list[dict]:

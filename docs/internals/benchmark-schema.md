@@ -226,3 +226,45 @@ schema:
 
 Unlike hyperfine, AiosDeck measures CPU time and peak memory per run, in the
 same process that produced the report, with no external binary dependency.
+
+## Comparison envelope (`aios benchmark compare`)
+
+`aios benchmark compare` consumes existing reports (no new coleta/schema) and
+returns a **valid benchmark report** whose envelope is the current report with:
+
+- `results[]` reusing each target's original `group` (GROUPS intact) and the
+  current runs/summaries, plus result-level extras allowed by the validator:
+  `category`, `verdict`, `baseline_p50_ms`, `current_p50_ms`, `delta_pct`.
+  Missing targets become `skipped: true` + `reason`.
+- A top-level `compare` key (the validator ignores unknown top-level keys):
+
+```json
+{
+  "compare": {
+    "baseline":    { "aiosdeck_version": "...", "git_commit": "..." },
+    "current":     { "aiosdeck_version": "...", "git_commit": "..." },
+    "threshold_pct": 10.0,
+    "live_run":      true | false,
+    "exit_code":     0 | 1 | 2,
+    "env_divergence":      ["cpu_count", "distro"],
+    "runtime_divergence":  ["model"],
+    "core_regressions":    [{"group": "phases", "target": "startup", "delta_pct": 30.0}],
+    "runtime_warnings":    [],
+    "skipped":             []
+  }
+}
+```
+
+Categories are fixed (GROUPS/METRICS untouched): Core = everything not in
+`RUNTIME_DEPENDENT`; Runtime-dependent = `(phases,plan)`, `(phases,agent_exec)`,
+`(commands,plan)`, `(commands,backlog)`. Match by `(group, target)` via
+`summaries.wall_time_ms`; the gate is p50 against `--threshold` (default 10%).
+
+Exit codes (precedence `2 > 1 > 0`): `0` no Core regression and compatible
+environment; `1` Core regression above threshold; `2` environment/runtime
+divergence (`system_info` cpu_count/cpu/distro/kernel/python and/or
+`runtime_info` provider/model/host). A Core regression measured in an
+incompatible environment still exits `2` — it is never reported as real.
+
+The pure logic lives in `aios.telemetry.compare` (no CLI imports); the CLI
+(`benchmark.py`) only wires files or a live run into it.
