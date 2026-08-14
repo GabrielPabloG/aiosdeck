@@ -178,11 +178,21 @@ class Kernel:
             logger.info(" Optional not installed: %s", ", ".join(missing))
 
     def status(self) -> dict:
-        return {
+        status = {
             "project": str(self.project_path),
             "engines": dict(self._engine_status),
             "errors": list(self._errors),
         }
+        runtime = self._engines.get("runtime")
+        diagnostics = getattr(runtime, "runtime_diagnostics", None) if runtime else None
+        if diagnostics is not None:
+            status["runtime_diagnostics"] = diagnostics.to_dict()
+        return status
+
+    def diagnose_runtime(self) -> None:
+        runtime = self._engines.get("runtime")
+        if runtime is not None and hasattr(runtime, "diagnose"):
+            runtime.runtime_diagnostics = runtime.diagnose()
 
     def get_context(self):
         engine = self._engines.get("context")

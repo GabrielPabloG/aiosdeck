@@ -48,6 +48,8 @@ def cmd_doctor(raw_args: list[str], project_path: Path, kernel_factory: Callable
 
     kernel = kernel_factory(project_path)
     kernel.start()
+    if hasattr(kernel, "diagnose_runtime"):
+        kernel.diagnose_runtime()
 
     status = kernel.status()
 
@@ -81,6 +83,17 @@ def cmd_doctor(raw_args: list[str], project_path: Path, kernel_factory: Callable
             )
         )
         logger.info(render_row("ai-jail", "installed" if context.runtime.ai_jail else "not found"))
+
+    diagnostics = status.get("runtime_diagnostics")
+    if diagnostics:
+        logger.info(render_section("Runtime Diagnostics"))
+        logger.info(render_row("Status", diagnostics["status"]))
+        logger.info(render_row("Code", diagnostics["code"]))
+        logger.info(render_row("Provider", diagnostics["provider"] or "not configured"))
+        logger.info(render_row("Model", diagnostics["model"] or "not configured"))
+        logger.info(render_row("Source", diagnostics["source"]))
+        for suggestion in diagnostics["suggestions"]:
+            logger.info(render_row("Suggestion", suggestion))
 
     errors = status.get("errors", [])
     if errors:

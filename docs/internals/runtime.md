@@ -81,14 +81,14 @@ ai-jail opencode <prompt>
 opencode <prompt>
 ```
 
-The adapter detects whether ai-jail is installed. If not, it logs a warning and falls back to direct invocation — but this is a degraded mode, not the intended path.
+The adapter detects whether ai-jail is installed. If it is missing, execution is disabled rather than falling back to an unsandboxed process.
 
 ```python
 async def _resolve_runtime_command(self) -> list[str]:
     if self._is_installed("ai-jail"):
         return ["ai-jail", "opencode"]
-    logging.warning("ai-jail not found. Running OpenCode without sandbox.")
-    return ["opencode"]
+    logging.warning("ai-jail not found. OpenCode execution is disabled.")
+    return ["ai-jail", "opencode", "(not found)"]
 ```
 
 ### Skill Loading
@@ -182,7 +182,7 @@ runtime:
 - **Swappable**: Changing the runtime requires only a new adapter implementation.
 - **Safe by default**: Always runs through ai-jail. Sandbox escape requires explicit configuration.
 - **Minimal interface**: Three methods. Easy to implement for new runtimes.
-- **Graceful degradation**: Works without ai-jail (with warning).
+- **Explicit failure**: Refuses to run without ai-jail instead of weakening the security boundary.
 
 ### Negative
 
@@ -201,10 +201,10 @@ runtime:
 - [x] Implement `runtime/opencode.py` — OpenCodeAdapter implementation
 - [x] `_resolve_runtime_command()` must detect ai-jail and return correct command
 - [x] Prompt construction must inject context from Context Packet
-- [x] Health check must verify both OpenCode and ai-jail availability
+- [x] Deep doctor diagnostic verifies OpenCode and ai-jail availability
 - [x] Adapter must log every invocation with timestamp and result for the Audit Trail
 - [x] Test: OpenCodeAdapter.execute() returns a Result
-- [x] Test: adapter detects missing ai-jail and falls back with warning
+- [x] Test: adapter detects missing ai-jail and refuses unsandboxed execution
 - [x] Test: health check returns True when OpenCode is installed
 - [x] Test: prompt includes task description, context, and instructions
 - [x] Inject OPENCODE_PERMISSION with per-agent tool lockdown (v0.6.1)

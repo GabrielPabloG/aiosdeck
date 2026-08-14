@@ -17,14 +17,14 @@ The Runtime Adapter always invokes OpenCode through ai-jail:
 ai-jail opencode
 ```
 
-If ai-jail is not installed, the adapter logs a warning and invokes OpenCode directly:
+If ai-jail is not installed, the adapter logs a warning and refuses to invoke OpenCode:
 
 ```python
 async def _resolve_runtime_command(self) -> list[str]:
     if self._is_installed("ai-jail"):
         return ["ai-jail", "opencode"]
-    logging.warning("ai-jail not found. Running OpenCode without sandbox.")
-    return ["opencode"]
+    logging.warning("ai-jail not found. OpenCode execution is disabled.")
+    raise RuntimeError("ai-jail is required")
 ```
 
 ### Sandbox Capabilities
@@ -70,27 +70,23 @@ class AiJailAdapter:
         return result.returncode == 0
 ```
 
-### Degraded Mode
+### Missing Sandbox
 
-Without ai-jail, agents run directly. The Security Manager still enforces capability checks, but there is no OS-level isolation. This is acceptable for:
-- Development (trusted code on a developer's machine)
-- Environments where ai-jail is being installed
-
-For production or untrusted code, ai-jail is required.
+Without ai-jail, runtime execution is unavailable. The Security Manager remains an application-level control, but it does not replace OS-level isolation.
 
 ## Consequences
 
 - **Defense in depth**: AiosDeck + ai-jail = application + OS security layers
 - **Transparent to agents**: Agents are unaware of ai-jail. The Runtime Adapter handles it.
-- **Optional but recommended**: System functions without ai-jail, but with reduced security.
+- **Fail closed**: System does not execute runtime processes without ai-jail.
 
 ## Implementation Notes
 
 - [ ] Runtime Adapter must detect ai-jail: `which ai-jail`
-- [ ] Runtime command resolution: ai-jail present → `ai-jail opencode`, absent → `opencode`
-- [ ] Health check: verify ai-jail responds to `--version`
-- [ ] Warning log: "ai-jail not found. Running without sandbox."
+- [ ] Runtime command resolution: ai-jail present → `ai-jail opencode`, absent → execution disabled
+- [ ] Deep doctor diagnostic: verify ai-jail and the provider from inside the sandbox
+- [ ] Warning log: "ai-jail not found. OpenCode execution is disabled."
 - [ ] Policy file location: ai-jail reads policies from its own config directory
 - [ ] Test: ai-jail installed → command is `ai-jail opencode`
-- [ ] Test: ai-jail not installed → warning logged, fallback to direct OpenCode
+- [ ] Test: ai-jail not installed → warning logged, direct OpenCode is rejected
 - [ ] Test: ai-jail healthy → health check returns True
