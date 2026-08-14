@@ -43,7 +43,36 @@ aios benchmark validate .aios/benchmarks/v1.0.0-bare.json
 Runtime-dependent benchmarks require a fixed local Ollama model configuration.
 Comparações só são válidas com o mesmo modelo e ambiente (`system_info`).
 
-## Baseline v1.0.0
+## Baseline v1.1.0 (ativa)
+
+- **Arquivo**: `.aios/benchmarks/v1.1.0.json` (snapshot em `history/v1.1.0.json`).
+- **Versão AiosDeck**: 1.1.0 (`git_commit` registrado no report).
+- **Runtime**: Ollama local, modelo **fixado** `llama3.2`, host `http://localhost:11434`.
+- **Data**: `timestamp` registrado no report.
+- **Mode**: `full` (`benchmark_mode: "full"`, `repeat: 5`, `warmup: 1`).
+
+### Reprodução
+
+```bash
+export AIOS_OLLAMA_MODEL=llama3.2          # modelo fixado da baseline
+aios benchmark all --output .aios/benchmarks/v1.1.0.json
+aios benchmark validate .aios/benchmarks/v1.1.0.json
+```
+
+p50 (ms) vs v1.0.0 (sem regressão Core, compare exit 0):
+
+| Target    | v1.0.0 | v1.1.0 | Δ      |
+| --------- | ------ | ------ | ------ |
+| dashboard | 65.62  | 68.0   | +3.6%  |
+| doctor    | 66.00  | 61.0   | -7.5%  |
+| skills    | 65.81  | 64.6   | -1.8%  |
+| memory    | 65.48  | 65.9   | +0.7%  |
+| plan*     | 1152.68| 1135.1 | -1.5%  |
+| backlog*  | 67.63  | 73.8   | +9.1%  |
+
+\* runtime-dependent (inclui inferência do modelo local).
+
+## Baseline v1.0.0 (histórica)
 
 - **Arquivo**: `.aios/benchmarks/v1.0.0.json` (snapshot em `history/v1.0.0.json`).
 - **Versão AiosDeck**: 1.0.0 (`git_commit` registrado no report).
