@@ -179,7 +179,11 @@ class TestCompareThreshold:
 
 class TestCompareMissing:
     def test_compare_missing_target_skipped(self):
-        baseline = _make_report(_core_results(100.0) + _runtime_results(100.0) + [_result("commands", "dashboard", [100.0])])
+        baseline = _make_report(
+            _core_results(100.0)
+            + _runtime_results(100.0)
+            + [_result("commands", "dashboard", [100.0])]
+        )
         current = _make_report(_core_results(100.0) + _runtime_results(100.0))
         report = compare_reports(baseline, current)
         assert report["compare"]["exit_code"] == 0
