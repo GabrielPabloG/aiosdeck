@@ -82,3 +82,50 @@ Comparações só são válidas com o mesmo modelo e ambiente (`system_info`).
 modelo local. Variação nesses cenários pode ser variação de modelo/CPU — não
 é, por si só, regressão do AiosDeck. Ao usar `aios benchmark compare`, desconfie
 de variação de ambiente antes de interpretar como regressão.
+
+## Comparação (aios benchmark compare)
+
+`aios benchmark compare` confronta uma baseline contra um report atual e
+classifica cada `(group, target)` em **Core** (commitável) ou
+**Runtime-dependent** (corroborativo). Match por `(group, target)` via
+`summaries.wall_time_ms` (gate em p50 vs `--threshold`, default 10%).
+
+```bash
+# forma determinística (2 arquivos, sem modelo/rede — recomendada para CI)
+aios benchmark compare baseline.json current.json
+
+# forma live (1 arquivo): mede o benchmark atual (phases completo) e compara
+aios benchmark compare baseline.json
+aios benchmark compare baseline.json --skip-agents   # apenas fases Core
+```
+
+Categorias:
+
+| Categoria         | Match                                                          |
+| ----------------- | -------------------------------------------------------------- |
+| Core              | todo o resto (startup, kernel_init, context_load, skill_load, telemetry_flush, dashboard, doctor, skills, memory) |
+| Runtime-dependent | `(phases, plan)`, `(phases, agent_exec)`, `(commands, plan)`, `(commands, backlog)` |
+
+Exit codes (precedência `2 > 1 > 0`):
+
+- `0` — sem regressão Core, ambiente compatível;
+- `1` — regressão Core acima do threshold;
+- `2` — divergência de ambiente/runtime (`system_info` cpu_count/cpu/distro/
+  kernel/python e/ou `runtime_info` provider/model/host).
+
+Regras:
+
+- Alvo ausente num dos lados → `skipped` (nunca regressão).
+- Runtime-dependent regredido → `warning` apenas, nunca falha Core.
+- Divergência de ambiente/runtime dispara `exit 2` **mesmo com regressão Core**:
+  uma regressão medida em ambiente incompatível nunca é reportada como real
+  (limitação da decisão 34.1 — `runtime_info` é config-reportada, não o modelo
+  efetivo do router).
+- Live run fica marcado no report (`compare.live_run: true`) e é corroborativo
+  apenas (depende de runtime). A forma de 2 arquivos é a determinística para
+  CI/reprodutibilidade.
+
+O output `--json` é um report de benchmark válido: `results[]` reusa o group
+original de cada target com os runs atuais, mais extras em nível de result
+(`baseline_p50_ms`, `current_p50_ms`, `delta_pct`, `verdict`, `category`) e uma
+chave top-level `compare` com o resumo e o `exit_code`.
