@@ -63,6 +63,7 @@ from aios.workflow.models import (
 )
 
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
+_GATE_TIMEOUT_SECONDS = 30.0
 
 logger = logging.getLogger("aios.workflow")
 
@@ -151,13 +152,38 @@ class WorkflowEngine:
             optional=self._optional_agents,
         )
 
-    def execute(  # noqa: PLR0911, PLR0912, PLR0915 - linear pipeline with per-stage handling
+    def execute(
         self,
         task: Task,
         context,
         on_stage: Callable[[WorkflowStage], None] | None = None,
         commit_factory: Callable[[_WorkflowContext], str] | None = None,
         create_branch: bool = True,
+    ) -> WorkflowResult:
+        """Run the synchronous workflow, sharing one loop across quality gates."""
+        gates = self._gates()
+        gate_loop = asyncio.new_event_loop() if gates else None
+        try:
+            return self._execute(
+                task,
+                context,
+                on_stage,
+                commit_factory,
+                create_branch,
+                gate_loop,
+            )
+        finally:
+            if gate_loop is not None:
+                self._close_gate_loop(gate_loop)
+
+    def _execute(  # noqa: PLR0911, PLR0912, PLR0913, PLR0915, PLR0917 - linear pipeline
+        self,
+        task: Task,
+        context,
+        on_stage: Callable[[WorkflowStage], None] | None = None,
+        commit_factory: Callable[[_WorkflowContext], str] | None = None,
+        create_branch: bool = True,
+        gate_loop: asyncio.AbstractEventLoop | None = None,
     ) -> WorkflowResult:
         notify = on_stage or (lambda stage: None)
         cf = commit_factory or self._commit_factory
@@ -219,7 +245,7 @@ class WorkflowEngine:
         notify(ctx.stages[-1])
 
         # 4. Developer — one stage per subtask
-        early = self._run_developer_phase(ctx, agents, subtasks, context, gates, notify)
+        early = self._run_developer_phase(ctx, agents, subtasks, context, gates, notify, gate_loop)
         if early is not None:
             return early
 
@@ -243,6 +269,7 @@ class WorkflowEngine:
             "security_gate",
             GateInput(project_path=self._project_path),
             notify,
+            gate_loop,
         ):
             return self._finish(ctx)
 
@@ -276,6 +303,7 @@ class WorkflowEngine:
             "test_gate",
             GateInput(test_report=ctx.test_report),
             notify,
+            gate_loop,
         ):
             return self._finish(ctx)
 
@@ -310,6 +338,7 @@ class WorkflowEngine:
             "documentation_gate",
             GateInput(project_path=self._project_path),
             notify,
+            gate_loop,
         ):
             return self._finish(ctx)
 
@@ -324,6 +353,7 @@ class WorkflowEngine:
                 "release_gate",
                 GateInput(project_path=self._project_path),
                 notify,
+                gate_loop,
             )
         ):
             return self._finish(ctx)
@@ -410,6 +440,7 @@ class WorkflowEngine:
         context,
         gates: dict,
         notify,
+        gate_loop: asyncio.AbstractEventLoop | None,
     ) -> WorkflowResult | None:
         """Per-subtask developer loop followed by the code gate.
 
@@ -458,7 +489,12 @@ class WorkflowEngine:
             notify(ctx.stages[-1])
 
         if gates and not self._run_gate(
-            ctx, gates, "code_gate", GateInput(project_path=self._project_path), notify
+            ctx,
+            gates,
+            "code_gate",
+            GateInput(project_path=self._project_path),
+            notify,
+            gate_loop,
         ):
             return self._finish(ctx)
         return None
@@ -534,13 +570,14 @@ class WorkflowEngine:
             "release_gate": ReleaseGate(),
         }
 
-    def _run_gate(
+    def _run_gate(  # noqa: PLR0913, PLR0917 - gate context and lifecycle are explicit
         self,
         ctx: _WorkflowContext,
         gates: dict[str, QualityGate],
         name: str,
         gate_input: GateInput,
         notify: Callable[[WorkflowStage], None],
+        gate_loop: asyncio.AbstractEventLoop,
     ) -> bool:
         """Run one gate and apply the policy. Returns False to stop the run."""
         gate = gates.get(name)
@@ -554,7 +591,15 @@ class WorkflowEngine:
         self._publish_quality(ctx, QUALITY_GATE_STARTED, {"gate": name})
         started = time.monotonic()
         try:
-            result = asyncio.run(gate.run(gate_input))
+            result = gate_loop.run_until_complete(
+                asyncio.wait_for(gate.run(gate_input), timeout=_GATE_TIMEOUT_SECONDS)
+            )
+        except TimeoutError:
+            result = GateResult(
+                status=GateStatus.ERROR,
+                reason=f"gate timed out after {_GATE_TIMEOUT_SECONDS:g}s",
+                metadata={"timeout_seconds": _GATE_TIMEOUT_SECONDS},
+            )
         except Exception as exc:  # noqa: BLE001 - a crashed gate must not crash the workflow
             result = GateResult(status=GateStatus.ERROR, reason=f"gate crashed: {exc}")
         duration_ms = (time.monotonic() - started) * 1000
@@ -598,6 +643,21 @@ class WorkflowEngine:
         ctx.stages.append(stage)
         notify(stage)
         return True
+
+    @staticmethod
+    def _close_gate_loop(loop: asyncio.AbstractEventLoop) -> None:
+        """Cancel leaked gate tasks before closing the per-workflow loop."""
+        if loop.is_closed():
+            return
+        try:
+            pending = asyncio.all_tasks(loop)
+            for task in pending:
+                task.cancel()
+            if pending:
+                loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+            loop.run_until_complete(loop.shutdown_asyncgens())
+        finally:
+            loop.close()
 
     def _resolve_gate(self, name: str, result: GateResult) -> DecisionResult:
         config = self._quality_config
