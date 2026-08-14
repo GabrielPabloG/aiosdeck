@@ -5,6 +5,8 @@ QualityConfig and deterministic fake gates so the full gate chain
 (block / advance / skip / override) can be exercised without network or LLM.
 """
 
+import asyncio
+
 from tests.integration.quality_helpers import (
     FakeGate,
     GATE_ORDER,
@@ -17,6 +19,27 @@ from tests.integration.quality_helpers import (
 )
 
 from aios.quality.contracts import Severity
+
+
+class LoopRecordingGate:
+    def __init__(self, result, loops):
+        self.name = "loop-recording-gate"
+        self._result = result
+        self._loops = loops
+
+    def is_applicable(self, gate_input):
+        return True
+
+    async def run(self, gate_input):
+        self._loops.append(asyncio.get_running_loop())
+        return self._result
+
+
+class BlockingGate(LoopRecordingGate):
+    async def run(self, gate_input):
+        self._loops.append(asyncio.get_running_loop())
+        await asyncio.sleep(60)
+        return self._result
 
 
 def _all_passing_gates() -> dict:
@@ -173,4 +196,70 @@ def test_without_quality_config_no_gate_stages(tmp_path):
         assert "test_gate" not in names
         assert "documentation_gate" not in names
     finally:
+        scheduler.shutdown()
+
+
+def test_gates_reuse_event_loop_and_close_it(tmp_path):
+    repo = setup_project(tmp_path)
+    loops = []
+    gates = {name: LoopRecordingGate(passed(), loops) for name in GATE_ORDER}
+    workflow, scheduler = make_workflow(tmp_path, repo, gates)
+    try:
+        result = run_workflow(workflow, repo)
+        assert result.success is True
+        assert len(loops) == 4
+        assert len({id(loop) for loop in loops}) == 1
+        assert loops[0].is_closed()
+    finally:
+        scheduler.shutdown()
+
+
+def test_gate_timeout_blocks_with_structured_error(tmp_path, monkeypatch):
+    repo = setup_project(tmp_path)
+    loops = []
+    gates = _all_passing_gates()
+    gates["code_gate"] = BlockingGate(passed(), loops)
+    workflow, scheduler = make_workflow(tmp_path, repo, gates)
+
+    import aios.workflow.engine as engine_module
+
+    monkeypatch.setattr(engine_module, "_GATE_TIMEOUT_SECONDS", 0.01)
+    try:
+        result = run_workflow(workflow, repo)
+        assert result.success is False
+        stage = result.stages[-1]
+        assert stage.name == "code_gate"
+        assert stage.details["gate"]["status"] == "error"
+        assert stage.details["gate"]["metadata"]["timeout_seconds"] == 0.01
+        assert "timed out" in stage.error
+        assert loops[0].is_closed()
+    finally:
+        scheduler.shutdown()
+
+
+def test_gate_loop_closes_on_early_workflow_return(tmp_path):
+    repo = setup_project(tmp_path)
+    loops = []
+    gates = {name: LoopRecordingGate(passed(), loops) for name in GATE_ORDER}
+    workflow, scheduler = make_workflow(tmp_path, repo, gates)
+    created_loops = []
+    import aios.workflow.engine as engine_module
+
+    original_new_event_loop = engine_module.asyncio.new_event_loop
+
+    def track_loop():
+        loop = original_new_event_loop()
+        created_loops.append(loop)
+        return loop
+
+    workflow._agents["planner"]._runtime.execute.return_value = "invalid json"
+    engine_module.asyncio.new_event_loop = track_loop
+    try:
+        result = run_workflow(workflow, repo)
+        assert result.success is False
+        assert loops == []
+        assert len(created_loops) == 1
+        assert created_loops[0].is_closed()
+    finally:
+        engine_module.asyncio.new_event_loop = original_new_event_loop
         scheduler.shutdown()
