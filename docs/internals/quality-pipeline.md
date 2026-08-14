@@ -97,8 +97,8 @@ quality:
 ```python
 @dataclass
 class GateResult:
-    status: GateStatus      # passed, failed, skipped, error
-    reason: str             # human-readable outcome
+    status: GateStatus  # passed, failed, skipped, error
+    reason: str  # human-readable outcome
     findings: list[GateFinding]  # structured findings, never loose text
     metadata: dict
 

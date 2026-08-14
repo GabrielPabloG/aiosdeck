@@ -197,6 +197,7 @@ hand-rolled and zero-dependency (`src/aios/telemetry/schema.py`):
 
 ```python
 from aios.telemetry.schema import validate_report
+
 errors = validate_report(report)  # [] == valid
 ```
 

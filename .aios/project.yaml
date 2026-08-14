@@ -6,6 +6,10 @@ name: aiosdeck
 runtime: opencode
 sandbox: ai-jail
 
+routing:
+  default_provider: ollama
+  default_model: llama3.2
+
 skills:
   - project-dna
   - coding-style

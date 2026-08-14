@@ -76,7 +76,37 @@ runtime:
   command: "ai-jail opencode"
 ```
 
-OpenCode configuration (providers, models, permissions) is managed separately in `~/.config/opencode/opencode.json` or `.opencode/opencode.json`.
+OpenCode configuration (providers, models, permissions) is managed separately. This
+repository includes `.opencode/opencode.json` so the provider setup is shared with
+the project and is available when OpenCode runs inside `ai-jail`.
+
+The project configuration registers Ollama as an OpenCode provider, not as an
+AiosDeck runtime adapter:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "ollama": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Ollama (local)",
+      "options": { "baseURL": "http://localhost:11434/v1" },
+      "models": { "llama3.2": { "name": "llama3.2" } }
+    }
+  }
+}
+```
+
+The effective model is selected as `ollama/llama3.2`, for example:
+
+```bash
+opencode models ollama
+ai-jail opencode run "Reply with exactly OK" -m ollama/llama3.2 --auto
+```
+
+The AiosDeck manifest remains `runtime: opencode`. Setting
+`AIOS_RUNTIME_ADAPTER=ollama` selects AiosDeck's direct `OllamaAdapter` only when
+the manifest does not override it; it does not configure OpenCode's provider.
 
 ### Headless Mode Security
 

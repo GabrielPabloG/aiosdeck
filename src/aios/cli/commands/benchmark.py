@@ -114,6 +114,10 @@ def cmd_benchmark(raw_args: list[str], project_path: Path, kernel_factory: Calla
 
 def _new_report(opts: dict, project_path: Path) -> dict:
     config = ConfigLoader(project_path).load()
+    provider = config.routing.default_provider
+    model = config.routing.default_model
+    if "/" in model:
+        provider, _, model = model.partition("/")
     return {
         "schema_version": SCHEMA_VERSION,
         "aiosdeck_version": __version__,
@@ -121,8 +125,8 @@ def _new_report(opts: dict, project_path: Path) -> dict:
         "timestamp": datetime.now(UTC).isoformat(),
         "system_info": system_info(),
         "runtime_info": {
-            "provider": config.model.default,
-            "model": config.model.ollama_model,
+            "provider": provider,
+            "model": model,
             "host": config.model.ollama_host,
         },
         "warmup": opts["warmup"],

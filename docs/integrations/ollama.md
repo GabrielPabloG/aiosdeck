@@ -13,11 +13,17 @@ The principle is: **local first, cloud optional**. Ollama is the default. If Oll
 
 ### Architecture
 
+There are two supported paths and they must not be conflated:
+
 ```
-Agent → OpenCode → Ollama Adapter → Ollama Server (localhost:11434)
+OpenCodeAdapter → OpenCode provider (ollama) → Ollama Server (localhost:11434)
+OllamaAdapter   → Ollama Server (localhost:11434)
 ```
 
-AiosDeck does not call Ollama directly. OpenCode does. The Ollama adapter is a thin health-check layer that verifies Ollama availability and reports it to the Context Engine.
+The default project path is the first one. OpenCode owns provider registration
+and model invocation; AiosDeck's `OpenCodeAdapter` only invokes
+`ai-jail opencode`. The second path is AiosDeck's direct runtime adapter and is
+not selected by the project manifest.
 
 ### Health Check
 
@@ -41,11 +47,20 @@ class OllamaAdapter:
 ### Configuration
 
 ```yaml
-# ~/.config/aiosdeck/config.yaml
-default_model: ollama
-ollama_model: llama3
-ollama_host: "http://localhost:11434"
+# ~/.config/aiosdeck/config.yaml (AiosDeck routing metadata)
+model:
+  default: ollama
+  ollama_model: llama3.2
+  ollama_host: "http://localhost:11434"
+runtime:
+  adapter: opencode
 ```
+
+OpenCode's provider configuration is project-scoped in
+`.opencode/opencode.json`. It uses the local OpenAI-compatible endpoint
+`http://localhost:11434/v1` and contains no credentials. Keep the AiosDeck
+manifest at `runtime: opencode` when the desired architecture is
+AiosDeck -> OpenCode -> Ollama.
 
 ### Model Availability
 
@@ -84,10 +99,10 @@ The fallback chain is configured, not hardcoded.
 
 ## Implementation Notes
 
-- [ ] Ollama adapter: health check via `/api/tags` endpoint
-- [ ] Model list: extracted from Ollama API response
-- [ ] Configuration: ollama_host and ollama_model from config
-- [ ] Fallback chain: configurable model provider priority
+- [x] OpenCode provider: project-scoped Ollama configuration
+- [x] Model selection: `ollama/llama3.2` passed to OpenCode
+- [x] AiosDeck routing metadata: `ollama_host` and `ollama_model`
+- [ ] Direct OllamaAdapter health check via `/api/tags` endpoint
 - [ ] Test: Ollama running → available, models listed
 - [ ] Test: Ollama not running → unavailable, fallback to next provider
 - [ ] Test: no models available → error reported
