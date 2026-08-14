@@ -7,7 +7,10 @@ event payload (event_id, sequence, executor_id, correlation/task IDs).
 
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import MagicMock
+
+import pytest
 
 from aios.agents.contracts import (
     PERMISSION_DENIED,
@@ -66,6 +69,41 @@ def test_execute_success():
     assert outcome.duration_ms >= 0
     assert outcome.attempts == 1
     assert outcome.retried is False
+
+
+def test_executor_uses_persistent_pool(agent_executor):
+    assert isinstance(agent_executor._pool, ThreadPoolExecutor)
+    assert agent_executor._pool._max_workers == 4
+    assert agent_executor._pool._thread_name_prefix == "aios-agent"
+
+
+def test_timeout_preserves_pool_for_later_execution(agent_executor):
+    release = threading.Event()
+    request = make_request(
+        _FakeAgent(fn=lambda task, context: release.wait(), timeout=0.01),
+        _task(),
+    )
+
+    outcome = agent_executor.execute(request)
+
+    assert outcome.status == "timed_out"
+    assert not agent_executor._pool._shutdown
+
+    release.set()
+    later = agent_executor.execute(make_request(_FakeAgent(), _task()))
+    assert later.status == STATE_SUCCEEDED
+
+
+def test_shutdown_is_idempotent(agent_executor):
+    agent_executor.shutdown()
+    agent_executor.shutdown()
+
+
+def test_submit_after_shutdown_is_rejected(agent_executor):
+    agent_executor.shutdown()
+
+    with pytest.raises(RuntimeError):
+        agent_executor._pool.submit(lambda: None)
 
 
 def test_execute_error_maps_to_agent_error():

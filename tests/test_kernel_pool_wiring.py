@@ -1,5 +1,7 @@
 """Kernel/factory/engine pool wiring (Issue #38)."""
 
+from unittest.mock import MagicMock
+
 import aios.storage.pool as pool_module
 from aios.core import Kernel
 from aios.core.factory import create_kernel
@@ -109,6 +111,20 @@ def test_kernel_shutdown_closes_pool_after_engines(tmp_path, monkeypatch):
     assert set(events[:-1]) == {f"shutdown:{name}" for name in _STORE_ENGINES}
     assert events[-1] == "pool.close_all"
     assert pool._connections == {}
+
+
+def test_kernel_shutdown_stops_executor_before_storage_pool(tmp_path):
+    events: list[str] = []
+    executor = MagicMock()
+    executor.shutdown.side_effect = lambda: events.append("executor.shutdown")
+    pool = _SpyPool(events)
+    kernel = Kernel(project_path=str(tmp_path))
+    kernel.set_executor(executor)
+    kernel.set_storage_pool(pool)
+
+    kernel.shutdown()
+
+    assert events == ["executor.shutdown", "pool.close_all"]
 
 
 def test_kernel_shutdown_without_pool_noop(tmp_path):
