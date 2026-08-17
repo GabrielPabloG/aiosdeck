@@ -62,17 +62,18 @@ def test_project_manifest_sets_reproducible_routing_defaults(tmp_path):
     assert config.routing.default_model == "llama3.2"
 
 
-def test_project_opencode_config_registers_ollama_model():
+def test_project_opencode_config_registers_default_provider():
     config_path = PROJECT_ROOT / ".opencode" / "opencode.json"
     config = json.loads(config_path.read_text())
-    provider = config["provider"]["ollama"]
+    providers = config["provider"]
+    assert "qwen-hf" in providers
+    provider = providers["qwen-hf"]
 
     assert provider["npm"] == "@ai-sdk/openai-compatible"
-    assert provider["options"]["baseURL"] == "http://localhost:11434/v1"
-    assert "llama3.2" in provider["models"]
+    assert provider["options"].get("apiKey") in (None, "none")
+    assert "Qwen/Qwen3.8-27B" in provider["models"]
     assert not any(
-        secret_name in json.dumps(provider).lower()
-        for secret_name in ("api_key", "apikey", "token", "password")
+        secret_name in json.dumps(provider).lower() for secret_name in ("token", "password")
     )
 
 

@@ -17,7 +17,11 @@ venv/
 .ruff_cache/
 .pytest_cache/
 .coverage
+.coverage.*
+coverage/
 htmlcov/
+html/
+.tmp-mutmut/
 **/.aios/memory.db
 **/.aios/memory.db-shm
 **/.aios/memory.db-wal

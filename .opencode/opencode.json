@@ -1,15 +1,60 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
-    "ollama": {
+    "qwen-hf": {
       "npm": "@ai-sdk/openai-compatible",
-      "name": "Ollama (local)",
+      "name": "Qwen3.8-27B (Hugging Face gratuito)",
       "options": {
-        "baseURL": "http://localhost:11434/v1"
+        "baseURL": "https://g9hnto0u7lvbu837.us-east-2.aws.endpoints.huggingface.cloud/v1",
+        "apiKey": "none"
       },
       "models": {
-        "llama3.2": {
-          "name": "llama3.2"
+        "Qwen/Qwen3.8-27B": {
+          "name": "Qwen3.8-27B",
+          "reasoning": true,
+          "limit": {
+            "context": 262144,
+            "output": 32768
+          },
+          "interleaved": {
+            "field": "reasoning"
+          }
+        }
+      }
+    },
+    "omniroute": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "OmniRoute Gateway",
+      "options": {
+        "baseURL": "http://localhost:20128/v1"
+      },
+      "models": {
+        "auto": {
+          "name": "Auto (OmniRoute)"
+        },
+        "auto/coding": {
+          "name": "Auto Coding"
+        },
+        "auto/fast": {
+          "name": "Auto Fast"
+        },
+        "auto/cheap": {
+          "name": "Auto Cheap"
+        },
+        "auto/best-free": {
+          "name": "Best Free"
+        },
+        "auto/best-coding": {
+          "name": "Best Coding"
+        },
+        "auto/best-reasoning": {
+          "name": "Best Reasoning"
+        },
+        "auto/best-fast": {
+          "name": "Best Fast"
+        },
+        "auto/best-vision": {
+          "name": "Best Vision"
         }
       }
     }

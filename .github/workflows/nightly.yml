@@ -1,0 +1,104 @@
+name: Nightly
+
+on:
+  schedule:
+    # Roda todo dia às 3h da manhã (UTC)
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+    # Permite rodar manualmente pela interface do GitHub, se precisar
+
+permissions:
+  contents: read
+
+jobs:
+  # --- Job 1: Mutação completa (o mais pesado) ---
+  full-mutation:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies + mutmut
+        run: pip install -e ".[dev]" mutmut
+
+      - name: Run FULL mutation tests (entire codebase)
+        # mutmut 3 lê source_paths/runner do [tool.mutmut] no pyproject.toml
+        run: mutmut run
+
+      - name: Check mutation score (fail if killed/total < 80%)
+        run: |
+          mutmut export-cicd-stats
+          python - <<'PY'
+          import json, pathlib
+          stats = json.loads(pathlib.Path("mutants/mutmut-cicd-stats.json").read_text())
+          print(json.dumps(stats, indent=2))
+          total = stats["total"] - stats["skipped"]
+          if total == 0:
+              raise SystemExit("No mutants to score.")
+          score = stats["killed"] * 100 // total
+          print(f"Mutation score: {score}% ({stats['killed']}/{total})")
+          if score < 80:
+              raise SystemExit(f"Mutation score {score}% below 80% threshold.")
+          print("Mutation score OK.")
+          PY
+
+      - name: Upload full mutation report
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-mutation-report
+          path: mutants/
+
+  # --- Job 2: Build de snapshot (opcional, mas recomendado) ---
+  dev-build:
+    runs-on: ubuntu-latest
+    # Opcional: depende do full-mutation para não publicar se a mutação falhar
+    needs: full-mutation
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build tools
+        run: pip install build twine tomli-w
+
+      - name: Bump version to dev snapshot (e.g., 1.1.0 -> 1.1.0.dev20260816)
+        run: |
+          python - <<'PY'
+          import tomllib, tomli_w, datetime
+          from pathlib import Path
+
+          pyproject = Path("pyproject.toml")
+          data = tomllib.loads(pyproject.read_text())
+          base_ver = data["project"]["version"]
+          date_str = datetime.datetime.now(datetime.UTC).strftime("%Y%m%d")
+          dev_ver = f"{base_ver}.dev{date_str}"
+          data["project"]["version"] = dev_ver
+          pyproject.write_text(tomli_w.dumps(data))
+          print(f"Version bumped to {dev_ver}")
+          PY
+
+      - name: Build package
+        run: python -m build
+
+      - name: Validate package
+        run: python -m twine check dist/*
+
+      - name: Publish dev snapshot to TestPyPI
+        if: github.ref == 'refs/heads/main'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          # Trusted publishing (OIDC): configure em
+          #   GitHub → Settings → Developer settings (audience: pypi)
+          #   TestPyPI → Your projects → <proj> → Add a new trusted publisher
+          repository-url: https://test.pypi.org/legacy/
