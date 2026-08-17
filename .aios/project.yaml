@@ -8,8 +8,8 @@ sandbox: ai-jail
 
 routing:
   enabled: true
-  default_provider: "omniroute"
-  default_model: "auto"
+  default_provider: "qwen-hf"
+  default_model: "Qwen/Qwen3.8-27B"
   rules:
     - agent: "planner"
       provider: "qwen-hf"
@@ -22,8 +22,11 @@ routing:
       complexity: "high"    
 
   fallback_providers:
+    - provider: "omniroute"
+      model: "auto"  
+
     - provider: "google"
-      model: "gemini-3.1-flash-lite"
+      model: "gemini-3.7-flash"
 
 skills:
   - project-dna
