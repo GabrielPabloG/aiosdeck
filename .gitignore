@@ -32,3 +32,7 @@ scripts/
 .aios/benchmarks/tmp/
 .aios/benchmarks/*.tmp
 .bench_llama/
+.opencode/opencode.json
+package-lock.json
+package.json
+node_modules/
