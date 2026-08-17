@@ -17,7 +17,11 @@ venv/
 .ruff_cache/
 .pytest_cache/
 .coverage
+.coverage.*
+coverage/
 htmlcov/
+html/
+.tmp-mutmut/
 **/.aios/memory.db
 **/.aios/memory.db-shm
 **/.aios/memory.db-wal
@@ -28,3 +32,7 @@ scripts/
 .aios/benchmarks/tmp/
 .aios/benchmarks/*.tmp
 .bench_llama/
+.opencode/opencode.json
+package-lock.json
+package.json
+node_modules/

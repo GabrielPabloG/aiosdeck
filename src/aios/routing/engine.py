@@ -32,12 +32,24 @@ _COMPLEXITY_TOKENS: dict[str, int] = {
     "low": 500,
 }
 
+# First path segment values that denote a provider inside a full model slug.
+_PROVIDER_SLUGS: frozenset[str] = frozenset(
+    {"ollama", "openrouter", "openai", "anthropic", "google", "groq", "deepseek", "mistral"}
+)
+
 
 class RuleBasedRouter:
     name = "routing"
 
     def __init__(self, config: RouteConfig) -> None:
         self._config = config
+        self._known_providers: set[str] = {config.default_provider}
+        for rule in config.rules:
+            if rule.get("provider"):
+                self._known_providers.add(rule["provider"])
+        for fp in config.fallback_providers:
+            if fp.get("provider"):
+                self._known_providers.add(fp["provider"])
 
     @property
     def config(self) -> RouteConfig:
@@ -86,7 +98,7 @@ class RuleBasedRouter:
         provider = rule.get("provider", self._config.default_provider)
         model = rule.get("model", self._config.default_model)
         variant = rule.get("variant", _COMPLEXITY_VARIANT.get(input.complexity, ""))
-        model_id = self._model_id(provider, model)
+        model_id = self._model_id(provider, model, self._known_providers)
         return RouteDecision(
             provider=provider,
             model=model_id,
@@ -100,7 +112,7 @@ class RuleBasedRouter:
         provider = self._config.default_provider
         model = self._config.default_model
         variant = self._config.default_variant or _COMPLEXITY_VARIANT.get(input.complexity, "")
-        model_id = self._model_id(provider, model)
+        model_id = self._model_id(provider, model, self._known_providers)
         return RouteDecision(
             provider=provider,
             model=model_id,
@@ -121,7 +133,7 @@ class RuleBasedRouter:
             chain.append(
                 {
                     "provider": p,
-                    "model": self._model_id(p, model),
+                    "model": self._model_id(p, model, self._known_providers),
                     "variant": fp.get("variant", ""),
                 }
             )
@@ -165,9 +177,16 @@ class RuleBasedRouter:
         output_tokens = _COMPLEXITY_TOKENS.get(complexity, 1000)
         return (input_price * input_tokens + input_price * 3 * output_tokens) / 1_000_000
 
-    @staticmethod
-    def _model_id(provider: str, model: str) -> str:
-        if "/" in model:
+    @classmethod
+    def _model_id(cls, provider: str, model: str, known_providers: set[str]) -> str:
+        # Models containing "/" may be full slugs ("openrouter/openai/gpt-5") or
+        # namespaced IDs ("Qwen/Qwen3.8-27B"). Keep the slug as-is when its first
+        # segment names a provider (config-defined or well-known); otherwise the
+        # first segment is just a namespace and the provider must be prefixed.
+        if "/" not in model:
+            return f"{provider}/{model}"
+        first, _, _ = model.partition("/")
+        if first == provider or first in known_providers or first in _PROVIDER_SLUGS:
             return model
         return f"{provider}/{model}"
 

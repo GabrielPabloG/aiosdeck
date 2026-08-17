@@ -162,7 +162,17 @@ class ConfigLoader:
 
         routing = data.get("routing")
         if isinstance(routing, dict):
-            for key in ("default_provider", "default_model", "default_variant"):
+            keys = (
+                "enabled",
+                "default_provider",
+                "default_model",
+                "default_variant",
+                "rules",
+                "cost_cap",
+                "context_limits",
+                "fallback_providers",
+            )
+            for key in keys:
                 value = routing.get(key)
                 if value is not None:
                     self._set_field(config, f"routing.{key}", value, source)

@@ -7,6 +7,7 @@ on:
     branches: [main]
 
 jobs:
+  # --- Job 1: Validação rápida (lint + testes completos) ---
   ci:
     runs-on: ubuntu-latest
 
@@ -26,9 +27,10 @@ jobs:
       - name: Ruff format
         run: python -m ruff format --check src/ tests/
 
-      - name: Pytest
+      - name: Pytest (full suite)
         run: python -m pytest tests/ -v
 
+  # --- Job 2: Smoke test do reviewer (existente) ---
   integration-reviewer:
     runs-on: ubuntu-latest
 
@@ -52,3 +54,79 @@ jobs:
           assert isinstance(data['items'], list)
           print('reviewer CLI OK:', data['summary'])
           "
+
+  # --- Job 3: Teste de mutação (apenas em PRs, escopado por diff no pyproject) ---
+  mutation:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    needs: ci  # Opcional: espera o ci passar
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # necessário para diff com a main
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies + mutmut
+        run: pip install -e ".[dev]" mutmut
+
+      - name: Scope mutation to changed files and run
+        id: scope
+        run: |
+          # Detecta arquivos Python modificados em src/aios/
+          CHANGED_FILES=$(git diff origin/main...HEAD --name-only -- 'src/aios/' | grep '\.py$' | tr '\n' ' ') || true
+
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "Nenhum arquivo fonte modificado. Pulando mutação."
+            echo skip=true >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Arquivos a serem mutados: $CHANGED_FILES"
+
+          # mutmut 3 lê source_paths do [tool.mutmut]; substitui por só os arquivos mudados
+          CHANGED_JSON=$(printf '%s\n' $CHANGED_FILES | python -c 'import json, sys; print(json.dumps([l.strip() for l in sys.stdin if l.strip()]))')
+          CHANGED_JSON="$CHANGED_JSON" python - <<'PY'
+          import json, os, pathlib, re
+          files = json.loads(os.environ["CHANGED_JSON"])
+          p = pathlib.Path("pyproject.toml")
+          text = p.read_text()
+          new_text, n = re.subn(
+              r'source_paths = \[[^\]]*\]', f"source_paths = {json.dumps(files)}", text, count=1
+          )
+          assert n == 1, "source_paths not found in pyproject.toml"
+          p.write_text(new_text)
+          print("source_paths atualizado para:", files)
+          PY
+
+          mutmut run
+
+      - name: Check mutation results
+        if: ${{ steps.scope.outputs.skip != 'true' }}
+        run: |
+          echo "--- mutmut results ---"
+          mutmut results || true
+          mutmut export-cicd-stats
+          python - <<'PY'
+          import json, pathlib
+          stats = json.loads(pathlib.Path("mutants/mutmut-cicd-stats.json").read_text())
+          print(json.dumps(stats, indent=2))
+          bad = stats["survived"] + stats["suspicious"] + stats["timeout"] + stats["segfault"]
+          if bad:
+              raise SystemExit(
+                  f"Mutation failed: {bad} mutantes não foram mortos "
+                  f"(survived={stats['survived']}, suspicious={stats['suspicious']}, "
+                  f"timeout={stats['timeout']}, segfault={stats['segfault']})"
+              )
+          print("All relevant mutants killed.")
+          PY
+
+      - name: Upload mutation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutmut-report
+          path: mutants/

@@ -1539,3 +1539,44 @@ Estas lições são fatos confirmados por execução real (OllamaAdapter #66, ro
 - Claims de performance: exijam metodologia de medição; nunca prometa % antes de medir.
 - Segurança: rejeite QUALQUER mudança que enfraqueça o ai-jail.
 - Local First: prefira runtimes locais determinísticos (padrão OllamaAdapter) para benchmarks e tarefas simples; nuvem só quando agrega valor real.
+
+## 35. Developer Workflow — Scoped Testing Mandate (v1.3)
+
+### 35.1 Proibição de Suíte Completa no Loop Local
+
+O agente NUNCA deve executar `pytest` sem argumentos durante o ciclo RED/GREEN/REFACTOR.
+
+A suíte possui 1400+ testes. Rodá-la localmente:
+
+- consome tempo excessivo (>5min)
+- estoura contexto de tokens do agente
+- inviabiliza a iteração rápida
+
+**Regra:** O comando `pytest` (sem argumentos) só é permitido **imediatamente antes do commit** (Section 29) e, mesmo assim, apenas se o agente tiver certeza de que as mudanças são locais. Prefira sempre o escopo.
+
+---
+
+### 35.2 Comando Obrigatório para o Agente
+
+Ao modificar um arquivo fonte em `src/aios/` e seu respectivo teste em `tests/`, o agente DEVE usar esta estrutura:
+
+```bash
+# 1. Teste unitário (RED/GREEN) — apenas o arquivo de teste afetado
+pytest tests/caminho/para/test_arquivo.py -v
+
+# 2. Teste de mutação (GREEN/REFACTOR) — só o arquivo fonte modificado, só os testes relevantes
+mutmut run --paths-to-mutate src/aios/caminho/para/arquivo.py --runner "pytest tests/caminho/para/test_arquivo.py -v"
+mutmut results
+```
+
+Exemplo concreto: Se o agente editou `src/aios/telemetry/writer.py` e `tests/telemetry/test_writer.py`:
+
+```bash
+pytest tests/telemetry/test_writer.py -v
+mutmut run --paths-to-mutate src/aios/telemetry/writer.py --runner "pytest tests/telemetry/test_writer.py -v"
+mutmut results
+```
+
+O escopo é idêntico ao do CI (job `mutation` em `.github/workflows/ci.yml`): o CI aplica mutação apenas nos arquivos `.py` de `src/aios/` alterados no PR. `mutmut results` deve terminar sem mutantes sobrevividos (`survived`) antes do commit.
+
+**Exceção:** Se a mudança afetar múltiplos módulos não relacionados, o agente deve rodar `pytest tests/` (suíte inteira) APENAS para verificar regressões, mas isso conta como uma etapa de "validação final", não como ciclo TDD.

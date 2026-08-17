@@ -181,6 +181,42 @@ class TestRuleBasedRouter:
         assert decision.reason == "heuristic:default"
         assert decision.model == "ollama/llama3"
 
+    def test_explicit_provider_with_namespaced_model_is_prefixed(self):
+        config = RouteConfig(
+            default_provider="ollama",
+            default_model="llama3",
+            rules=[
+                {"agent": "developer", "provider": "qwen-hf", "model": "Qwen/Qwen3.8-27B"},
+            ],
+        )
+        decision = RuleBasedRouter(config).route(RouteInput(agent="developer"))
+        assert decision.provider == "qwen-hf"
+        assert decision.model == "qwen-hf/Qwen/Qwen3.8-27B"
+
+    def test_explicit_provider_already_in_model_is_not_doubled(self):
+        config = RouteConfig(
+            default_provider="ollama",
+            default_model="llama3",
+            rules=[
+                {
+                    "agent": "developer",
+                    "provider": "qwen-hf",
+                    "model": "qwen-hf/Qwen/Qwen3.8-27B",
+                },
+            ],
+        )
+        decision = RuleBasedRouter(config).route(RouteInput(agent="developer"))
+        assert decision.model == "qwen-hf/Qwen/Qwen3.8-27B"
+
+    def test_implicit_provider_with_full_slug_keeps_slug(self):
+        config = RouteConfig(
+            default_provider="ollama",
+            default_model="llama3",
+            rules=[{"agent": "developer", "model": "openrouter/qwen/qwen3-coder"}],
+        )
+        decision = RuleBasedRouter(config).route(RouteInput(agent="developer"))
+        assert decision.model == "openrouter/qwen/qwen3-coder"
+
     def test_fallback_chain_deduplicates(self):
         config = RouteConfig(
             default_provider="ollama",
