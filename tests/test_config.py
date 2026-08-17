@@ -2,6 +2,8 @@ import json
 import os
 from pathlib import Path
 
+import pytest
+
 from aios.config.loader import ConfigLoader
 from aios.config.schema import AiosDeckConfig
 
@@ -64,6 +66,8 @@ def test_project_manifest_sets_reproducible_routing_defaults(tmp_path):
 
 def test_project_opencode_config_registers_default_provider():
     config_path = PROJECT_ROOT / ".opencode" / "opencode.json"
+    if not config_path.exists():
+        pytest.skip("local-only opencode config not versioned (CI)")
     config = json.loads(config_path.read_text())
     providers = config["provider"]
     assert "qwen-hf" in providers
