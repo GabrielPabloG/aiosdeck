@@ -268,6 +268,48 @@ class TestRuntimeEngineRoutingIntegration:
         assert adapter.calls[1]["model"] == "ollama/llama3"
         assert "ok" in result
 
+    def test_fallback_records_timeout_in_telemetry(self):
+        from unittest.mock import MagicMock
+
+        adapter = FakeRuntimeAdapter()
+        original_execute = adapter.execute
+        call_count = 0
+
+        def execute_with_timeout(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            # First call (primary model) fails with TimeoutError
+            # Second call (fallback model) succeeds
+            if call_count == 1:
+                raise TimeoutError("simulated timeout")
+            # Call original for the second attempt
+            return original_execute(*args, **kwargs)
+        adapter.execute = execute_with_timeout
+
+        config = RouteConfig(
+            default_provider="ollama",
+            default_model="llama3",
+            rules=[{"agent": "developer", "provider": "anthropic", "model": "claude-sonnet"}],
+            fallback_providers=[{"provider": "ollama", "model": "llama3"}],
+        )
+        router = RuleBasedRouter(config)
+
+        bus = MagicMock()
+        engine = RuntimeEngine(adapter=adapter, router=router)
+        engine.set_event_bus(bus)
+
+        result = engine.execute("hello", [], agent="developer")
+        assert "ok" in result
+        assert call_count == 2
+
+        route_events = [
+            c.args[1] for c in bus.publish.call_args_list
+            if c.args[0] == "runtime.route_selected"
+        ]
+        fallback_event = [e for e in route_events if e.get("fallback_used")][0]
+        assert fallback_event["fallback_reason"] == "timeout"
+        assert fallback_event["fallback_used"] is True
+
 
 class TestAgentRoutingIntegration:
     def test_developer_passes_agent_context(self):
