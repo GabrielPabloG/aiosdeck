@@ -73,10 +73,9 @@ jobs:
       - name: Install dependencies + mutmut
         run: pip install -e ".[dev]" mutmut
 
-      - name: Scope mutation to changed files and run
+      - name: Run mutation testing
         id: scope
         run: |
-          # Detecta arquivos Python modificados em src/aios/
           CHANGED_FILES=$(git diff origin/main...HEAD --name-only -- 'src/aios/' | grep '\.py$' | tr '\n' ' ') || true
 
           if [ -z "$CHANGED_FILES" ]; then
@@ -84,23 +83,6 @@ jobs:
             echo skip=true >> "$GITHUB_OUTPUT"
             exit 0
           fi
-
-          echo "Arquivos a serem mutados: $CHANGED_FILES"
-
-          # mutmut 3 lê source_paths do [tool.mutmut]; substitui por só os arquivos mudados
-          CHANGED_JSON=$(printf '%s\n' $CHANGED_FILES | python -c 'import json, sys; print(json.dumps([l.strip() for l in sys.stdin if l.strip()]))')
-          CHANGED_JSON="$CHANGED_JSON" python - <<'PY'
-          import json, os, pathlib, re
-          files = json.loads(os.environ["CHANGED_JSON"])
-          p = pathlib.Path("pyproject.toml")
-          text = p.read_text()
-          new_text, n = re.subn(
-              r'source_paths = \[[^\]]*\]', f"source_paths = {json.dumps(files)}", text, count=1
-          )
-          assert n == 1, "source_paths not found in pyproject.toml"
-          p.write_text(new_text)
-          print("source_paths atualizado para:", files)
-          PY
 
           mutmut run
 
