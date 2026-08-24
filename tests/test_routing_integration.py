@@ -284,6 +284,7 @@ class TestRuntimeEngineRoutingIntegration:
                 raise TimeoutError("simulated timeout")
             # Call original for the second attempt
             return original_execute(*args, **kwargs)
+
         adapter.execute = execute_with_timeout
 
         config = RouteConfig(
@@ -303,8 +304,7 @@ class TestRuntimeEngineRoutingIntegration:
         assert call_count == 2
 
         route_events = [
-            c.args[1] for c in bus.publish.call_args_list
-            if c.args[0] == "runtime.route_selected"
+            c.args[1] for c in bus.publish.call_args_list if c.args[0] == "runtime.route_selected"
         ]
         fallback_event = [e for e in route_events if e.get("fallback_used")][0]
         assert fallback_event["fallback_reason"] == "timeout"
