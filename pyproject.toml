@@ -76,3 +76,4 @@ dev = [
 source_paths = ["src/aios/"]
 runner = "pytest"
 backup = false
+debug = true

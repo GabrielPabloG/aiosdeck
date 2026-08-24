@@ -8,7 +8,7 @@ from typing import IO
 
 from aios import __version__
 
-HEADER_BAR = "─" * 30
+HEADER_BAR = "─" * 30  # pragma: no mutate
 
 SPINNER_FRAMES = ("⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏")
 
