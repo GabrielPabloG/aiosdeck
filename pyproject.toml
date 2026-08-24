@@ -74,6 +74,7 @@ dev = [
 
 [tool.mutmut]
 source_paths = ["src/aios/"]
+also_copy = ["src/aios/"]
 runner = "pytest"
 backup = false
 debug = true
