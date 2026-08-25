@@ -289,9 +289,7 @@ class TestProviderRegistrationAndRuleDefaults:
             default_model="m9",
             rules=[{"agent": "dev", "provider": "ollama", "model": "codellama"}],
         )
-        decision = RuleBasedRouter(config).route(
-            RouteInput(agent="dev", context_size=10000)
-        )
+        decision = RuleBasedRouter(config).route(RouteInput(agent="dev", context_size=10000))
         assert decision.reason == "policy:0"
 
     def test_context_limit_boundary_exact_size_matches(self):
@@ -328,9 +326,7 @@ class TestProviderRegistrationAndRuleDefaults:
         assert unmapped.variant == ""
 
     def test_override_multi_segment_keeps_first_segment_as_provider(self):
-        router = RuleBasedRouter(
-            RouteConfig(default_provider="ollama", default_model="llama3")
-        )
+        router = RuleBasedRouter(RouteConfig(default_provider="ollama", default_model="llama3"))
         decision = router.route(
             RouteInput(agent="x", model_override="openrouter/openai/gpt-5-mini")
         )
@@ -344,9 +340,7 @@ class TestProviderRegistrationAndRuleDefaults:
         assert decision.model == "llama3"
 
     def test_override_cost_reflects_complexity_output_tokens(self):
-        router = RuleBasedRouter(
-            RouteConfig(default_provider="ollama", default_model="llama3")
-        )
+        router = RuleBasedRouter(RouteConfig(default_provider="ollama", default_model="llama3"))
         decision = router.route(
             RouteInput(
                 agent="x",

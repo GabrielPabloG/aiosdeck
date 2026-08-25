@@ -220,9 +220,7 @@ def test_route_event_publish_errors_are_swallowed_and_logged(caplog):
 class TestDiagnose:
     def _adapter_recording(self):
         seen = {}
-        adapter = SimpleNamespace(
-            diagnose=lambda **kwargs: (seen.update(kwargs), "diag")[1]
-        )
+        adapter = SimpleNamespace(diagnose=lambda **kwargs: (seen.update(kwargs), "diag")[1])
         return adapter, seen
 
     def test_returns_none_without_adapter_support(self):

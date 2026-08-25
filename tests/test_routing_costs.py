@@ -8,9 +8,7 @@ from aios.routing.models import RouteDecision, RouteInput
 
 
 def _router(**kwargs) -> RuleBasedRouter:
-    return RuleBasedRouter(
-        RouteConfig(default_provider="ollama", default_model="llama3", **kwargs)
-    )
+    return RuleBasedRouter(RouteConfig(default_provider="ollama", default_model="llama3", **kwargs))
 
 
 class TestEstimateCost:
@@ -26,9 +24,8 @@ class TestEstimateCost:
         ],
     )
     def test_matches_price_times_tokens_formula(self, model_id, complexity, context_size, expected):
-        assert (
-            RuleBasedRouter._estimate_cost(model_id, complexity, context_size)
-            == pytest.approx(expected, rel=1e-9)
+        assert RuleBasedRouter._estimate_cost(model_id, complexity, context_size) == pytest.approx(
+            expected, rel=1e-9
         )
 
     def test_context_floor_of_one(self):
@@ -68,9 +65,7 @@ class TestCostCapBoundaries:
             ],
             fallback_providers=[{"provider": "ollama", "model": "llama3"}],
         )
-        decision = router.route(
-            RouteInput(agent="planner", complexity="medium", context_size=1000)
-        )
+        decision = router.route(RouteInput(agent="planner", complexity="medium", context_size=1000))
         assert decision.provider == "anthropic"
         assert decision.reason == "policy:0"
 
@@ -88,9 +83,7 @@ class TestCostCapBoundaries:
             ],
             fallback_providers=[{"provider": "anthropic", "model": "claude-haiku"}],
         )
-        decision = router.route(
-            RouteInput(agent="planner", complexity="high", context_size=1000)
-        )
+        decision = router.route(RouteInput(agent="planner", complexity="high", context_size=1000))
         assert decision.model == "anthropic/claude-haiku"
         assert decision.reason == "policy:0+cost_cap"
 
@@ -188,9 +181,7 @@ class TestHeuristicDefaultContract:
         router = RuleBasedRouter(
             RouteConfig(default_provider="anthropic", default_model="claude-haiku")
         )
-        decision = router.route(
-            RouteInput(agent="nobody", complexity="high", context_size=10000)
-        )
+        decision = router.route(RouteInput(agent="nobody", complexity="high", context_size=10000))
         assert decision.estimated_cost == pytest.approx(0.0575, rel=1e-9)
 
 
