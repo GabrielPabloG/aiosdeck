@@ -126,6 +126,7 @@ def test_detection_fallback(tmp_path):
     loader = ConfigLoader(project_path=tmp_path)
     config = loader.load()
     assert config.project.name == tmp_path.name
+    assert config._sources["project.name"] == "detection"
 
 
 def test_quality_policy_from_user_config(tmp_path, monkeypatch):

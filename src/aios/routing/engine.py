@@ -82,7 +82,7 @@ class RuleBasedRouter:
     def _build_override_decision(self, input: RouteInput) -> RouteDecision:
         provider, _, model_name = input.model_override.partition("/")
         if not model_name:
-            model_name = provider
+            # Single-token override (no "/"): the token is the model, not a provider.
             provider = ""
         return RouteDecision(
             provider=provider or "unknown",

@@ -239,6 +239,128 @@ class TestRuleBasedRouter:
         assert providers.count("ollama") == 1
 
 
+class TestProviderRegistrationAndRuleDefaults:
+    def test_known_providers_collects_rule_and_fallback_providers(self):
+        config = RouteConfig(
+            default_provider="ollama",
+            default_model="llama3",
+            rules=[{"agent": "a", "provider": "acme"}],
+            fallback_providers=[{"provider": "zenith", "model": "z9"}],
+        )
+        router = RuleBasedRouter(config)
+        assert router._known_providers == {"ollama", "acme", "zenith"}
+
+    def test_rule_without_provider_or_model_uses_config_defaults(self):
+        config = RouteConfig(
+            default_provider="ollama",
+            default_model="m9",
+            rules=[{"agent": "dev", "complexity": "low"}],
+        )
+        decision = RuleBasedRouter(config).route(RouteInput(agent="dev", complexity="low"))
+        assert decision.provider == "ollama"
+        assert decision.model == "ollama/m9"
+
+    def test_rule_without_agent_matches_any_agent(self):
+        config = RouteConfig(
+            default_provider="ollama",
+            default_model="m9",
+            rules=[{"complexity": "low", "provider": "ollama", "model": "codellama"}],
+        )
+        router = RuleBasedRouter(config)
+        for agent in ("whoever", "", "someone-else"):
+            decision = router.route(RouteInput(agent=agent, complexity="low"))
+            assert decision.reason == "policy:0", agent
+            assert decision.model == "ollama/codellama"
+
+    def test_rule_without_complexity_matches_any_complexity(self):
+        config = RouteConfig(
+            default_provider="ollama",
+            default_model="m9",
+            rules=[{"agent": "dev"}],
+        )
+        router = RuleBasedRouter(config)
+        for complexity in ("high", "medium", "low"):
+            decision = router.route(RouteInput(agent="dev", complexity=complexity))
+            assert decision.reason == "policy:0", complexity
+
+    def test_empty_context_limits_match_regardless_of_size(self):
+        config = RouteConfig(
+            default_provider="ollama",
+            default_model="m9",
+            rules=[{"agent": "dev", "provider": "ollama", "model": "codellama"}],
+        )
+        decision = RuleBasedRouter(config).route(
+            RouteInput(agent="dev", context_size=10000)
+        )
+        assert decision.reason == "policy:0"
+
+    def test_context_limit_boundary_exact_size_matches(self):
+        config = RouteConfig(
+            default_provider="ollama",
+            default_model="llama3",
+            context_limits={"planner": 100},
+            rules=[
+                {
+                    "agent": "planner",
+                    "complexity": "high",
+                    "provider": "anthropic",
+                    "model": "claude-sonnet",
+                },
+            ],
+        )
+        decision = RuleBasedRouter(config).route(
+            RouteInput(agent="planner", complexity="high", context_size=100)
+        )
+        assert decision.reason == "policy:0"
+
+    def test_variant_defaults_follow_complexity_mapping(self):
+        config = RouteConfig(
+            default_provider="ollama",
+            default_model="m9",
+            rules=[{"agent": "dev"}],
+        )
+        router = RuleBasedRouter(config)
+
+        medium = router.route(RouteInput(agent="dev", complexity="medium"))
+        unmapped = router.route(RouteInput(agent="dev", complexity="extreme"))
+
+        assert medium.variant == ""
+        assert unmapped.variant == ""
+
+    def test_override_multi_segment_keeps_first_segment_as_provider(self):
+        router = RuleBasedRouter(
+            RouteConfig(default_provider="ollama", default_model="llama3")
+        )
+        decision = router.route(
+            RouteInput(agent="x", model_override="openrouter/openai/gpt-5-mini")
+        )
+        assert decision.provider == "openrouter"
+        assert decision.model == "openrouter/openai/gpt-5-mini"
+
+    def test_override_single_token_provider_is_unknown(self):
+        router = RuleBasedRouter(_basic_config())
+        decision = router.route(RouteInput(agent="planner", model_override="llama3"))
+        assert decision.provider == "unknown"
+        assert decision.model == "llama3"
+
+    def test_override_cost_reflects_complexity_output_tokens(self):
+        router = RuleBasedRouter(
+            RouteConfig(default_provider="ollama", default_model="llama3")
+        )
+        decision = router.route(
+            RouteInput(
+                agent="x",
+                complexity="high",
+                context_size=10000,
+                model_override="anthropic/claude-opus",
+            )
+        )
+        assert decision.estimated_cost == pytest.approx(0.69)
+
+    def test_health_check_reports_ready(self):
+        assert RuleBasedRouter(_basic_config()).health_check() is True
+
+
 _OPENROUTER_SLUGS = [
     "openrouter/deepseek/deepseek-v4-flash",
     "openrouter/qwen/qwen3-coder",

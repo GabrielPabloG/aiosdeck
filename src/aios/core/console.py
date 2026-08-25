@@ -140,7 +140,7 @@ class ProgressBar:
     def _report_phase_end(self, label: str, elapsed_ms: float) -> None:
         with self._lock:
             self._phase_active = False
-            self._phase_label = ""
+            self._phase_label = ""  # pragma: no mutate — invisible while inactive
         self._redraw()
         seconds = elapsed_ms / 1000.0
         self._stream.write(f"\n{CLEAR_LINE}  \u2713 {label} ({seconds:.1f}s)\n")
