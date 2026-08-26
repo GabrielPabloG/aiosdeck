@@ -34,6 +34,8 @@ _BASH_RULES: dict[str, str] = {
     "pytest *": "allow",
 }
 
+_WRITE_AGENT = "build"
+
 
 class OpenCodeAdapter:
     name = "opencode"
@@ -213,6 +215,9 @@ class OpenCodeAdapter:
         if variant:
             args.extend(["--variant", variant])
 
+        if self._is_write_capable(permissions, capabilities):
+            args.extend(["--agent", _WRITE_AGENT])
+
         args.append("--auto")
 
         if not self._opencode_installed:
@@ -248,6 +253,29 @@ class OpenCodeAdapter:
             raise RuntimeError(f"Runtime exited with code {result.returncode}: {stderr}")
 
         return result.stdout.strip() if result.stdout else ""
+
+    @staticmethod
+    def _is_write_capable(
+        permissions: EffectivePermissions | list[str] | None,
+        capabilities: list[str] | None,
+    ) -> bool:
+        """Whether the granted access includes write or shell execution.
+
+        Mirrors the resolution order of ``_build_permissions``: a resolved
+        ``EffectivePermissions`` (or frozenset of granular actions) wins; a
+        plain list falls back to the coarse capability names. Selecting the
+        runtime's write-capable agent keeps the session capability aligned
+        with the permissions AiosDeck granted — a plan-only session could
+        otherwise answer with text and never touch files.
+        """
+        if isinstance(permissions, EffectivePermissions):
+            allowed = permissions.allowed
+        elif isinstance(permissions, frozenset):
+            allowed = permissions
+        else:
+            caps = permissions if isinstance(permissions, list) else capabilities or []
+            return "filesystem_write" in caps or "shell" in caps
+        return FILESYSTEM_WRITE_ACTION in allowed or SHELL_EXECUTE in allowed
 
     @staticmethod
     def _redact_detail(detail: str) -> str:
