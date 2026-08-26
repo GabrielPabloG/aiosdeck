@@ -211,6 +211,60 @@ def test_execute_omits_agent_flag_for_empty_effective_permissions():
     assert "--agent" not in args
 
 
+def test_execute_selects_build_agent_for_shell_only_capabilities():
+    adapter = _runnable_adapter()
+
+    with patch("aios.runtime.opencode.subprocess.run") as mock_run:
+        _successful_run(mock_run)
+        adapter.execute("test", skills=[], capabilities=["shell"])
+
+    args = mock_run.call_args.args[0]
+    assert args[args.index("--agent") + 1] == "build"
+
+
+def test_execute_selects_build_agent_for_write_only_capabilities():
+    adapter = _runnable_adapter()
+
+    with patch("aios.runtime.opencode.subprocess.run") as mock_run:
+        _successful_run(mock_run)
+        adapter.execute("test", skills=[], capabilities=["filesystem_write"])
+
+    args = mock_run.call_args.args[0]
+    assert args[args.index("--agent") + 1] == "build"
+
+
+def test_execute_selects_build_agent_for_effective_write_only_permissions():
+    adapter = _runnable_adapter()
+
+    with patch("aios.runtime.opencode.subprocess.run") as mock_run:
+        _successful_run(mock_run)
+        adapter.execute(
+            "test",
+            skills=[],
+            capabilities=[],
+            permissions=EffectivePermissions(allowed=frozenset({FILESYSTEM_WRITE_ACTION})),
+        )
+
+    args = mock_run.call_args.args[0]
+    assert args[args.index("--agent") + 1] == "build"
+
+
+def test_execute_selects_build_agent_for_raw_frozenset_permissions():
+    adapter = _runnable_adapter()
+
+    with patch("aios.runtime.opencode.subprocess.run") as mock_run:
+        _successful_run(mock_run)
+        adapter.execute(
+            "test",
+            skills=[],
+            capabilities=[],
+            permissions=frozenset({FILESYSTEM_WRITE_ACTION}),
+        )
+
+    args = mock_run.call_args.args[0]
+    assert args[args.index("--agent") + 1] == "build"
+
+
 def test_execute_selected_agent_does_not_weaken_permissions():
     adapter = _runnable_adapter()
 
