@@ -7,6 +7,7 @@ on:
     branches: [main]
 
 jobs:
+  # --- Job 1: Validação rápida (lint + testes completos) ---
   ci:
     runs-on: ubuntu-latest
 
@@ -26,9 +27,10 @@ jobs:
       - name: Ruff format
         run: python -m ruff format --check src/ tests/
 
-      - name: Pytest
+      - name: Pytest (full suite)
         run: python -m pytest tests/ -v
 
+  # --- Job 2: Smoke test do reviewer (existente) ---
   integration-reviewer:
     runs-on: ubuntu-latest
 
@@ -52,3 +54,122 @@ jobs:
           assert isinstance(data['items'], list)
           print('reviewer CLI OK:', data['summary'])
           "
+
+  # --- Job 3: Teste de mutação (apenas em PRs, escopado por diff no pyproject) ---
+  mutation:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    needs: ci  # Opcional: espera o ci passar
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # necessário para diff com a main
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies + mutmut
+        run: pip install -e ".[dev]" mutmut
+
+      - name: Scope mutation to changed files and run
+        id: scope
+        run: |
+          # Detecta arquivos Python modificados em src/aios/
+          CHANGED_FILES=$(git diff origin/main...HEAD --name-only -- 'src/aios/' | grep '\.py$' | tr '\n' ' ') || true
+
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "Nenhum arquivo fonte modificado. Pulando mutação."
+            echo skip=true >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Arquivos a serem mutados: $CHANGED_FILES"
+
+          # mutmut 3 lê source_paths do [tool.mutmut]; substitui por só os arquivos mudados
+          CHANGED_JSON=$(printf '%s\n' $CHANGED_FILES | python -c 'import json, sys; print(json.dumps([l.strip() for l in sys.stdin if l.strip()]))')
+          CHANGED_JSON="$CHANGED_JSON" python - <<'PY'
+          import json, os, pathlib, re
+          files = json.loads(os.environ["CHANGED_JSON"])
+          p = pathlib.Path("pyproject.toml")
+          text = p.read_text()
+          new_text, n = re.subn(
+              r'source_paths = \[[^\]]*\]', f"source_paths = {json.dumps(files)}", text, count=1
+          )
+          assert n == 1, "source_paths not found in pyproject.toml"
+          p.write_text(new_text)
+          print("source_paths atualizado para:", files)
+          PY
+
+          mutmut run
+
+      - name: Check mutation results
+        if: ${{ steps.scope.outputs.skip != 'true' }}
+        run: |
+          echo "--- mutmut results ---"
+          mutmut results || true
+          mutmut export-cicd-stats
+          python - <<'PY'
+          import json, pathlib, subprocess
+
+          stats = json.loads(pathlib.Path("mutants/mutmut-cicd-stats.json").read_text())
+          print(json.dumps(stats, indent=2))
+
+          allowed = {
+              line.split("#", 1)[0].strip()
+              for line in pathlib.Path(".github/mutmut-equivalents.txt").read_text().splitlines()
+              if line.strip() and not line.lstrip().startswith("#")
+          }
+
+          out = subprocess.run(["mutmut", "results"], capture_output=True, text=True).stdout
+          statuses = ("survived", "suspicious", "timeout", "segfault", "no tests")
+          found = {
+              line.strip().rsplit(":", 1)[0].strip(): line.strip().rsplit(":", 1)[1].strip()
+              for line in out.splitlines()
+              if ": " in line and line.strip().endswith(statuses)
+          }
+          survivors = {name for name, status in found.items() if status != "no tests"}
+
+          unexpected = sorted(survivors - allowed)
+          for name in unexpected:
+              print(f"UNEXPECTED SURVIVOR: {name} ({found[name]})")
+
+          stale = sorted(allowed - set(found))
+          if stale:
+              # Informativo: o CI roda mutação apenas nos arquivos alterados do PR,
+              # então equivalentes de outros módulos aparecem como "stale" aqui.
+              print(f"{len(stale)} allowlist entradas ausentes nesta rodada (ok):")
+              for name in stale:
+                  print(f"  {name}")
+
+          hard = (
+              len(unexpected)
+              + stats["suspicious"]
+              + stats["timeout"]
+              + stats["segfault"]
+              + stats["no_tests"]
+          )
+          if hard:
+              raise SystemExit(
+                  f"Mutation failed: unexpected={len(unexpected)}, "
+                  f"suspicious={stats['suspicious']}, timeout={stats['timeout']}, "
+                  f"segfault={stats['segfault']}, no_tests={stats['no_tests']} — "
+                  f"equivalentes permitidos nesta rodada: "
+                  f"{stats['survived'] - len(unexpected)}"
+              )
+
+          matched = sorted(survivors & allowed)
+          print(
+              f"All non-equivalent mutants killed "
+              f"(killed={stats['killed']}/{stats['total']}); "
+              f"{len(matched)} equivalente(s) documentado(s) na allowlist."
+          )
+          PY
+
+      - name: Upload mutation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutmut-report
+          path: mutants/

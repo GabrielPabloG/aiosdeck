@@ -7,8 +7,26 @@ runtime: opencode
 sandbox: ai-jail
 
 routing:
-  default_provider: ollama
-  default_model: llama3.2
+  enabled: true
+  default_provider: "qwen-hf"
+  default_model: "Qwen/Qwen3.8-27B"
+  rules:
+    - agent: "planner"
+      provider: "qwen-hf"
+      model: "Qwen/Qwen3.8-27B"
+      complexity: "medium"  
+
+    - agent: "developer"
+      provider: "qwen-hf"
+      model: "Qwen/Qwen3.8-27B"
+      complexity: "high"    
+
+  fallback_providers:
+    - provider: "omniroute"
+      model: "auto"  
+
+    - provider: "google"
+      model: "gemini-3.7-flash"
 
 skills:
   - project-dna

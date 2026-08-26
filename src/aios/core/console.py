@@ -8,7 +8,7 @@ from typing import IO
 
 from aios import __version__
 
-HEADER_BAR = "─" * 30
+HEADER_BAR = "─" * 30  # pragma: no mutate
 
 SPINNER_FRAMES = ("⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏")
 
@@ -140,7 +140,7 @@ class ProgressBar:
     def _report_phase_end(self, label: str, elapsed_ms: float) -> None:
         with self._lock:
             self._phase_active = False
-            self._phase_label = ""
+            self._phase_label = ""  # pragma: no mutate — invisible while inactive
         self._redraw()
         seconds = elapsed_ms / 1000.0
         self._stream.write(f"\n{CLEAR_LINE}  \u2713 {label} ({seconds:.1f}s)\n")
@@ -191,7 +191,7 @@ def render_kanban(summary: dict[str, int]) -> str:
     An optional ``Blocked`` key renders a trailing blocked-status cell.
     """
     cells = [f"{name} ({summary.get(name, 0)})" for name in KANBAN_COLUMNS]
-    blocked = summary.get("Blocked", 0)
+    blocked = summary.get("Blocked") or 0
     if blocked:
         cells.append(f"⛔ Blocked ({blocked})")
     return "  " + " | ".join(cells)

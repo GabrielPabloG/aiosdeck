@@ -53,7 +53,7 @@ class TestConfigLoaderRouting:
         old = os.environ.get("AIOS_ROUTING_ENABLED")
         try:
             os.environ["AIOS_ROUTING_ENABLED"] = "0"
-            loader = ConfigLoader()
+            loader = ConfigLoader(project_path=tmp_path)
             config = loader.load()
             assert config.routing.enabled is False
             assert config._sources["routing.enabled"] == "env:AIOS_ROUTING_ENABLED"
@@ -116,6 +116,29 @@ routing:
             assert config.routing.rules[0]["complexity"] == "high"
             assert len(config.routing.fallback_providers) == 1
             assert config.routing.fallback_providers[0]["provider"] == "ollama"
+
+    def test_manifest_routing_enabled(self, monkeypatch, tmp_path):
+        monkeypatch.setattr(Path, "home", lambda: tmp_path)
+        monkeypatch.delenv("AIOS_ROUTING_ENABLED", raising=False)
+        aios_dir = tmp_path / ".aios"
+        aios_dir.mkdir()
+        (aios_dir / "project.yaml").write_text(
+            "runtime: opencode\nrouting:\n  enabled: false\n  default_provider: ollama\n"
+        )
+        loader = ConfigLoader(project_path=tmp_path)
+        config = loader.load()
+        assert config.routing.enabled is False
+        assert config._sources["routing.enabled"] == str(aios_dir / "project.yaml")
+
+    def test_manifest_routing_enabled_true(self, monkeypatch, tmp_path):
+        monkeypatch.setattr(Path, "home", lambda: tmp_path)
+        monkeypatch.delenv("AIOS_ROUTING_ENABLED", raising=False)
+        aios_dir = tmp_path / ".aios"
+        aios_dir.mkdir()
+        (aios_dir / "project.yaml").write_text("routing:\n  enabled: true\n")
+        loader = ConfigLoader(project_path=tmp_path)
+        config = loader.load()
+        assert config.routing.enabled is True
 
 
 def _apply_test_user_config(config, config_path):

@@ -15,9 +15,20 @@ repos:
         types: [python]
         pass_filenames: false
 
-      - id: pytest
-        name: pytest
-        entry: pytest tests/ -q
+      # --- HOOK SUBSTITUÍDO: pytest escopado ---
+      - id: pytest-scoped
+        name: pytest (scoped)
+        entry: python .pre-commit/pytest-scoped.py
         language: system
         types: [python]
         pass_filenames: false
+        # Roda SEMPRE, mesmo se não houver arquivos .py staged (o script trata isso)
+        always_run: true
+
+      - id: pytest-full
+        name: pytest (full, manual)
+        entry: pytest tests/ -v
+        language: system
+        types: [python]
+        pass_filenames: false
+        stages: [manual]   # Só roda se você passar --hook-stage manual

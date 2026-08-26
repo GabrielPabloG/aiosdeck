@@ -96,6 +96,7 @@ class RuntimeEngine:
     ) -> str:
         decision_model = ""
         decision_variant = ""
+        decision_provider = ""
         fallback_chain: list[dict] = []
         source = "legacy"
         reason = ""
@@ -114,6 +115,7 @@ class RuntimeEngine:
             decision = self._router.route(route_input)
             decision_model = decision.model
             decision_variant = decision.variant
+            decision_provider = decision.provider
             fallback_chain = decision.fallback_chain
             source = decision.source
             reason = decision.reason
@@ -122,7 +124,7 @@ class RuntimeEngine:
             {
                 "model": decision_model,
                 "variant": decision_variant,
-                "provider": "",
+                "provider": decision_provider,
                 "reason": reason,
             }
         ]
@@ -150,7 +152,9 @@ class RuntimeEngine:
                     task_type=task_type,
                     complexity=complexity,
                     fallback_used=(attempt is not models_to_try[0]),
-                    fallback_reason=self._fallback_reason(last_error) if last_error else "",
+                    fallback_reason=(
+                        self._fallback_reason(last_error) if last_error is not None else ""
+                    ),
                 )
                 return result
             except (RuntimeError, TimeoutError) as exc:

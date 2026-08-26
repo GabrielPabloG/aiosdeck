@@ -1,7 +1,6 @@
 """Tests for aios.core.console — spinner, progress bar, and kanban board output."""
 
 import os
-import threading
 from unittest.mock import patch
 
 from aios.core.console import (
@@ -11,6 +10,7 @@ from aios.core.console import (
     ProgressSpinner,
     _fit_message,
     render_bar,
+    render_engine,
     render_kanban,
 )
 
@@ -49,6 +49,10 @@ def test_fit_message_truncates_long():
 
 def test_fit_message_narrow_width():
     assert _fit_message("x" * 10, 2) == "…"
+
+
+def test_fit_message_exact_boundary_not_truncated():
+    assert _fit_message("x" * 18, 20) == "x" * 18
 
 
 def test_spin_uses_clear_line_and_truncates():
@@ -101,17 +105,18 @@ def test_render_bar_clamps():
 
 def test_progress_bar_advances_indeterminate_frame():
     stream = _FakeStream()
-    stream._tty = True
     bar = ProgressBar(sample_total=3, stream=stream)
     bar._report_phase_start("plan")
+    checks = iter([False, False, True])
 
-    with patch.object(bar, "_stop", threading.Event()):
-        bar._stop.set()
-        bar._animate()
-        bar._animate()
+    with (
+        patch.object(bar._stop, "is_set", side_effect=lambda: next(checks)),
+        patch("aios.core.console.time.sleep"),
+    ):
         bar._animate()
 
-    assert len(stream.writes) >= 1
+    assert len(stream.writes) == 2
+    assert all("plan" in write for write in stream.writes)
 
 
 def test_progress_bar_falls_back_when_not_tty():
@@ -170,3 +175,19 @@ def test_render_kanban_reflects_card_position():
     assert "Backlog (0)" in output
     assert "Todo (1)" in output
     assert all(column in output for column in KANBAN_COLUMNS)
+
+
+def test_render_kanban_blocked_cell():
+    output = render_kanban({"Todo": 2, "Blocked": 3})
+    assert (
+        output == "  Backlog (0) | Todo (2) | InProgress (0) | Review (0) | Done (0)"
+        " | ⛔ Blocked (3)"
+    )
+
+
+def test_render_engine_ready_icon():
+    assert render_engine("runtime", "ready") == " Runtime" + " " * 8 + "✓ ready"
+
+
+def test_render_engine_failure_icon():
+    assert render_engine("router", "failed") == " Router" + " " * 9 + "✗ failed"
