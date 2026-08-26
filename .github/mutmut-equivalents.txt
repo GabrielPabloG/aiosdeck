@@ -1,0 +1,26 @@
+# Mutantes equivalentes verificados — tolerados pelo gate de CI.
+#
+# Um mutante é "equivalente" quando nenhuma entrada possível altera o
+# comportamento observável, logo nenhum teste pode matá-lo.
+#
+# Regras:
+# - Cada linha lista UM nome de mutante (saída de `mutmut results`).
+# - Nomes mudam quando o código-fonte é editado (numeração por função).
+#   Se o CI falhar com sobreviventes fora desta lista, rode o mutmut,
+#   analise cada novo sobrevivente e atualize este arquivo APENAS se
+#   conseguir provar a equivalência.
+# - Entradas obsoletas (mutante que não existe mais) geram WARNING no CI,
+#   não falha — pois o CI roda mutação apenas nos arquivos alterados do PR.
+#
+# Formato: <nome-completo-do-mutante>  # motivo
+
+aios.core.console.xǁProgressBarǁ__init____mutmut_14  # ProgressBar._phase_active=False -> None: falsy em todos os usos (if self._phase_active)
+aios.core.console.xǁProgressBarǁ_report_phase_end__mutmut_1  # reset _phase_active=False -> None: falsy equivalente no gate de _finish/_redraw
+aios.routing.engine.xǁRuleBasedRouterǁ_apply_cost_cap__mutmut_32  # fb.get(None, decision.variant): chave inexistente; fallback identico
+aios.routing.engine.xǁRuleBasedRouterǁ_apply_cost_cap__mutmut_36  # fb.get("XXvariantXX", decision.variant): chave nunca presente
+aios.routing.engine.xǁRuleBasedRouterǁ_apply_cost_cap__mutmut_37  # fb.get("VARIANT", decision.variant): chave nunca presente
+aios.routing.engine.xǁRuleBasedRouterǁ_build_fallback_chain__mutmut_31  # fp.get(None, ""): chave inexistente na pratica; default "" identico
+aios.routing.engine.xǁRuleBasedRouterǁ_build_fallback_chain__mutmut_35  # fp.get("XXvariantXX", ""): chave nunca presente; resultado identico
+aios.routing.engine.xǁRuleBasedRouterǁ_build_fallback_chain__mutmut_36  # fp.get("VARIANT", ""): chave nunca presente; resultado identico
+aios.routing.engine.xǁRuleBasedRouterǁ_build_override_decision__mutmut_6  # provider="" -> None: absorbido por `provider or "unknown"`
+aios.routing.engine.xǁRuleBasedRouterǁ_estimate_cost__mutmut_16  # == 0.0 -> == 1.0: nenhum preco vale exatamente 1.0 e modelo gratis computa 0.0
