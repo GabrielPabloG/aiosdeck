@@ -191,7 +191,7 @@ def render_kanban(summary: dict[str, int]) -> str:
     An optional ``Blocked`` key renders a trailing blocked-status cell.
     """
     cells = [f"{name} ({summary.get(name, 0)})" for name in KANBAN_COLUMNS]
-    blocked = summary.get("Blocked", 0)
+    blocked = summary.get("Blocked") or 0
     if blocked:
         cells.append(f"⛔ Blocked ({blocked})")
     return "  " + " | ".join(cells)

@@ -152,7 +152,9 @@ class RuntimeEngine:
                     task_type=task_type,
                     complexity=complexity,
                     fallback_used=(attempt is not models_to_try[0]),
-                    fallback_reason=self._fallback_reason(last_error) if last_error else "",
+                    fallback_reason=(
+                        self._fallback_reason(last_error) if last_error is not None else ""
+                    ),
                 )
                 return result
             except (RuntimeError, TimeoutError) as exc:

@@ -127,11 +127,11 @@ def test_execute_router_decision_forwards_and_captures_input():
     bus = _Bus()
     engine = _engine(adapter, router=router, bus=bus)
 
-    engine.execute("p", ["s"], agent="dev", complexity="", context_size=7)
+    engine.execute("p", ["s"], agent="dev", task_type="plan", complexity="", context_size=7)
 
     captured = router.inputs[0]
     assert captured.agent == "dev"
-    assert captured.task_type == "code"
+    assert captured.task_type == "plan"
     assert captured.complexity == "medium"
     assert captured.context_size == 7
 
@@ -148,6 +148,16 @@ def test_execute_router_decision_forwards_and_captures_input():
     assert payload["fallback_used"] is False
     assert payload["fallback_reason"] == ""
     assert payload["agent"] == "dev"
+
+
+def test_execute_router_default_task_type_is_code():
+    decision = RouteDecision(provider="prov", model="prov/m1", source="router")
+    router = _Router(decision)
+    engine = _engine(_Adapter(), router=router)
+
+    engine.execute("p", [], agent="dev")
+
+    assert router.inputs[0].task_type == "code"
 
 
 def test_execute_sparse_fallback_attempt_uses_empty_defaults():

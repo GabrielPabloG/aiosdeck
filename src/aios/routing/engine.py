@@ -68,15 +68,15 @@ class RuleBasedRouter:
         return self._build_default_decision(input)
 
     def _rule_matches(self, rule: dict, input: RouteInput) -> bool:
-        rule_agent = rule.get("agent", "")
+        rule_agent = rule.get("agent")
         if rule_agent and rule_agent != input.agent:
             return False
 
-        rule_complexity = rule.get("complexity", "")
+        rule_complexity = rule.get("complexity")
         if rule_complexity and rule_complexity != input.complexity:
             return False
 
-        context_limit = self._config.context_limits.get(input.agent, 0)
+        context_limit = self._config.context_limits.get(input.agent)
         return not (context_limit and input.context_size > context_limit)
 
     def _build_override_decision(self, input: RouteInput) -> RouteDecision:
@@ -126,7 +126,7 @@ class RuleBasedRouter:
         chain: list[dict] = []
         seen: set[str] = {current_provider}
         for fp in self._config.fallback_providers:
-            p = fp.get("provider", "")
+            p = fp.get("provider")
             if not p or p in seen:
                 continue
             model = fp.get("model", self._config.default_model)
@@ -170,7 +170,7 @@ class RuleBasedRouter:
     @staticmethod
     def _estimate_cost(model_id: str, complexity: str, context_size: int) -> float:
         lookup_id = model_id.replace("~", "")
-        input_price = _MODEL_PRICING.get(lookup_id, _MODEL_PRICING.get("ollama/llama3", 0.0))
+        input_price = _MODEL_PRICING.get(lookup_id, _MODEL_PRICING["ollama/llama3"])
         if input_price == 0.0:
             return 0.0
         input_tokens = max(context_size, 1) * 4
