@@ -14,9 +14,7 @@ from aios.security.contracts import EffectivePermissions
 
 _DEVELOPER_CAPABILITIES = ["filesystem_read", "filesystem_write", "shell"]
 _DEVELOPER_EFFECTIVE = EffectivePermissions(
-    allowed=frozenset(
-        {FILESYSTEM_READ_ACTION, FILESYSTEM_WRITE_ACTION, SHELL_EXECUTE}
-    )
+    allowed=frozenset({FILESYSTEM_READ_ACTION, FILESYSTEM_WRITE_ACTION, SHELL_EXECUTE})
 )
 
 
@@ -176,9 +174,7 @@ def test_execute_selects_build_agent_for_effective_write_permissions():
 
     with patch("aios.runtime.opencode.subprocess.run") as mock_run:
         _successful_run(mock_run)
-        adapter.execute(
-            "test", skills=[], capabilities=[], permissions=_DEVELOPER_EFFECTIVE
-        )
+        adapter.execute("test", skills=[], capabilities=[], permissions=_DEVELOPER_EFFECTIVE)
 
     args = mock_run.call_args.args[0]
     assert args[args.index("--agent") + 1] == "build"
@@ -270,9 +266,7 @@ def test_execute_selected_agent_does_not_weaken_permissions():
 
     with patch("aios.runtime.opencode.subprocess.run") as mock_run:
         _successful_run(mock_run)
-        adapter.execute(
-            "test", skills=[], capabilities=[], permissions=_DEVELOPER_EFFECTIVE
-        )
+        adapter.execute("test", skills=[], capabilities=[], permissions=_DEVELOPER_EFFECTIVE)
 
     env = mock_run.call_args.kwargs["env"]
     perms = json.loads(env["OPENCODE_PERMISSION"])

@@ -6,6 +6,7 @@ the regular suite stays fast, deterministic and CI-safe.
 """
 
 import os
+import pathlib
 import shutil
 
 import pytest
@@ -43,10 +44,8 @@ def test_build_agent_creates_file_in_disposable_dir(monkeypatch):
         )
 
         target = os.path.join(probe_dir, "aios_e2e_probe.txt")
-        assert os.path.exists(target), (
-            f"file was not created; agent replied: {output[:200]}"
-        )
-        assert "OK" in open(target, encoding="utf-8").read()
+        assert os.path.exists(target), f"file was not created; agent replied: {output[:200]}"
+        assert "OK" in pathlib.Path(target).read_text(encoding="utf-8")
     finally:
         monkeypatch.chdir(original_cwd)
         shutil.rmtree(probe_dir, ignore_errors=True)
