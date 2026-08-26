@@ -158,3 +158,12 @@ O output `--json` é um report de benchmark válido: `results[]` reusa o group
 original de cada target com os runs atuais, mais extras em nível de result
 (`baseline_p50_ms`, `current_p50_ms`, `delta_pct`, `verdict`, `category`) e uma
 chave top-level `compare` com o resumo e o `exit_code`.
+
+## Nota de comparabilidade — runtime agent selection
+
+Desde "select opencode build agent for write-capable runs", as fases `full`
+com acesso concedido de escrita/shell (developer, tester, documentation) rodam
+sob `--agent build`. Baselines até v1.1.0 foram medidas sem essa seleção:
+qualquer comparação contra elas é cross-environment e exige baseline nova
+rotulada. O modo `bare` não é afetado (permissions vazias ⇒ nenhuma flag é
+adicionada ao probe).

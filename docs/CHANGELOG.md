@@ -5,6 +5,22 @@ All notable changes to AiosDeck are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **Runtime agent selection** — write-capable executions (granted
+  `filesystem_write` or `shell`) now explicitly run the OpenCode `build`
+  agent (`--agent build`). The headless invocation previously relied on the
+  runtime's default agent, so a plan-only session could answer with text and
+  never edit a file. Read-only runs, bare benchmark probes and
+  `OPENCODE_PERMISSION` enforcement are unchanged.
+
+### Added
+
+- Opt-in end-to-end gate test (`AIOS_E2E_RUNTIME=1`) proving file creation
+  through `ai-jail opencode --agent build` in a disposable in-repo directory.
+
 ## [1.1.0] — 2026-08-12
 
 ### Added

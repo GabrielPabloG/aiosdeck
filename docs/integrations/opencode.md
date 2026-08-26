@@ -138,6 +138,16 @@ This ensures:
 
 Permissions are cached by capabilities set in the adapter, avoiding repeated JSON serialization.
 
+#### Runtime Agent Selection
+
+The adapter also selects the OpenCode agent per execution. Runs whose granted
+access includes `filesystem_write` or `shell` execute under the write-capable
+**build** agent (`--agent build`) — a plan-only session could otherwise reply
+with text and never touch files. Read-only executions (planner, reviewer,
+research) keep the runtime default: no flag is added, and their tool lockdown
+continues to come from `OPENCODE_PERMISSION` alone. Bare benchmark probes
+(empty permissions) are likewise unaffected.
+
 ## Consequences
 
 - OpenCode is a runtime dependency of the current adapter. Without OpenCode (or another compatible runtime adapter), AiosDeck cannot execute agents.
@@ -157,3 +167,4 @@ Permissions are cached by capabilities set in the adapter, avoiding repeated JSO
 - [x] Inject `OPENCODE_PERMISSION` env var with `question: deny` in headless mode
 - [x] PlannerAgent gets `edit: deny, bash: deny` via capabilities check
 - [x] Permission JSON cached by capabilities set for performance
+- [x] Select the write-capable build agent for write/shell-capable executions

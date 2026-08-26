@@ -155,6 +155,15 @@ Permissions are derived from the agent's capabilities:
 
 Permissions are cached by capabilities set in `runtime/opencode.py` via `_build_permissions()`.
 
+### Runtime Agent Selection
+
+Write-capable executions — granted access includes `filesystem_write` or
+`shell` (coarse capabilities or resolved granular actions) — pass
+`--agent build`, so the OpenCode session is write-capable by construction. A
+plan-only session could answer with text and never edit a file. Read-only
+executions and bare probes keep the default agent (no flag); tool policy
+remains enforced by `OPENCODE_PERMISSION` on the same invocation.
+
 ### Configuration
 
 Runtime configuration is read from the Project Manifest:
@@ -208,3 +217,4 @@ runtime:
 - [x] Test: health check returns True when OpenCode is installed
 - [x] Test: prompt includes task description, context, and instructions
 - [x] Inject OPENCODE_PERMISSION with per-agent tool lockdown (v0.6.1)
+- [x] Select the write-capable build agent for write/shell-capable executions
