@@ -45,6 +45,12 @@ The execution environment that runs an agent and communicates with a language mo
 
 **First used in**: `internals/runtime.md`. **Introduced**: v0.1.
 
+### Execution Environment Awareness
+
+A backend-agnostic capability that exposes the agent's execution environment — persistence, network isolation, filesystem mounts (rw/ro/overlay/deny), process limits, and tool restrictions — to agents in a structured way. It deliberately does not hardcode a specific sandbox (such as ai-jail); AiosDeck presents a generic notion so future runtimes/sandboxes can plug in the same contract. Awareness is off by default initially so as not to change prompts or token usage until validated.
+
+**First used in**: `integrations/ai-jail.md`, `decisions/ADR-0002-ai-jail-as-sandbox.md`. **Introduced**: planned (Execution-Environment Awareness epic).
+
 ### Context
 
 All information about a project that an agent needs to produce high-quality output: language, framework, conventions, architecture patterns, dependencies, recent changes, related files, project history. The Context Engine detects project characteristics automatically and assembles this context before every agent prompt.

@@ -20,7 +20,7 @@ Each integration is an **adapter** — a thin layer that translates between Aios
 |---------|--------|----------------|
 | ProjDesk | Implemented | `integrations/projdesk/` — `ProjDeskClient`, `ProjectNotFound`, `ProjectAmbiguous` |
 | OpenCode | Implemented | `runtime/opencode.py` — agent execution, headless permission enforcement |
-| ai-jail | Implemented | `runtime/opencode.py` — always invoked via `ai-jail opencode`; degrades with warning when absent |
+| ai-jail | Implemented | `runtime/opencode.py` — always invoked via `ai-jail opencode`; without it, runtime execution is disabled (fail closed) |
 | Ollama | Implemented | `retrieval/providers.py` — `OllamaEmbeddingProvider`; default in `config/schema.py` |
 | Docker | Deferred (post-1.0) | context detection only (`context/packet.py`); no adapter |
 | VS Code | Deferred (post-1.0) | no adapter |

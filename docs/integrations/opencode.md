@@ -27,6 +27,8 @@ opencode  # Not allowed
 
 The Runtime Adapter (`runtime/opencode.py`) handles this. If ai-jail is not installed, a warning is logged and OpenCode execution is refused. There is no unsandboxed degraded mode.
 
+See [ai-jail.md](ai-jail.md) for the verified sandbox behavior and limitations that apply to OpenCode runs (only the project directory persists, network is shared in normal mode, secrets are visible unless masked, etc.).
+
 ### Skill Loading
 
 When OpenCode is the active runtime, the Runtime Adapter maps AiosDeck Skills into OpenCode's native skill system. Skills are loaded before each agent task:
@@ -138,6 +140,16 @@ This ensures:
 
 Permissions are cached by capabilities set in the adapter, avoiding repeated JSON serialization.
 
+#### Runtime Agent Selection
+
+The adapter also selects the OpenCode agent per execution. Runs whose granted
+access includes `filesystem_write` or `shell` execute under the write-capable
+**build** agent (`--agent build`) — a plan-only session could otherwise reply
+with text and never touch files. Read-only executions (planner, reviewer,
+research) keep the runtime default: no flag is added, and their tool lockdown
+continues to come from `OPENCODE_PERMISSION` alone. Bare benchmark probes
+(empty permissions) are likewise unaffected.
+
 ## Consequences
 
 - OpenCode is a runtime dependency of the current adapter. Without OpenCode (or another compatible runtime adapter), AiosDeck cannot execute agents.
@@ -157,3 +169,4 @@ Permissions are cached by capabilities set in the adapter, avoiding repeated JSO
 - [x] Inject `OPENCODE_PERMISSION` env var with `question: deny` in headless mode
 - [x] PlannerAgent gets `edit: deny, bash: deny` via capabilities check
 - [x] Permission JSON cached by capabilities set for performance
+- [x] Select the write-capable build agent for write/shell-capable executions
