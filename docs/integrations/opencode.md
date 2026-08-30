@@ -27,6 +27,8 @@ opencode  # Not allowed
 
 The Runtime Adapter (`runtime/opencode.py`) handles this. If ai-jail is not installed, a warning is logged and OpenCode execution is refused. There is no unsandboxed degraded mode.
 
+See [ai-jail.md](ai-jail.md) for the verified sandbox behavior and limitations that apply to OpenCode runs (only the project directory persists, network is shared in normal mode, secrets are visible unless masked, etc.).
+
 ### Skill Loading
 
 When OpenCode is the active runtime, the Runtime Adapter maps AiosDeck Skills into OpenCode's native skill system. Skills are loaded before each agent task:

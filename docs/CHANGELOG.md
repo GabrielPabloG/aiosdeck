@@ -20,6 +20,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Opt-in end-to-end gate test (`AIOS_E2E_RUNTIME=1`) proving file creation
   through `ai-jail opencode --agent build` in a disposable in-repo directory.
+- OpenCode adapter characterization tests — exhaustive coverage of
+  `__init__`/`initialize`/command resolution, sandbox detection and health
+  checks, every `diagnose()` branch, `execute()` argument/env/error handling,
+  `_redact_detail`, and the legacy/effective permission builders.
+
+### Documentation
+
+- **ai-jail sandbox** — `docs/integrations/ai-jail.md` rewritten with verified
+  sandbox behavior and limitations (persistence, network, secrets, resource
+  limits, backends); `ADR-0002` updated with verified limitations and the
+  planned, backend-agnostic Execution-Environment Awareness capability.
 
 ## [1.1.0] — 2026-08-12
 
