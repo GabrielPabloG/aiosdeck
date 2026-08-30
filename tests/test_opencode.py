@@ -116,7 +116,7 @@ def test_execute_with_question_handles_none_stderr_on_error():
         try:
             adapter.execute("test", skills=[], capabilities=["question"])
         except RuntimeError as exc:
-            assert "unknown error" in str(exc)
+            assert str(exc) == "Runtime exited with code 1: unknown error"
         else:
             raise AssertionError("Expected RuntimeError")
 
@@ -390,6 +390,9 @@ def test_diagnose_opencode_missing():
     assert diag.message == "OpenCode executable was not found."
     assert diag.suggestions == ["Install OpenCode and ensure it is available on PATH."]
     assert diag.checks == {"opencode": False, "ai_jail": True}
+    assert diag.source == "default"
+    assert diag.provider == "ollama"
+    assert diag.model == "ollama/llama3.2"
     assert diag.provider == "ollama"
     assert diag.model == "ollama/llama3.2"
 
@@ -403,6 +406,9 @@ def test_diagnose_ai_jail_missing():
     assert diag.message == "ai-jail is required to run OpenCode safely."
     assert diag.suggestions == ["Install ai-jail; OpenCode will not run without the sandbox."]
     assert diag.checks == {"opencode": True, "ai_jail": False}
+    assert diag.source == "default"
+    assert diag.provider == "ollama"
+    assert diag.model == "ollama/llama3.2"
 
 
 def test_diagnose_provider_missing():
@@ -413,6 +419,10 @@ def test_diagnose_provider_missing():
     assert diag.code == "provider_missing"
     assert diag.message == "No provider was resolved for the runtime."
     assert diag.suggestions == ["Configure routing.default_provider."]
+    assert diag.source == "default"
+    assert diag.provider == ""
+    assert diag.model == "ollama/llama3.2"
+    assert diag.checks == {"opencode": True, "ai_jail": True}
 
 
 def test_diagnose_model_missing_when_empty():
@@ -423,6 +433,10 @@ def test_diagnose_model_missing_when_empty():
     assert diag.code == "model_missing"
     assert diag.message == "No model was resolved for provider 'ollama'."
     assert diag.suggestions == ["Configure routing.default_model or run opencode models ollama."]
+    assert diag.source == "default"
+    assert diag.provider == "ollama"
+    assert diag.model == ""
+    assert diag.checks == {"opencode": True, "ai_jail": True}
 
 
 def test_diagnose_model_missing_when_equal_to_provider():
@@ -431,6 +445,10 @@ def test_diagnose_model_missing_when_equal_to_provider():
     diag = adapter.diagnose(provider="ollama", model="ollama")
     assert diag.healthy is False
     assert diag.code == "model_missing"
+    assert diag.source == "default"
+    assert diag.provider == "ollama"
+    assert diag.model == "ollama"
+    assert diag.checks == {"opencode": True, "ai_jail": True}
 
 
 def test_diagnose_endpoint_unreachable_on_oserror():
@@ -443,6 +461,11 @@ def test_diagnose_endpoint_unreachable_on_oserror():
     assert diag.message == ("Could not query provider 'ollama' from inside ai-jail: boom")
     assert diag.checks["endpoint"] is False
     assert diag.suggestions == ["Check the ollama endpoint and run opencode models ollama."]
+    assert diag.source == "default"
+    assert diag.provider == "ollama"
+    assert diag.model == "ollama/llama3.2"
+    assert diag.checks == {"opencode": True, "ai_jail": True, "endpoint": False, "model": False}
+    assert diag.code == "endpoint_unreachable"
 
 
 def test_diagnose_endpoint_unreachable_on_timeout():
@@ -472,6 +495,10 @@ def test_diagnose_endpoint_unreachable_on_nonzero_exit():
     )
     assert diag.checks["endpoint"] is False
     assert diag.suggestions == ["Check the ollama endpoint and run opencode models ollama."]
+    assert diag.source == "default"
+    assert diag.provider == "ollama"
+    assert diag.model == "ollama/llama3.2"
+    assert diag.checks == {"opencode": True, "ai_jail": True, "endpoint": False, "model": False}
 
 
 def test_diagnose_endpoint_unreachable_redacts_stderr():
@@ -500,6 +527,11 @@ def test_diagnose_model_unavailable():
     assert diag.message == "Model 'ollama/llama3.2' was not reported by provider 'ollama'."
     assert diag.checks["endpoint"] is False
     assert diag.checks["model"] is False
+    assert diag.suggestions == ["Run opencode models ollama and configure an available model."]
+    assert diag.source == "default"
+    assert diag.provider == "ollama"
+    assert diag.model == "ollama/llama3.2"
+    assert diag.checks == {"opencode": True, "ai_jail": True, "endpoint": False, "model": False}
 
 
 def test_diagnose_ok():
@@ -515,6 +547,11 @@ def test_diagnose_ok():
     assert diag.message == "OpenCode provider 'ollama' and model 'ollama/llama3.2' are available."
     assert diag.checks["endpoint"] is True
     assert diag.checks["model"] is True
+    assert diag.source == "default"
+    assert diag.provider == "ollama"
+    assert diag.model == "ollama/llama3.2"
+    assert diag.checks == {"opencode": True, "ai_jail": True, "endpoint": True, "model": True}
+    assert diag.suggestions == []
 
 
 def test_diagnose_uses_ai_jail_command():
@@ -528,7 +565,11 @@ def test_diagnose_uses_ai_jail_command():
     args = mock_run.call_args.args[0]
     assert args[:2] == ["ai-jail", "opencode"]
     assert args[2:] == ["models", "ollama"]
-    assert mock_run.call_args.kwargs["timeout"] == 30
+    kwargs = mock_run.call_args.kwargs
+    assert kwargs["timeout"] == 30
+    assert kwargs["text"] is True
+    assert kwargs["capture_output"] is True
+    assert kwargs["check"] is False
 
 
 # ---------------------------------------------------------------------------
@@ -881,3 +922,110 @@ def test_build_effective_permissions_read_false_deny_glob_grep():
     perms = _build_effective(OpenCodeAdapter(), FILESYSTEM_WRITE_ACTION)
     assert perms["glob"] == "deny"
     assert perms["grep"] == "deny"
+
+
+# ---------------------------------------------------------------------------
+# Mutation-gate hardening: capabilities `or []` vs `and []` / None
+# (kills execute__mutmut_36/37 and _build_permissions__mutmut_5)
+# ---------------------------------------------------------------------------
+
+
+def test_execute_permissions_reflect_non_empty_capabilities():
+    adapter = _runnable_adapter()
+    with patch("aios.runtime.opencode.subprocess.run") as mock_run:
+        _successful_run(mock_run)
+        adapter.execute("test", skills=[], capabilities=["filesystem_write"])
+    perms = json.loads(mock_run.call_args.kwargs["env"]["OPENCODE_PERMISSION"])
+    assert "edit" not in perms
+    assert "bash" not in perms
+
+
+def test_build_permissions_capabilities_write_allows_edit():
+    perms = json.loads(
+        OpenCodeAdapter()._build_permissions(None, capabilities=["filesystem_write"])
+    )
+    assert "edit" not in perms
+    assert "bash" not in perms
+
+
+# ---------------------------------------------------------------------------
+# Mutation-gate hardening: diagnose() runtime and literal branches
+# ---------------------------------------------------------------------------
+
+
+def test_diagnose_endpoint_unreachable_unknown_error_literal():
+    adapter = OpenCodeAdapter()
+    _set_adapter_installed(adapter)
+    with patch("aios.runtime.opencode.subprocess.run") as mock_run:
+        mock_run.return_value.returncode = 1
+        mock_run.return_value.stdout = ""
+        mock_run.return_value.stderr = ""
+        diag = adapter.diagnose(provider="ollama", model="ollama/llama3.2")
+    assert diag.code == "endpoint_unreachable"
+    assert diag.message == ("Provider 'ollama' is not reachable from inside ai-jail: unknown error")
+
+
+def test_diagnose_ok_when_model_in_stderr_only():
+    adapter = OpenCodeAdapter()
+    _set_adapter_installed(adapter)
+    with patch("aios.runtime.opencode.subprocess.run") as mock_run:
+        mock_run.return_value.returncode = 0
+        mock_run.return_value.stdout = ""
+        mock_run.return_value.stderr = "llama3.2\n"
+        diag = adapter.diagnose(provider="ollama", model="ollama/llama3.2")
+    assert diag.code == "ok"
+
+
+def test_diagnose_model_unavailable_with_double_slash_model():
+    adapter = OpenCodeAdapter()
+    _set_adapter_installed(adapter)
+    with patch("aios.runtime.opencode.subprocess.run") as mock_run:
+        mock_run.return_value.returncode = 0
+        mock_run.return_value.stdout = "b"
+        mock_run.return_value.stderr = ""
+        diag = adapter.diagnose(provider="ollama", model="ollama/a/b")
+    assert diag.code == "model_unavailable"
+
+
+def test_diagnose_ok_with_no_slash_model():
+    adapter = OpenCodeAdapter()
+    _set_adapter_installed(adapter)
+    with patch("aios.runtime.opencode.subprocess.run") as mock_run:
+        mock_run.return_value.returncode = 0
+        mock_run.return_value.stdout = "llama3.2"
+        mock_run.return_value.stderr = ""
+        diag = adapter.diagnose(provider="ollama", model="llama3.2")
+    assert diag.code == "ok"
+
+
+def test_diagnose_model_missing_strips_trailing_slash():
+    adapter = OpenCodeAdapter()
+    _set_adapter_installed(adapter)
+    with patch("aios.runtime.opencode.subprocess.run") as mock_run:
+        mock_run.return_value.returncode = 0
+        mock_run.return_value.stdout = ""
+        mock_run.return_value.stderr = ""
+        diag = adapter.diagnose(provider="ollama", model="ollama/")
+    assert diag.code == "model_missing"
+
+
+def test_diagnose_model_leading_slash_uses_rstrip():
+    adapter = OpenCodeAdapter()
+    _set_adapter_installed(adapter)
+    with patch("aios.runtime.opencode.subprocess.run") as mock_run:
+        mock_run.return_value.returncode = 0
+        mock_run.return_value.stdout = "openai"
+        mock_run.return_value.stderr = ""
+        diag = adapter.diagnose(provider="openai", model="/openai")
+    assert diag.code == "ok"
+
+
+def test_diagnose_model_rstrip_uses_slash_only():
+    adapter = OpenCodeAdapter()
+    _set_adapter_installed(adapter)
+    with patch("aios.runtime.opencode.subprocess.run") as mock_run:
+        mock_run.return_value.returncode = 0
+        mock_run.return_value.stdout = "openaiX"
+        mock_run.return_value.stderr = ""
+        diag = adapter.diagnose(provider="openai", model="openaiX")
+    assert diag.code == "ok"

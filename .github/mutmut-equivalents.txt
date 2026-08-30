@@ -24,3 +24,5 @@ aios.routing.engine.xǁRuleBasedRouterǁ_build_fallback_chain__mutmut_35  # fp.g
 aios.routing.engine.xǁRuleBasedRouterǁ_build_fallback_chain__mutmut_36  # fp.get("VARIANT", ""): chave nunca presente; resultado identico
 aios.routing.engine.xǁRuleBasedRouterǁ_build_override_decision__mutmut_6  # provider="" -> None: absorbido por `provider or "unknown"`
 aios.routing.engine.xǁRuleBasedRouterǁ_estimate_cost__mutmut_16  # == 0.0 -> == 1.0: nenhum preco vale exatamente 1.0 e modelo gratis computa 0.0
+aios.runtime.opencode.xǁOpenCodeAdapterǁdiagnose__mutmut_187  # output f-string: stdout or '' -> or 'XXXX' so difere quando stdout e falsy, injetando o literal 'XXXX' que nunca coincide com model_name/model no teste de pertenca
+aios.runtime.opencode.xǁOpenCodeAdapterǁdiagnose__mutmut_189  # output f-string: stderr or '' -> or 'XXXX' so difere quando stderr e falsy; literal 'XXXX' nunca coincide com o nome do modelo, decidindo model_unavailable/ok identicamente
