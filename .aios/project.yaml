@@ -8,22 +8,22 @@ sandbox: ai-jail
 
 routing:
   enabled: true
-  default_provider: "qwen-hf"
-  default_model: "Qwen/Qwen3.8-27B"
+  default_provider: "omniroute"
+  default_model: "auto/coding:free"
   rules:
     - agent: "planner"
-      provider: "qwen-hf"
-      model: "Qwen/Qwen3.8-27B"
-      complexity: "medium"  
+      provider: "omniroute"
+      model: "auto/reasoning"
+      complexity: "high"  
 
     - agent: "developer"
-      provider: "qwen-hf"
-      model: "Qwen/Qwen3.8-27B"
-      complexity: "high"    
+      provider: "omniroute"
+      model: "auto/coding:free"
+      complexity: "medium"    
 
   fallback_providers:
     - provider: "omniroute"
-      model: "auto"  
+      model: "auto/coding:free"
 
     - provider: "google"
       model: "gemini-3.7-flash"
