@@ -386,7 +386,6 @@ class WorkflowEngine:
                     name="git",
                     success=commit_result.success,
                     error=self._git_error(commit_result),
-                    details={"changed_files": list(ctx.changed_files)},
                 )
             )
             notify(ctx.stages[-1])
