@@ -212,3 +212,121 @@ def test_project_knowledge_to_dict(tmp_path):
     assert len(d["decisions"]) == 1
     assert d["decisions"][0]["decision"] == "PostgreSQL"
     engine.shutdown()
+
+
+def test_delete_convention_removes_row(tmp_path):
+    store = SQLiteStore(tmp_path / "m.db", "p1")
+    store.open()
+    store.upsert_convention("Use snake_case", "naming", "manual")
+    assert store.delete_convention("Use snake_case") is True
+    assert store.get_conventions() == []
+    store.close()
+
+
+def test_delete_decision_removes_row(tmp_path):
+    store = SQLiteStore(tmp_path / "m.db", "p1")
+    store.open()
+    store.add_decision("SQLite", "persistence", "Use SQLite", "none")
+    assert store.delete_decision("SQLite") is True
+    assert store.get_decisions() == []
+    store.close()
+
+
+def test_delete_pattern_removes_row(tmp_path):
+    store = SQLiteStore(tmp_path / "m.db", "p1")
+    store.open()
+    store.add_pattern("Repository", "data access")
+    assert store.delete_pattern("Repository") is True
+    assert store.get_patterns() == []
+    store.close()
+
+
+def test_delete_mistake_removes_row(tmp_path):
+    store = SQLiteStore(tmp_path / "m.db", "p1")
+    store.open()
+    store.add_mistake("Never import *", "style", "critical")
+    assert store.delete_mistake("Never import *") is True
+    assert store.get_mistakes() == []
+    store.close()
+
+
+def test_delete_missing_returns_false(tmp_path):
+    """Deleting a row that does not exist reports False on a fresh connection."""
+    store = SQLiteStore(tmp_path / "m.db", "p1")
+    store.open()
+    assert store.delete_convention("missing") is False
+    assert store.delete_decision("missing") is False
+    assert store.delete_pattern("missing") is False
+    assert store.delete_mistake("missing") is False
+    store.close()
+
+
+def test_delete_when_closed_returns_false(tmp_path):
+    """A store that was never opened has no connection, so deletes report False."""
+    store = SQLiteStore(tmp_path / "m.db", "p1")
+    assert store.delete_convention("x") is False
+    assert store.delete_decision("x") is False
+    assert store.delete_pattern("x") is False
+    assert store.delete_mistake("x") is False
+
+
+def test_search_matches_across_kinds(tmp_path):
+    store = SQLiteStore(tmp_path / "m.db", "p1")
+    store.open()
+    store.upsert_convention("prefer fail-fast", "style", "manual")
+    store.add_decision("Use fail-fast", "ctx", "Do fail fast", "none")
+    store.add_pattern("failfast helper", "helper")
+    store.add_mistake("avoid fail-fast here", "style", "warning")
+    pairs = {(kind, text) for kind, text in store.search("fail")}
+    assert ("convention", "prefer fail-fast") in pairs
+    assert ("decision", "Use fail-fast") in pairs
+    assert ("pattern", "failfast helper") in pairs
+    assert ("mistake", "avoid fail-fast here") in pairs
+    store.close()
+
+
+def test_search_no_match_returns_empty(tmp_path):
+    store = SQLiteStore(tmp_path / "m.db", "p1")
+    store.open()
+    store.upsert_convention("Use type hints", "style", "manual")
+    assert store.search("zzzznope") == []
+    store.close()
+
+
+def test_get_mistakes_resolved_true(tmp_path):
+    """get_mistakes(resolved=True) selects rows with a non-null resolved_at."""
+    store = SQLiteStore(tmp_path / "m.db", "p1")
+    store.open()
+    store.add_mistake("open issue", "bug", "warning")
+    store.add_mistake("done issue", "bug", "warning")
+    store._execute(
+        "UPDATE mistakes SET resolved_at=? WHERE description=?",
+        (store._now(), "done issue"),
+    )
+    store._commit()
+    assert [m.description for m in store.get_mistakes(resolved=True)] == ["done issue"]
+    assert [m.description for m in store.get_mistakes(resolved=False)] == ["open issue"]
+    store.close()
+
+
+def test_writes_are_noop_without_connection(tmp_path):
+    """Mutation methods short-circuit silently when the store has no connection."""
+    store = SQLiteStore(tmp_path / "m.db", "p1")
+    store.upsert_convention("rule", "cat", "src")
+    store.add_pattern("name", "desc")
+    assert store.get_conventions() == []
+    assert store.get_patterns() == []
+    assert store.get_mistakes() == []
+    assert store.get_mistakes(resolved=True) == []
+
+
+def test_add_pattern_increments_usage_count(tmp_path):
+    """Re-adding an existing pattern increments usage_count instead of duplicating."""
+    store = SQLiteStore(tmp_path / "m.db", "p1")
+    store.open()
+    store.add_pattern("Repository", "data access")
+    store.add_pattern("Repository", "data access")
+    patterns = store.get_patterns()
+    assert len(patterns) == 1
+    assert patterns[0].usage_count == 2
+    store.close()
