@@ -74,7 +74,7 @@ class BacklogRunner:
     def _execute_task(self, task: BacklogTask, create_branch: bool = False) -> Any:
         commit_factory = self._build_commit_factory(task)
         description = task.subject or task.title
-        t = Task(description=description, task_type="plan")
+        t = Task(description=description, task_type=task.type)
         context = self._kernel.get_context()
         return self._kernel.run(
             t,

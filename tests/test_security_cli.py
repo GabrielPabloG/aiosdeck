@@ -168,7 +168,7 @@ class TestIntentSummary:
 
 
 class TestWorkflowStageEffective:
-    def test_workflow_stages_carry_effective_and_intent(self, tmp_path):
+    def test_workflow_stages_carry_effective_and_intent(self, tmp_path):  # noqa: PLR0915 - fixture setup
         import subprocess
         from unittest.mock import MagicMock
 
@@ -189,11 +189,16 @@ class TestWorkflowStageEffective:
         subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
         subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=repo, check=True)
         subprocess.run(["git", "config", "user.name", "Test User"], cwd=repo, check=True)
+        src = repo / "src"
+        src.mkdir()
+        (src / "base.py").write_text("x = 1\n", encoding="utf-8")
         (repo / "app.py").write_text("def main():\n    pass\n", encoding="utf-8")
         (repo / "tests").mkdir()
         (repo / "tests" / "test_app.py").write_text(
             "def test_main():\n    assert True\n", encoding="utf-8"
         )
+        subprocess.run(["git", "add", "."], cwd=repo, check=True)
+        subprocess.run(["git", "commit", "-qm", "initial"], cwd=repo, check=True)
         scheduler = KanbanEngine(project_path=repo, db_path=str(tmp_path / "kanban.db"))
         scheduler.initialize()
         executor = AgentExecutor()
@@ -220,6 +225,15 @@ class TestWorkflowStageEffective:
                 "unknowns": [],
             }
         )
+        dev = workflow._agents["developer"]._runtime
+
+        def _dev_execute(*_args, **_kwargs):
+            (repo / "src" / "health_endpoint.py").write_text(
+                'def health():\n    return "ok"\n', encoding="utf-8"
+            )
+            return "Implementation complete."
+
+        dev.execute.side_effect = _dev_execute
         ctx = ContextPacket()
         ctx.project = ProjectInfo(language="python", root=str(repo), name="test")
         ctx.tools = ToolsInfo(linter="ruff", formatter="ruff", test_runner="pytest")

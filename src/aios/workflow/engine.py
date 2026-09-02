@@ -65,6 +65,13 @@ from aios.workflow.models import (
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
 _GATE_TIMEOUT_SECONDS = 30.0
 
+# Conventional-commit types whose success does not require a code change in
+# src/ or tests/. Documentation and release-metadata tasks remain exceptions.
+_NON_IMPLEMENTATION_TYPES = frozenset({"docs", "chore", "release", "meta"})
+
+# Directories that count as a "relevant" implementation change for #79.
+_RELEVANT_PREFIXES = ("src/", "tests/")
+
 logger = logging.getLogger("aios.workflow")
 
 OPTIONAL_AGENTS = ("tester", "documentation", "git", "research")
@@ -379,6 +386,7 @@ class WorkflowEngine:
                     name="git",
                     success=commit_result.success,
                     error=self._git_error(commit_result),
+                    details={"changed_files": list(ctx.changed_files)},
                 )
             )
             notify(ctx.stages[-1])
@@ -447,6 +455,8 @@ class WorkflowEngine:
         Returns ``None`` on success or a ``WorkflowResult`` on failure
         (caller must return it immediately).
         """
+        git = agents["git"]
+        before = self._changed_files(git) if git is not None else []
         for i, subtask in enumerate(subtasks):
             card = ctx.cards[i]
             agents["scheduler"].begin_work(card.id)
@@ -488,6 +498,36 @@ class WorkflowEngine:
             )
             notify(ctx.stages[-1])
 
+        # Detect changes actually produced by the developer (before/after delta),
+        # so a pre-existing dirty working tree cannot cause a false positive.
+        if git is not None:
+            after = self._changed_files(git)
+            produced = sorted(set(after) - set(before))
+            ctx.changed_files = produced
+            relevant = any(path.startswith(_RELEVANT_PREFIXES) for path in produced)
+            ctx.produced_change = relevant
+            for stage in ctx.stages:
+                if stage.name.startswith("developer:"):
+                    stage.details = {**stage.details, "files": list(produced)}
+            if self._is_implementation_task(ctx.task) and not relevant:
+                reason = (
+                    "Developer produced no changes in src/ or tests/ (no-op); "
+                    f"changed files: {produced or 'none'}"
+                )
+                if ctx.cards:
+                    agents["scheduler"].block_card(ctx.cards[-1].id, reason=reason)
+                ctx.stages.append(
+                    WorkflowStage(
+                        name="developer:noop",
+                        success=False,
+                        error=reason,
+                        details={"changed_files": produced},
+                    )
+                )
+                notify(ctx.stages[-1])
+                ctx.errors.append(reason)
+                return self._finish(ctx)
+
         if gates and not self._run_gate(
             ctx,
             gates,
@@ -498,6 +538,19 @@ class WorkflowEngine:
         ):
             return self._finish(ctx)
         return None
+
+    @staticmethod
+    def _is_implementation_task(task: Task) -> bool:
+        """A task is an implementation task unless its type is a docs/release one."""
+        return (task.task_type or "code") not in _NON_IMPLEMENTATION_TYPES
+
+    @staticmethod
+    def _changed_files(git) -> list[str]:
+        """Reuse the GitAgent change-set query; best-effort returns [] on error."""
+        try:
+            return list(git._changed_files())
+        except Exception:  # noqa: BLE001 - a failed status probe must not crash the run
+            return []
 
     @staticmethod
     def _apply_workflow_intent(context) -> None:

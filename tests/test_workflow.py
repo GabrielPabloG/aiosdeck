@@ -74,6 +74,10 @@ def _setup_project(tmp_path: Path) -> Path:
     subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=repo, check=True)
     subprocess.run(["git", "config", "user.name", "Test User"], cwd=repo, check=True)
 
+    src = repo / "src"
+    src.mkdir()
+    (src / "base.py").write_text("x = 1\n", encoding="utf-8")
+
     (repo / "health.py").write_text(
         '"""Health endpoint module."""\n'
         "def health_check():\n"
@@ -88,7 +92,26 @@ def _setup_project(tmp_path: Path) -> Path:
         "def test_health_check():\n    assert True\n",
         encoding="utf-8",
     )
+    subprocess.run(["git", "add", "."], cwd=repo, check=True)
+    subprocess.run(["git", "commit", "-qm", "initial"], cwd=repo, check=True)
     return repo
+
+
+def _dev_runtime_writes(repo: Path, stub: str = "Implementation complete.") -> MagicMock:
+    """A developer runtime that returns text AND writes a real file under src/."""
+    runtime = MagicMock()
+
+    def execute(*args, **kwargs):
+        src = repo / "src"
+        src.mkdir(parents=True, exist_ok=True)
+        (src / "health_endpoint.py").write_text(
+            'def health():\n    return "ok"\n',
+            encoding="utf-8",
+        )
+        return stub
+
+    runtime.execute.side_effect = execute
+    return runtime
 
 
 def _make_workflow(
@@ -123,8 +146,7 @@ def test_workflow_full_pipeline_succeeds(tmp_path):
 
     planner_runtime = MagicMock()
     planner_runtime.execute.return_value = json.dumps(VALID_PLAN)
-    dev_runtime = MagicMock()
-    dev_runtime.execute.return_value = "Implementation complete."
+    dev_runtime = _dev_runtime_writes(repo)
 
     workflow, scheduler, git = _make_workflow(tmp_path, repo, planner_runtime, dev_runtime)
     git.push = MagicMock()
@@ -240,8 +262,7 @@ def test_workflow_tester_failure_stops(tmp_path):
 
     planner_runtime = MagicMock()
     planner_runtime.execute.return_value = json.dumps(VALID_PLAN)
-    dev_runtime = MagicMock()
-    dev_runtime.execute.return_value = "Implementation complete."
+    dev_runtime = _dev_runtime_writes(repo)
 
     workflow, scheduler, _ = _make_workflow(tmp_path, repo, planner_runtime, dev_runtime)
     try:
@@ -430,8 +451,7 @@ def test_workflow_research_front_gate_feeds_planner(tmp_path):
 
     planner_runtime = MagicMock()
     planner_runtime.execute.return_value = json.dumps(VALID_PLAN)
-    dev_runtime = MagicMock()
-    dev_runtime.execute.return_value = "Implementation complete."
+    dev_runtime = _dev_runtime_writes(repo)
 
     workflow, scheduler, _ = _make_workflow(
         tmp_path,
@@ -478,3 +498,141 @@ def test_build_branch_short_goal_unchanged():
 
 def test_build_branch_goal_without_words():
     assert WorkflowEngine._build_branch(7, "!!!") == "feature/task-7"
+
+
+def _dev_runtime_noop(return_value: str = "No changes required.") -> MagicMock:
+    """A developer runtime that claims success but writes nothing to disk."""
+    runtime = MagicMock()
+    runtime.execute.return_value = return_value
+    return runtime
+
+
+def test_workflow_noop_implementation_fails(tmp_path):
+    """Regression (#79): an implementation task producing no src/ or tests/
+    change must fail, not pass, even though the developer returned text."""
+    repo = _setup_project(tmp_path)
+    context = _make_context(str(repo))
+
+    (repo / "docs").mkdir()
+    (repo / "docs" / "changelog-fragment-20260101-000000.md").write_text(
+        "# Changelog Fragment\n", encoding="utf-8"
+    )
+    (repo / "opencode.json").write_text('{"$schema": "opencode.json"}\n', encoding="utf-8")
+    (repo / "TODO.md").write_text("- [ ] fix me\n", encoding="utf-8")
+
+    planner_runtime = MagicMock()
+    planner_runtime.execute.return_value = json.dumps(VALID_PLAN)
+    dev_runtime = _dev_runtime_noop()
+
+    workflow, scheduler, _ = _make_workflow(tmp_path, repo, planner_runtime, dev_runtime)
+    try:
+        result = workflow.execute(
+            Task(description="Add endpoint /health", task_type="feat"), context
+        )
+
+        assert result.success is False
+        assert any("no changes in src/ or tests/" in err for err in result.errors)
+        assert result.changed_files == ()
+        assert "developer:noop" in [s.name for s in result.stages]
+        assert any(not s.success and s.name == "developer:noop" for s in result.stages)
+
+        # DocumentationAgent must not create a new changelog, and git must not
+        # commit anything as a successful implementation.
+        seeded = {"changelog-fragment-20260101-000000.md"}
+        actual = {p.name for p in (repo / "docs").glob("changelog-fragment-*.md")}
+        assert actual == seeded
+        log = subprocess.run(
+            ["git", "log", "--oneline"],
+            cwd=repo,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert "feat:" not in log.stdout
+    finally:
+        scheduler.shutdown()
+
+
+def test_workflow_pre_existing_dirty_tree_does_not_count_as_produced(tmp_path):
+    """A pre-existing relevant change in src/ must NOT make a no-op task pass."""
+    repo = _setup_project(tmp_path)
+    context = _make_context(str(repo))
+
+    src = repo / "src"
+    (src / "existing.py").write_text("OLD\n", encoding="utf-8")
+
+    planner_runtime = MagicMock()
+    planner_runtime.execute.return_value = json.dumps(VALID_PLAN)
+    dev_runtime = _dev_runtime_noop()
+
+    workflow, scheduler, _ = _make_workflow(tmp_path, repo, planner_runtime, dev_runtime)
+    try:
+        result = workflow.execute(
+            Task(description="Add endpoint /health", task_type="feat"), context
+        )
+
+        assert result.success is False
+        assert any("no changes in src/ or tests/" in err for err in result.errors)
+        assert result.changed_files == ()
+    finally:
+        scheduler.shutdown()
+
+
+def test_workflow_pre_existing_dirty_plus_new_relevant_file_succeeds(tmp_path):
+    """A no-op on src/existing.py but a NEW src/ file produced by the developer
+    is a real change, so the task succeeds."""
+    repo = _setup_project(tmp_path)
+    context = _make_context(str(repo))
+
+    src = repo / "src"
+    (src / "existing.py").write_text("OLD\n", encoding="utf-8")
+
+    planner_runtime = MagicMock()
+    planner_runtime.execute.return_value = json.dumps(VALID_PLAN)
+    dev_runtime = _dev_runtime_writes(repo)
+
+    workflow, scheduler, _ = _make_workflow(tmp_path, repo, planner_runtime, dev_runtime)
+    try:
+        result = workflow.execute(
+            Task(description="Add endpoint /health", task_type="feat"), context
+        )
+
+        assert result.success is True
+        assert "src/health_endpoint.py" in result.changed_files
+    finally:
+        scheduler.shutdown()
+
+
+def test_workflow_docs_task_without_code_change_succeeds(tmp_path):
+    """A docs task changing only docs/ is a valid exception and must succeed."""
+    repo = _setup_project(tmp_path)
+    context = _make_context(str(repo))
+
+    planner_runtime = MagicMock()
+    planner_runtime.execute.return_value = json.dumps(
+        {
+            "goal": "Update docs",
+            "subtasks": [
+                {
+                    "id": "1",
+                    "description": "Document the endpoint",
+                    "type": "documentation",
+                    "priority": "low",
+                    "dependencies": [],
+                    "estimated_complexity": "low",
+                }
+            ],
+            "risks": [],
+            "unknowns": [],
+        }
+    )
+    dev_runtime = _dev_runtime_noop()
+
+    workflow, scheduler, _ = _make_workflow(tmp_path, repo, planner_runtime, dev_runtime)
+    try:
+        result = workflow.execute(Task(description="Update docs", task_type="docs"), context)
+
+        assert result.success is True
+        assert not any("no changes in src/ or tests/" in err for err in result.errors)
+    finally:
+        scheduler.shutdown()

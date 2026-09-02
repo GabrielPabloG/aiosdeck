@@ -89,10 +89,15 @@ def setup_project(tmp_path: Path) -> Path:
     subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
     subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=repo, check=True)
     subprocess.run(["git", "config", "user.name", "Test User"], cwd=repo, check=True)
+    src = repo / "src"
+    src.mkdir()
+    (src / "base.py").write_text("x = 1\n")
     (repo / "health.py").write_text('"""Health module."""\ndef health_check():\n    return 1\n')
     tests = repo / "tests"
     tests.mkdir()
     (tests / "test_health.py").write_text("def test_health_check():\n    assert True\n")
+    subprocess.run(["git", "add", "."], cwd=repo, check=True)
+    subprocess.run(["git", "commit", "-qm", "initial"], cwd=repo, check=True)
     return repo
 
 
@@ -116,7 +121,14 @@ def make_workflow(  # noqa: PLR0913 - test builder convenience
     planner_runtime = MagicMock()
     planner_runtime.execute.return_value = json.dumps(VALID_PLAN)
     dev_runtime = MagicMock()
-    dev_runtime.execute.return_value = "Implementation complete."
+
+    def _dev_execute(*_args, **_kwargs):
+        (repo / "src" / "health_endpoint.py").write_text(
+            'def health():\n    return "ok"\n', encoding="utf-8"
+        )
+        return "Implementation complete."
+
+    dev_runtime.execute.side_effect = _dev_execute
 
     workflow = WorkflowEngine(
         planner=PlannerAgent(planner_runtime),

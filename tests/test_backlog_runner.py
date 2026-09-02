@@ -32,6 +32,7 @@ class _MockKernel:
         self._context = None
         self.call_count = 0
         self.last_create_branch = True
+        self._last_tasks: list = []
 
     def get_context(self):
         return self._context
@@ -47,6 +48,7 @@ class _MockKernel:
     ) -> _MockRunResult:
         self.call_count += 1
         self.last_task = task
+        self._last_tasks.append(task)
         self.last_commit_factory = commit_factory
         self.last_create_branch = create_branch
         return _MockRunResult(success=True, commit={"sha": f"abc{self.call_count}"})
@@ -255,3 +257,15 @@ class TestBacklogRunner:
         results = runner.run([])
         assert results == []
         assert kernel.call_count == 0
+
+    def test_task_type_propagated_to_kernel(self):
+        """The concrete backlog type (feat/docs/...) must reach the workflow so
+        it can classify implementation vs documentation/release tasks."""
+        kernel = _MockKernel()
+        tasks = [
+            BacklogTask(title="docs(readme): update", type="docs", subject="update"),
+            BacklogTask(title="feat(core): add X", type="feat", subject="add X"),
+        ]
+        runner = BacklogRunner(kernel)
+        runner.run(tasks)
+        assert [t.task_type for t in kernel._last_tasks] == ["docs", "feat"]

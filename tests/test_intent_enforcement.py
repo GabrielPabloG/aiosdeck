@@ -151,7 +151,14 @@ def test_workflow_default_intent_passes_and_sets_context(tmp_path):
     planner_runtime = MagicMock()
     planner_runtime.execute.return_value = json.dumps(VALID_PLAN)
     dev_runtime = MagicMock()
-    dev_runtime.execute.return_value = "Implementation complete."
+
+    def _dev_execute(*_args, **_kwargs):
+        (repo / "src" / "health_endpoint.py").write_text(
+            'def health():\n    return "ok"\n', encoding="utf-8"
+        )
+        return "Implementation complete."
+
+    dev_runtime.execute.side_effect = _dev_execute
 
     workflow = _make_workflow(tmp_path, repo, planner_runtime, dev_runtime)
     workflow._agents["git"].push = MagicMock()
@@ -192,6 +199,9 @@ def _setup_project(tmp_path):
     subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
     subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=repo, check=True)
     subprocess.run(["git", "config", "user.name", "Test User"], cwd=repo, check=True)
+    src = repo / "src"
+    src.mkdir()
+    (src / "base.py").write_text("x = 1\n", encoding="utf-8")
     (repo / "health.py").write_text(
         '"""Health endpoint module."""\ndef health_check():\n    return {\'status\': \'ok\'}\n',
         encoding="utf-8",
@@ -202,6 +212,8 @@ def _setup_project(tmp_path):
         "def test_health_check():\n    assert True\n",
         encoding="utf-8",
     )
+    subprocess.run(["git", "add", "."], cwd=repo, check=True)
+    subprocess.run(["git", "commit", "-qm", "initial"], cwd=repo, check=True)
     return repo
 
 
