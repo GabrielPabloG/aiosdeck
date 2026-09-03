@@ -101,6 +101,40 @@ system can perform them at all (ADR-0007).
 | E2.3 | **Complexity Assessment** — `DIRECT_WORKFLOW` vs `DECOMPOSED_MISSION`, decision explainable and telemetry-recorded | 🟦 |
 | E2.4 | **Mission Planner** — decomposition into tasks with objective/scope/deps/acceptance/artifacts/verification/capabilities; routes to existing workflows only (no graph yet) | 🟦 |
 | **E2.5** · [#117](https://github.com/GabrielPabloG/aiosdeck/issues/117) | **Capability-Aware Planning & Routing** — task taxonomy; tasks declare required capabilities; Capability Registry reports what the system can actually do (observed, not config-inferred); Router matches task → capable agent or `BLOCKED` with an explanation; fallback by capability, not only by model; Planner answers "is this even possible?" before queueing | 🟦 |
+| **E2.6** · [#137](https://github.com/GabrielPabloG/aiosdeck/issues/137) | **Mission Grilling** ("Grill Me") — structured intent refinement before planning: the LLM proposes candidate questions, a deterministic state machine owns the flow. Turns vague intent into `MissionSpec` + decision log — *"every branch visited, nothing silently assumed"*. CLI: `aios grill "…"` | 🟦 |
+
+### Mission Grilling (E2.6) — control stays in the machine
+
+```
+Intent → Unknown dimensions → Question Frontier (DAG) → MissionSpec + Decision Log → E2.4 Planner
+```
+
+- **The LLM never controls the flow.** Each round is the set of questions whose
+  prerequisite edges are resolved (`frontier() → resolve() → advance()`). The
+  model only emits `candidate_questions()`. Reproducibility, testability, cost
+  and auditability follow from this split.
+- **Global acceptance:** a session is fully reproducible from MissionSpec +
+  decision log **without re-invoking the LLM** — every choice is defensible to
+  someone who wasn't there.
+- **Question taxonomy (epistemic triage)** — misclassification is a bug:
+
+| kind | meaning | route |
+|---|---|---|
+| `discoverable` | the system **can find out** (codebase, context, memory) | Researcher/Context answers it — **never asked of the human** ("which framework?" when `package.json` exists is not a question) |
+| `human_decision` | only the human can decide | asked in the current round |
+| `ungrillable` | **not** "we don't know" — insufficient information for a useful decision | propose a throwaway prototype mission / experiment instead of another round |
+
+- **Trigger policy:** explicit only (`aios grill`). Auto-trigger on detected
+  semantic ambiguity requires evidence from the E2.6 A/B benchmark
+  (decomposition quality, rework, late-block rate, reviewer acceptance, token
+  cost, total time, post-plan decision changes). Trivial missions
+  ("fix README typo") must not grill.
+- **Naming:** *Mission Grilling* internally · `aios grill` CLI · *Grill Me* as
+  the UX concept.
+- **The Flappy Bird closing:** with grilling, `requires: [browser,
+  visual_observation]` is discovered at intent time → E2.5 Registry →
+  `BLOCKED` before execution. The timeout does not exist because the system
+  found the impossibility earlier — not because the timeout was raised.
 
 ### Capability Distinction (architectural invariant)
 
@@ -120,7 +154,8 @@ Security Manager consumes capabilities to decide permission.
 **Release gate**: synthetic mission set classified correctly;
 DIRECT_WORKFLOW behaves identically to today's pipeline (backward compat);
 a `manual_qa`-style task with no browser capability returns `BLOCKED` in
-<1 s instead of timing out in 600 s.
+<1 s instead of timing out in 600 s; a grilled session replays from its
+decision log with zero LLM calls (E2.6).
 
 ## M3 — v1.4 · Graph Engineering (Workflow + Backlog unification)
 
@@ -171,7 +206,7 @@ verification.
 | Epic | Focus | Status |
 |---|---|---|
 | E6.1 | Human Gates — `AUTO / SUPERVISED / APPROVAL_REQUIRED` per risk class: architecture changes, dependency changes, security policy, destructive ops, merge, capability escalation. Routine work needs no interaction | 🟦 |
-| E6.2 | Self-Development Benchmark — harness over real historical issues (e.g. #38→#64, #79→#90, the ADR-0007 incident) + synthetic ones; measures mission success rate, decomposition quality, retries, replanning, interventions, cost, test/mutation/perf/security regressions, reviewer acceptance. E1.8 failure categories feed the dataset | 🟦 |
+| E6.2 | Self-Development Benchmark — harness over real historical issues (e.g. #38→#64, #79→#90, the ADR-0007 incident) + synthetic ones; measures mission success rate, decomposition quality, retries, replanning, interventions, cost, test/mutation/perf/security regressions, reviewer acceptance. E1.8 failure categories feed the dataset; the E2.6 grilling A/B feeds the auto-trigger policy (`ambiguity_score > X → recommend grill`) | 🟦 |
 | E6.3 | Autonomy Escalation — policy upgrades per domain only when E6.2 metrics cross a documented threshold; rollback/recovery explicit | 🟦 |
 
 **Release gate**: a public, versioned success-rate number. This gate is a
@@ -227,7 +262,10 @@ description.
 ```
 M1: E1.5+E1.6+E1.7 (P0) ──► E1.8 ─────────┐
                                           ▼
-M2: E2.1 Mission Contract ─ E2.2/2.3/2.4 ──► E2.5 Capability Router
+M2: E2.1 Mission Contract ─ E2.2/2.3 ──► E2.6 Grill ──► E2.4 Planner
+                                              │                │
+                                              ▼                ▼
+                                        E2.5 Capability Router (consumes grill output)
                                               │
 M3: E3.1–E3.5 Graph (consumes E1.7/E1.8/E2.5) │
                                               ▼
