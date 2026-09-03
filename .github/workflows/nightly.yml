@@ -34,7 +34,7 @@ jobs:
         run: mutmut export-cicd-stats
 
       - name: Upload full mutation report
-        # sempre publica, mesmo se o gate abaixo falhar (score < 80%)
+        # sempre publica, mesmo se o gate abaixo falhar (score < 80% ou run incompleto)
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -42,23 +42,10 @@ jobs:
           path: mutants/
           retention-days: 30
 
-      # Gate por último: faz o nightly falhar (vermelho) enquanto o score < 80%,
-      # mas apenas depois de o artifact ja ter sido capturado.
-      - name: Check mutation score (fail if killed/total < 80%)
-        run: |
-          python - <<'PY'
-          import json, pathlib
-          stats = json.loads(pathlib.Path("mutants/mutmut-cicd-stats.json").read_text())
-          print(json.dumps(stats, indent=2))
-          total = stats["total"] - stats["skipped"]
-          if total == 0:
-              raise SystemExit("No mutants to score.")
-          score = stats["killed"] * 100 // total
-          print(f"Mutation score: {score}% ({stats['killed']}/{total})")
-          if score < 80:
-              raise SystemExit(f"Mutation score {score}% below 80% threshold.")
-          print("Mutation score OK.")
-          PY
+      # Gate por último: usa o score fair (killed/(killed+survived-equivalents)),
+      # falha em run incompleto (not checked) e imprime o triage de sobreviventes.
+      - name: Check mutation score (fair kill-rate, fail if < 80%)
+        run: python .pre-commit/mutation_score.py --threshold 80
 
   # --- Job 2: Build de snapshot (opcional, mas recomendado) ---
   dev-build:
