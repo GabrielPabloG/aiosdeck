@@ -500,6 +500,26 @@ def test_build_branch_goal_without_words():
     assert WorkflowEngine._build_branch(7, "!!!") == "feature/task-7"
 
 
+def test_is_implementation_task_true_for_code_types():
+    """feat/fix/code are implementation tasks (they require a relevant diff)."""
+    assert WorkflowEngine._is_implementation_task(Task(description="x", task_type="feat")) is True
+    assert WorkflowEngine._is_implementation_task(Task(description="x", task_type="code")) is True
+
+
+def test_is_implementation_task_false_for_docs_release_types():
+    """docs/chore/release/meta are valid exceptions — not implementation."""
+    for task_type in ("docs", "chore", "release", "meta"):
+        assert (
+            WorkflowEngine._is_implementation_task(Task(description="x", task_type=task_type))
+            is False
+        )
+
+
+def test_is_implementation_task_defaults_to_code_when_type_missing():
+    """An empty task_type falls back to 'code' and is treated as implementation."""
+    assert WorkflowEngine._is_implementation_task(Task(description="x", task_type="")) is True
+
+
 def _dev_runtime_noop(return_value: str = "No changes required.") -> MagicMock:
     """A developer runtime that claims success but writes nothing to disk."""
     runtime = MagicMock()

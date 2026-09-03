@@ -89,8 +89,6 @@ class GitAgent(BaseAgent):
             return self._create_tag(params["name"])
         if operation == "push":
             return self._push(approved=params.get("approved", False))
-        if operation == "status":
-            return self._status()
         raise ValueError(f"unknown git operation: {operation}")
 
     def _stage(self, paths: list[str] | None = None) -> GitOperation:
@@ -114,9 +112,6 @@ class GitAgent(BaseAgent):
         kept on the payload for transparency.
         """
         return self._run(["git", "status", "--porcelain=v1", "-z"])
-
-    def _status(self) -> GitOperation:
-        return self.status()
 
     def _changed_files(self) -> list[str]:
         """Parsed changed paths (tracked modifications + untracked files).
@@ -184,28 +179,26 @@ def _parse_porcelain(raw: str) -> list[str]:
     ``<status> <to>`` (the destination/new path) and the second is ``<from>``
     (the source/old path, no status). Only the resulting (new) path is reported;
     deletions are dropped because a removed file cannot carry a new change.
+
+    Iterates with a ``skip_next`` flag rather than manual index arithmetic, so no
+    single mutation can turn the loop into an infinite loop.
     """
     if not raw:
         return []
     paths: list[str] = []
-    records = [r for r in raw.split("\0") if r]
-    i = 0
-    while i < len(records):
-        record = records[i]
+    skip_next = False
+    for record in [r for r in raw.split("\0") if r]:
+        if skip_next:
+            skip_next = False
+            continue
         if len(record) < _PORCELAIN_HEADER:
-            i += 1
             continue
         xy = record[0:2]
         path = record[_PORCELAIN_HEADER:]
-        if xy[0] in "RC":
-            # First record already carries the destination (new) path; the
-            # following record is the source (old) path and is skipped.
-            i += 2
+        if xy[0] in "RC":  # rename/copy: first record already holds the new path
+            skip_next = True  # consume the following source (old) path record
         elif "D" in xy:
-            i += 1
             continue
-        else:
-            i += 1
         if path:
             paths.append(path)
     return paths

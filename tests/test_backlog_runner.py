@@ -49,6 +49,7 @@ class _MockKernel:
         self.call_count += 1
         self.last_task = task
         self._last_tasks.append(task)
+        self.last_mode = mode
         self.last_commit_factory = commit_factory
         self.last_create_branch = create_branch
         return _MockRunResult(success=True, commit={"sha": f"abc{self.call_count}"})
@@ -269,3 +270,27 @@ class TestBacklogRunner:
         runner = BacklogRunner(kernel)
         runner.run(tasks)
         assert [t.task_type for t in kernel._last_tasks] == ["docs", "feat"]
+
+    def test_execute_task_description_uses_subject(self):
+        kernel = _MockKernel()
+        runner = BacklogRunner(kernel)
+        task = BacklogTask(title="feat(x): add models", subject="add models", type="feat")
+        runner._execute_task(task)
+        assert kernel.last_task.description == "add models"
+
+    def test_execute_task_description_falls_back_to_title(self):
+        """When subject is empty, the title is used as the task description."""
+        kernel = _MockKernel()
+        runner = BacklogRunner(kernel)
+        task = BacklogTask(title="bare title", subject="", type="feat")
+        runner._execute_task(task)
+        assert kernel.last_task.description == "bare title"
+
+    def test_execute_task_forwards_kernel_kwargs(self):
+        kernel = _MockKernel()
+        runner = BacklogRunner(kernel)
+        task = BacklogTask(title="t", subject="t", type="feat")
+        runner._execute_task(task, create_branch=True)
+        assert kernel.last_mode == "plan-run"
+        assert callable(kernel.last_commit_factory)
+        assert kernel.last_create_branch is True
