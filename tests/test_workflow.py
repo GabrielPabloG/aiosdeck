@@ -243,10 +243,19 @@ def test_workflow_developer_failure_stops(tmp_path):
 
         assert dev_runtime.execute.call_count == 1
 
+        dev_stage = next(s for s in result.stages if s.name == "developer:1")
+        assert dev_stage.success is False
+        assert dev_stage.error == "execution failed"
+        assert dev_stage.details["description"] == "Create /health route handler"
+        assert dev_stage.details["subtask_total"] == 2
+        assert "files" not in dev_stage.details  # failure returns before the merge
+        assert "Developer [Create /health route handler]: execution failed" in result.errors
+
         board = scheduler.list_boards()[0]
         cards = scheduler.list_cards(board.id)
         assert len(cards) == len(VALID_PLAN["subtasks"])
         assert cards[0].blocked is True
+        assert cards[0].block_reason == "execution failed"
         assert cards[1].column == "Backlog"
     finally:
         scheduler.shutdown()
@@ -557,6 +566,20 @@ def test_workflow_noop_implementation_fails(tmp_path):
         assert "developer:noop" in [s.name for s in result.stages]
         assert any(not s.success and s.name == "developer:noop" for s in result.stages)
 
+        expected_reason = (
+            "Developer produced no changes in src/ or tests/ (no-op); changed files: none"
+        )
+        noop_stage = next(s for s in result.stages if s.name == "developer:noop")
+        assert noop_stage.success is False
+        assert noop_stage.error == expected_reason
+        assert noop_stage.details["changed_files"] == []
+        assert "files" not in noop_stage.details
+        assert expected_reason in result.errors
+        # developer stages carry the merged (empty) produced file list
+        for stage in result.stages:
+            if stage.name in ("developer:1", "developer:2"):
+                assert stage.details["files"] == []
+
         # DocumentationAgent must not create a new changelog, and git must not
         # commit anything as a successful implementation.
         seeded = {"changelog-fragment-20260101-000000.md"}
@@ -620,6 +643,8 @@ def test_workflow_pre_existing_dirty_plus_new_relevant_file_succeeds(tmp_path):
 
         assert result.success is True
         assert "src/health_endpoint.py" in result.changed_files
+        dev_stage = next(s for s in result.stages if s.name == "developer:1")
+        assert dev_stage.details["files"] == ["src/health_endpoint.py"]
     finally:
         scheduler.shutdown()
 
@@ -720,15 +745,19 @@ class TestWorkflowEngineHelpers:
         assert WorkflowEngine._has_relevant_change([]) is False
 
     def test_noop_reason_joins_files(self):
-        reason = WorkflowEngine._noop_reason(["a.md", "b.txt"])
-        assert "a.md, b.txt" in reason
-        assert "Developer produced no changes in src/ or tests/ (no-op)" in reason
-        assert "changed files:" in reason
+        assert WorkflowEngine._noop_reason(["a.md", "b.txt"]) == (
+            "Developer produced no changes in src/ or tests/ (no-op); changed files: a.md, b.txt"
+        )
+
+    def test_noop_reason_single_file(self):
+        assert WorkflowEngine._noop_reason(["only.md"]) == (
+            "Developer produced no changes in src/ or tests/ (no-op); changed files: only.md"
+        )
 
     def test_noop_reason_empty_uses_none(self):
-        reason = WorkflowEngine._noop_reason([])
-        assert "none" in reason
-        assert "no-op" in reason
+        assert WorkflowEngine._noop_reason([]) == (
+            "Developer produced no changes in src/ or tests/ (no-op); changed files: none"
+        )
 
 
 def test_workflow_noop_implementation_with_irrelevant_new_file(tmp_path):
@@ -759,6 +788,14 @@ def test_workflow_noop_implementation_with_irrelevant_new_file(tmp_path):
         assert result.success is False
         assert result.changed_files == ("notes.txt",)
         assert any("no-op" in err and "notes.txt" in err for err in result.errors)
+
+        noop_stage = next(s for s in result.stages if s.name == "developer:noop")
+        assert noop_stage.error == (
+            "Developer produced no changes in src/ or tests/ (no-op); changed files: notes.txt"
+        )
+        assert noop_stage.details["changed_files"] == ["notes.txt"]
+        dev_stage = next(s for s in result.stages if s.name == "developer:1")
+        assert dev_stage.details["files"] == ["notes.txt"]
     finally:
         scheduler.shutdown()
 

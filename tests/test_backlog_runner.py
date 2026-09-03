@@ -294,3 +294,21 @@ class TestBacklogRunner:
         assert kernel.last_mode == "plan-run"
         assert callable(kernel.last_commit_factory)
         assert kernel.last_create_branch is True
+        assert kernel.last_task.task_type == "feat"
+
+    def test_execute_task_defaults_create_branch_false(self):
+        kernel = _MockKernel()
+        runner = BacklogRunner(kernel)
+        task = BacklogTask(title="t", subject="t", type="fix")
+        runner._execute_task(task)
+        assert kernel.last_create_branch is False
+
+    def test_execute_task_empty_subject_and_title(self):
+        """When both subject and title are empty, description is the empty
+        string (not a substituted default) — pins `subject or title`."""
+        kernel = _MockKernel()
+        runner = BacklogRunner(kernel)
+        task = BacklogTask(title="", subject="", type="chore")
+        runner._execute_task(task)
+        assert kernel.last_task.description == ""
+        assert kernel.last_task.task_type == "chore"
