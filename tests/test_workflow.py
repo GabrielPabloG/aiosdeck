@@ -12,6 +12,7 @@ from aios.agents.developer import DeveloperAgent
 from aios.agents.documentation import DocumentationAgent
 from aios.agents.executor import AgentExecutor
 from aios.agents.git import GitAgent
+from aios.agents.models import AgentResult
 from aios.agents.planner import PlannerAgent
 from aios.agents.research import ResearchAgent
 from aios.agents.reviewer import ReviewerAgent
@@ -654,5 +655,132 @@ def test_workflow_docs_task_without_code_change_succeeds(tmp_path):
 
         assert result.success is True
         assert not any("no changes in src/ or tests/" in err for err in result.errors)
+    finally:
+        scheduler.shutdown()
+
+
+class TestWorkflowEngineHelpers:
+    """Unit tests for the pure helpers extracted from _run_developer_phase.
+
+    They are @staticmethods, so they are exercised directly (no engine
+    instance) to kill the ternary/set/any/f-string mutants cheaply.
+    """
+
+    def test_first_error_uses_first(self):
+        result = AgentResult(success=False, errors=["error1", "error2"])
+        assert WorkflowEngine._first_error(result, "fb") == "error1"
+
+    def test_first_error_empty_uses_fallback(self):
+        result = AgentResult(success=False, errors=[])
+        assert WorkflowEngine._first_error(result, "Developer failed") == "Developer failed"
+
+    def test_first_error_dual_fallbacks(self):
+        result = AgentResult(success=False, errors=[])
+        assert WorkflowEngine._first_error(result, "Developer failed") == "Developer failed"
+        assert WorkflowEngine._first_error(result, "failed") == "failed"
+
+    def test_subtask_type_present(self):
+        assert WorkflowEngine._subtask_type({"type": "review"}) == "review"
+
+    def test_subtask_type_defaults_to_code(self):
+        assert WorkflowEngine._subtask_type({}) == "code"
+        assert WorkflowEngine._subtask_type({"description": "x"}) == "code"
+
+    def test_compute_produced_files_added(self):
+        assert WorkflowEngine._compute_produced_files(
+            ["a.py", "b.py"], ["a.py", "b.py", "c.py"]
+        ) == ["c.py"]
+
+    def test_compute_produced_files_deletions_ignored(self):
+        assert (
+            WorkflowEngine._compute_produced_files(["a.py", "b.py", "c.py"], ["a.py", "b.py"]) == []
+        )
+
+    def test_compute_produced_files_sorted_and_deduped(self):
+        assert WorkflowEngine._compute_produced_files([], ["z.py", "a.py", "z.py", "m.py"]) == [
+            "a.py",
+            "m.py",
+            "z.py",
+        ]
+
+    def test_compute_produced_files_empty_after(self):
+        assert WorkflowEngine._compute_produced_files(["a.py"], []) == []
+
+    def test_has_relevant_change_src(self):
+        assert WorkflowEngine._has_relevant_change(["src/main.py"]) is True
+
+    def test_has_relevant_change_tests(self):
+        assert WorkflowEngine._has_relevant_change(["tests/test_main.py"]) is True
+
+    def test_has_relevant_change_irrelevant(self):
+        assert WorkflowEngine._has_relevant_change(["docs/readme.md"]) is False
+        assert WorkflowEngine._has_relevant_change(["README.md"]) is False
+
+    def test_has_relevant_change_empty(self):
+        assert WorkflowEngine._has_relevant_change([]) is False
+
+    def test_noop_reason_joins_files(self):
+        reason = WorkflowEngine._noop_reason(["a.md", "b.txt"])
+        assert "a.md, b.txt" in reason
+        assert "Developer produced no changes in src/ or tests/ (no-op)" in reason
+        assert "changed files:" in reason
+
+    def test_noop_reason_empty_uses_none(self):
+        reason = WorkflowEngine._noop_reason([])
+        assert "none" in reason
+        assert "no-op" in reason
+
+
+def test_workflow_noop_implementation_with_irrelevant_new_file(tmp_path):
+    """Developer adds a NEW file, but only under docs/ -> produced is non-empty
+    yet not relevant -> no-op failure. Exercises the comma-joined _noop_reason
+    branch and the `if ctx.cards` True path."""
+    repo = _setup_project(tmp_path)
+    context = _make_context(str(repo))
+
+    planner_runtime = MagicMock()
+    planner_runtime.execute.return_value = json.dumps(VALID_PLAN)
+    dev_runtime = MagicMock()
+
+    def _dev(*_a, **_k):
+        # A new file at the repo root (a tracked directory) reports individually,
+        # not collapsed into a directory entry, and is not under src/ or tests/.
+        (repo / "notes.txt").write_text("scratch\n", encoding="utf-8")
+        return "docs only"
+
+    dev_runtime.execute.side_effect = _dev
+
+    workflow, scheduler, _ = _make_workflow(tmp_path, repo, planner_runtime, dev_runtime)
+    try:
+        result = workflow.execute(
+            Task(description="Add endpoint /health", task_type="feat"), context
+        )
+
+        assert result.success is False
+        assert result.changed_files == ("notes.txt",)
+        assert any("no-op" in err and "notes.txt" in err for err in result.errors)
+    finally:
+        scheduler.shutdown()
+
+
+def test_workflow_noop_empty_subtasks(tmp_path):
+    """Zero subtasks: nothing produced and no cards exist, so the no-op path
+    must not touch a card (the `if ctx.cards` False branch)."""
+    repo = _setup_project(tmp_path)
+    context = _make_context(str(repo))
+
+    planner_runtime = MagicMock()
+    planner_runtime.execute.return_value = json.dumps(
+        {"goal": "g", "subtasks": [], "risks": [], "unknowns": []}
+    )
+    dev_runtime = _dev_runtime_noop()
+
+    workflow, scheduler, _ = _make_workflow(tmp_path, repo, planner_runtime, dev_runtime)
+    try:
+        result = workflow.execute(Task(description="g", task_type="feat"), context)
+
+        assert result.success is False
+        assert result.changed_files == ()
+        assert any("no-op" in err for err in result.errors)
     finally:
         scheduler.shutdown()

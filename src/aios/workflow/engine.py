@@ -439,6 +439,38 @@ class WorkflowEngine:
         notify(ctx.stages[-1])
         return subtasks, None
 
+    @staticmethod
+    def _first_error(dev_result: AgentResult, fallback: str) -> str:
+        """First error message, or *fallback* when the developer reported none.
+
+        *fallback* differs by call site ("Developer failed" for the stage,
+        "failed" for the aggregated error line), so both are preserved.
+        """
+        return dev_result.errors[0] if dev_result.errors else fallback
+
+    @staticmethod
+    def _subtask_type(subtask: dict) -> str:
+        """Subtask type, defaulting to 'code' when the planner omitted it."""
+        return subtask.get("type", "code")
+
+    @staticmethod
+    def _compute_produced_files(before: list[str], after: list[str]) -> list[str]:
+        """Sorted, de-duplicated paths that appeared between *before* and *after*."""
+        return sorted(set(after) - set(before))
+
+    @staticmethod
+    def _has_relevant_change(produced: list[str]) -> bool:
+        """True when any produced path lives under a relevant (src/ or tests/) prefix."""
+        return any(path.startswith(_RELEVANT_PREFIXES) for path in produced)
+
+    @staticmethod
+    def _noop_reason(produced: list[str]) -> str:
+        """Failure message for a no-op implementation task; lists produced files."""
+        files_str = ", ".join(produced) if produced else "none"
+        return (
+            f"Developer produced no changes in src/ or tests/ (no-op); changed files: {files_str}"
+        )
+
     def _run_developer_phase(  # noqa: PLR0913, PLR0917
         self,
         ctx: _WorkflowContext,
@@ -460,17 +492,16 @@ class WorkflowEngine:
             card = ctx.cards[i]
             agents["scheduler"].begin_work(card.id)
             dev_task = AgentTask(
-                description=subtask["description"], task_type=subtask.get("type", "code")
+                description=subtask["description"], task_type=self._subtask_type(subtask)
             )
             dev_result = self._run_agent(agents["developer"], dev_task, context)
             if not dev_result.success:
                 agents["scheduler"].block_card(card.id, reason="execution failed")
-                error = dev_result.errors[0] if dev_result.errors else "Developer failed"
                 ctx.stages.append(
                     WorkflowStage(
                         name=f"developer:{i + 1}",
                         success=False,
-                        error=error,
+                        error=self._first_error(dev_result, "Developer failed"),
                         details={
                             "description": subtask["description"],
                             "subtask_total": len(subtasks),
@@ -480,7 +511,7 @@ class WorkflowEngine:
                 notify(ctx.stages[-1])
                 ctx.errors.append(
                     f"Developer [{subtask['description']}]: "
-                    f"{dev_result.errors[0] if dev_result.errors else 'failed'}"
+                    f"{self._first_error(dev_result, 'failed')}"
                 )
                 return self._finish(ctx)
             agents["scheduler"].complete_work(card.id)
@@ -501,18 +532,14 @@ class WorkflowEngine:
         # so a pre-existing dirty working tree cannot cause a false positive.
         if git is not None:
             after = self._changed_files(git)
-            produced = sorted(set(after) - set(before))
+            produced = self._compute_produced_files(before, after)
             ctx.changed_files = produced
-            relevant = any(path.startswith(_RELEVANT_PREFIXES) for path in produced)
-            ctx.produced_change = relevant
+            ctx.produced_change = self._has_relevant_change(produced)
             for stage in ctx.stages:
                 if stage.name.startswith("developer:"):
                     stage.details = {**stage.details, "files": list(produced)}
-            if self._is_implementation_task(ctx.task) and not relevant:
-                reason = (
-                    "Developer produced no changes in src/ or tests/ (no-op); "
-                    f"changed files: {produced or 'none'}"
-                )
+            if self._is_implementation_task(ctx.task) and not ctx.produced_change:
+                reason = self._noop_reason(produced)
                 if ctx.cards:
                     agents["scheduler"].block_card(ctx.cards[-1].id, reason=reason)
                 ctx.stages.append(
