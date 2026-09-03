@@ -152,3 +152,40 @@ def test_quality_policy_from_user_config(tmp_path, monkeypatch):
     assert config.quality.overrides == [
         {"gate": "code_gate", "environment": "dev", "reason": "accepted"}
     ]
+
+
+def test_manifest_exists_but_pyyaml_missing_warns(tmp_path, monkeypatch, caplog):
+    import logging
+
+    from aios.config import loader as loader_module
+
+    (tmp_path / ".aios").mkdir()
+    manifest = tmp_path / ".aios" / "project.yaml"
+    manifest.write_text("name: silent-degradation\nrouting:\n  default_provider: opencode-go\n")
+    monkeypatch.setattr(loader_module, "YAML_AVAILABLE", False)
+
+    with caplog.at_level(logging.WARNING, logger="aios.config"):
+        config = ConfigLoader(project_path=tmp_path).load()
+
+    expected = (
+        f"Config file {manifest} exists but PyYAML is missing — config ignored. "
+        "Install PyYAML to enable YAML configuration loading."
+    )
+    assert expected in [record.getMessage() for record in caplog.records]
+    assert config.routing.default_provider == "ollama"
+
+
+def test_pyyaml_missing_without_yaml_files_does_not_warn(tmp_path, monkeypatch, caplog):
+    import logging
+
+    from pathlib import Path as _Path
+
+    from aios.config import loader as loader_module
+
+    monkeypatch.setattr(_Path, "home", lambda: tmp_path)
+    monkeypatch.setattr(loader_module, "YAML_AVAILABLE", False)
+
+    with caplog.at_level(logging.WARNING, logger="aios.config"):
+        ConfigLoader(project_path=tmp_path).load()
+
+    assert "PyYAML" not in caplog.text

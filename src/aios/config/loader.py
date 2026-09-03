@@ -198,6 +198,13 @@ class ConfigLoader:
 
     def _load_yaml(self, path: Path) -> dict | None:
         if not YAML_AVAILABLE:
+            if path.exists():
+                logger.warning(
+                    "Config file %s exists but PyYAML is missing — config ignored. "
+                    "Install PyYAML to enable YAML configuration loading.",
+                    path,
+                )
+                return None
             logger.debug("PyYAML not installed, skipping %s", path)
             return None
         try:
