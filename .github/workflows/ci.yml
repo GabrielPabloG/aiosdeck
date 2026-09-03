@@ -154,63 +154,8 @@ jobs:
         run: |
           echo "--- mutmut results ---"
           mutmut results || true
-          mutmut export-cicd-stats
-          python - <<'PY'
-          import json, pathlib, subprocess
-
-          stats = json.loads(pathlib.Path("mutants/mutmut-cicd-stats.json").read_text())
-          print(json.dumps(stats, indent=2))
-
-          allowed = {
-              line.split("#", 1)[0].strip()
-              for line in pathlib.Path(".github/mutmut-equivalents.txt").read_text().splitlines()
-              if line.strip() and not line.lstrip().startswith("#")
-          }
-
-          out = subprocess.run(["mutmut", "results"], capture_output=True, text=True).stdout
-          statuses = ("survived", "suspicious", "timeout", "segfault", "no tests")
-          found = {
-              line.strip().rsplit(":", 1)[0].strip(): line.strip().rsplit(":", 1)[1].strip()
-              for line in out.splitlines()
-              if ": " in line and line.strip().endswith(statuses)
-          }
-          survivors = {name for name, status in found.items() if status != "no tests"}
-
-          unexpected = sorted(survivors - allowed)
-          for name in unexpected:
-              print(f"UNEXPECTED SURVIVOR: {name} ({found[name]})")
-
-          stale = sorted(allowed - set(found))
-          if stale:
-              # Informativo: o CI roda mutação apenas nos arquivos alterados do PR,
-              # então equivalentes de outros módulos aparecem como "stale" aqui.
-              print(f"{len(stale)} allowlist entradas ausentes nesta rodada (ok):")
-              for name in stale:
-                  print(f"  {name}")
-
-          hard = (
-              len(unexpected)
-              + stats["suspicious"]
-              + stats["timeout"]
-              + stats["segfault"]
-              + stats["no_tests"]
-          )
-          if hard:
-              raise SystemExit(
-                  f"Mutation failed: unexpected={len(unexpected)}, "
-                  f"suspicious={stats['suspicious']}, timeout={stats['timeout']}, "
-                  f"segfault={stats['segfault']}, no_tests={stats['no_tests']} — "
-                  f"equivalentes permitidos nesta rodada: "
-                  f"{stats['survived'] - len(unexpected)}"
-              )
-
-          matched = sorted(survivors & allowed)
-          print(
-              f"All non-equivalent mutants killed "
-              f"(killed={stats['killed']}/{stats['total']}); "
-              f"{len(matched)} equivalente(s) documentado(s) na allowlist."
-          )
-          PY
+          python .pre-commit/check_mutation_gate.py \
+            --allowlist .github/mutmut-equivalents.txt
 
       - name: Upload mutation report
         if: always()
