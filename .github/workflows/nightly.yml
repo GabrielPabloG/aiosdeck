@@ -29,9 +29,23 @@ jobs:
         # mutmut 3 lê source_paths/runner do [tool.mutmut] no pyproject.toml
         run: mutmut run
 
+      - name: Export CI/CD stats
+        if: always()
+        run: mutmut export-cicd-stats
+
+      - name: Upload full mutation report
+        # sempre publica, mesmo se o gate abaixo falhar (score < 80%)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-mutation-report
+          path: mutants/
+          retention-days: 30
+
+      # Gate por último: faz o nightly falhar (vermelho) enquanto o score < 80%,
+      # mas apenas depois de o artifact ja ter sido capturado.
       - name: Check mutation score (fail if killed/total < 80%)
         run: |
-          mutmut export-cicd-stats
           python - <<'PY'
           import json, pathlib
           stats = json.loads(pathlib.Path("mutants/mutmut-cicd-stats.json").read_text())
@@ -45,12 +59,6 @@ jobs:
               raise SystemExit(f"Mutation score {score}% below 80% threshold.")
           print("Mutation score OK.")
           PY
-
-      - name: Upload full mutation report
-        uses: actions/upload-artifact@v4
-        with:
-          name: nightly-mutation-report
-          path: mutants/
 
   # --- Job 2: Build de snapshot (opcional, mas recomendado) ---
   dev-build:
