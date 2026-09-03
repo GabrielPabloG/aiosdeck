@@ -11,10 +11,23 @@ from pathlib import Path
 
 import pytest
 
-_ROOT = Path(__file__).resolve().parents[1]
-_spec = importlib.util.spec_from_file_location(
-    "check_mutation_gate", _ROOT / ".pre-commit" / "check_mutation_gate.py"
-)
+
+def _locate_script() -> Path:
+    """Find the gate script by climbing ancestors, so it resolves both under
+    plain pytest (``<repo>/tests/...``) and when mutmut runs the suite from a
+    copied tree (``<repo>/mutants/tests/...``) where ``.pre-commit/`` is not
+    staged next to the test. Returns the first ancestor that actually has it.
+    """
+    here = Path(__file__).resolve()
+    for parent in here.parents:
+        candidate = parent / ".pre-commit" / "check_mutation_gate.py"
+        if candidate.is_file():
+            return candidate
+    raise FileNotFoundError("could not locate .pre-commit/check_mutation_gate.py")
+
+
+_SCRIPT = _locate_script()
+_spec = importlib.util.spec_from_file_location("check_mutation_gate", _SCRIPT)
 assert _spec is not None and _spec.loader is not None
 cmg = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(cmg)
