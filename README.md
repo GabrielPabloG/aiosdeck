@@ -33,8 +33,10 @@ Requirements: an agent runtime (currently **OpenCode**) and **ai-jail** (securit
 Full documentation lives in [docs/README.md](docs/README.md).
 
 - [Vision](docs/vision.md) — where AiosDeck is going
+- [Roadmap](docs/roadmap.md) — milestones M1–M8 + design track (status legend inside)
 - [Philosophy](docs/philosophy.md) — the ten principles
 - [Architecture](docs/architecture.md) — system design
+- [Design](docs/design/README.md) — control-room identity, tokens, Penpot artifacts
 - [Decisions](docs/decisions/) — architecture decision records (ADRs)
 - [Agents](docs/agents/) — agent ecosystem
 - [Internals](docs/internals/) — component specifications

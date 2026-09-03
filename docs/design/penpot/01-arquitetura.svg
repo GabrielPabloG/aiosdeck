@@ -1,0 +1,131 @@
+<svg width="1200" height="820" viewBox="0 0 1200 820" xmlns="http://www.w3.org/2000/svg" font-family="JetBrains Mono, Fira Code, monospace">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 z" fill="#9cc3d8"/>
+    </marker>
+    <marker id="arrowInfo" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 z" fill="#38bdf8"/>
+    </marker>
+    <marker id="arrowDanger" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 z" fill="#f87171"/>
+    </marker>
+  </defs>
+
+  <!-- canvas -->
+  <rect width="1200" height="820" fill="#0b1420"/>
+
+  <!-- header -->
+  <text x="32" y="44" font-size="22" fill="#00d4ff">◉ AIOSDECK — HIGH-LEVEL ARCHITECTURE</text>
+  <text x="32" y="64" font-size="12" fill="#9cc3d8">hub-and-spoke · Kernel central · spokes nunca falam entre si, só via Event Bus</text>
+  <line x1="32" y1="78" x2="1168" y2="78" stroke="#1e3a5f"/>
+
+  <!-- legend -->
+  <g font-size="11" fill="#9cc3d8">
+    <line x1="880" y1="52" x2="920" y2="52" stroke="#9cc3d8" marker-end="url(#arrow)"/>
+    <text x="926" y="56">chamada / dado</text>
+    <line x1="1040" y1="52" x2="1080" y2="52" stroke="#38bdf8" stroke-dasharray="4 3" marker-end="url(#arrowInfo)"/>
+    <text x="1086" y="56">evento</text>
+  </g>
+
+  <!-- User + CLI -->
+  <rect x="40" y="100" width="180" height="70" rx="2" fill="#10293c" stroke="#1e3a5f"/>
+  <text x="56" y="128" font-size="14" fill="#d7e6f2">Developer</text>
+  <text x="56" y="148" font-size="11" fill="#9cc3d8">CLI · TUI · (web)</text>
+  <line x1="130" y1="170" x2="130" y2="200" stroke="#9cc3d8" marker-end="url(#arrow)"/>
+
+  <!-- Kernel -->
+  <rect x="40" y="200" width="180" height="90" rx="2" fill="#123a52" stroke="#38bdf8" stroke-width="2"/>
+  <text x="56" y="228" font-size="15" fill="#d7e6f2">KERNEL</text>
+  <text x="56" y="248" font-size="10" fill="#9cc3d8">bootstrap</text>
+  <text x="56" y="263" font-size="10" fill="#9cc3d8">lifecycle · dispatch</text>
+  <text x="56" y="278" font-size="10" fill="#9cc3d8">shutdown (E1.5)</text>
+
+  <!-- Event Bus (spine) -->
+  <rect x="270" y="200" width="620" height="46" rx="2" fill="#10293c" stroke="#38bdf8" stroke-width="2"/>
+  <text x="290" y="228" font-size="14" fill="#00d4ff">EVENT BUS — in-process pub/sub (ADR-0003)</text>
+  <line x1="220" y1="245" x2="270" y2="223" stroke="#38bdf8" stroke-dasharray="4 3" marker-end="url(#arrowInfo)"/>
+
+  <!-- Spokes row -->
+  <g font-size="12">
+    <!-- Scheduler -->
+    <rect x="270" y="300" width="140" height="70" rx="2" fill="#10293c" stroke="#1e3a5f"/>
+    <text x="286" y="326" fill="#d7e6f2">Scheduler</text>
+    <text x="286" y="344" font-size="10" fill="#9cc3d8">Kanban · Scrum</text>
+    <text x="286" y="358" font-size="10" fill="#9cc3d8">(ADR-0006)</text>
+    <line x1="340" y1="246" x2="340" y2="300" stroke="#38bdf8" stroke-dasharray="4 3" marker-end="url(#arrowInfo)"/>
+    <!-- Memory -->
+    <rect x="425" y="300" width="140" height="70" rx="2" fill="#10293c" stroke="#1e3a5f"/>
+    <text x="441" y="326" fill="#d7e6f2">Memory</text>
+    <text x="441" y="344" font-size="10" fill="#9cc3d8">SQLite (ADR-0005)</text>
+    <text x="441" y="358" font-size="10" fill="#9cc3d8">1ª classe</text>
+    <line x1="495" y1="246" x2="495" y2="300" stroke="#38bdf8" stroke-dasharray="4 3" marker-end="url(#arrowInfo)"/>
+    <!-- Context -->
+    <rect x="580" y="300" width="140" height="70" rx="2" fill="#10293c" stroke="#1e3a5f"/>
+    <text x="596" y="326" fill="#d7e6f2">Context Engine</text>
+    <text x="596" y="344" font-size="10" fill="#9cc3d8">camadas de contexto</text>
+    <text x="596" y="358" font-size="10" fill="#9cc3d8">relevance/token</text>
+    <line x1="650" y1="246" x2="650" y2="300" stroke="#38bdf8" stroke-dasharray="4 3" marker-end="url(#arrowInfo)"/>
+    <!-- Knowledge/Learning -->
+    <rect x="735" y="300" width="155" height="70" rx="2" fill="#10293c" stroke="#1e3a5f"/>
+    <text x="751" y="326" fill="#d7e6f2">Knowledge/Learning</text>
+    <text x="751" y="344" font-size="10" fill="#9cc3d8">retrieval · skills</text>
+    <text x="751" y="358" font-size="10" fill="#9cc3d8">governança de memória</text>
+    <line x1="812" y1="246" x2="812" y2="300" stroke="#38bdf8" stroke-dasharray="4 3" marker-end="url(#arrowInfo)"/>
+  </g>
+
+  <!-- Security band -->
+  <rect x="270" y="410" width="620" height="60" rx="2" fill="#10293c" stroke="#f87171" stroke-width="2"/>
+  <text x="290" y="435" font-size="13" fill="#f87171">SECURITY — zero-trust (ADR-0002)</text>
+  <text x="290" y="455" font-size="10" fill="#9cc3d8">Policy · CapabilityEnforcer (AUTORIZA agentes) · Audit · Approval Gates — distinto da Capability Registry (E2.5, OBSERVA o ambiente)</text>
+  <line x1="580" y1="370" x2="580" y2="410" stroke="#38bdf8" stroke-dasharray="4 3" marker-end="url(#arrowInfo)"/>
+
+  <!-- Execution stack -->
+  <g font-size="12">
+    <rect x="270" y="510" width="150" height="60" rx="2" fill="#123a52" stroke="#1e3a5f"/>
+    <text x="286" y="536" fill="#d7e6f2">Agents</text>
+    <text x="286" y="554" font-size="10" fill="#9cc3d8">1 resp. cada (ADR-0004)</text>
+
+    <rect x="450" y="510" width="150" height="60" rx="2" fill="#123a52" stroke="#1e3a5f"/>
+    <text x="466" y="536" fill="#d7e6f2">AgentExecutor</text>
+    <text x="466" y="554" font-size="10" fill="#9cc3d8">timeout·retry·cancel</text>
+
+    <rect x="630" y="510" width="150" height="60" rx="2" fill="#123a52" stroke="#1e3a5f"/>
+    <text x="646" y="536" fill="#d7e6f2">RuntimeEngine</text>
+    <text x="646" y="554" font-size="10" fill="#9cc3d8">adaptador substituível</text>
+
+    <line x1="420" y1="540" x2="450" y2="540" stroke="#9cc3d8" marker-end="url(#arrow)"/>
+    <line x1="600" y1="540" x2="630" y2="540" stroke="#9cc3d8" marker-end="url(#arrow)"/>
+    <line x1="345" y1="470" x2="345" y2="510" stroke="#9cc3d8" marker-end="url(#arrow)"/>
+  </g>
+
+  <!-- Runtime adapters (replaceable) -->
+  <rect x="830" y="500" width="340" height="80" rx="2" fill="none" stroke="#fbbf24" stroke-dasharray="5 4"/>
+  <text x="846" y="520" font-size="11" fill="#fbbf24">CORE ⇄ ADAPTADORES (fronteira de troca)</text>
+  <rect x="846" y="530" width="150" height="40" rx="2" fill="#10293c" stroke="#1e3a5f"/>
+  <text x="862" y="555" font-size="11" fill="#d7e6f2">OpenCode</text>
+  <rect x="1008" y="530" width="150" height="40" rx="2" fill="#10293c" stroke="#1e3a5f"/>
+  <text x="1024" y="555" font-size="11" fill="#d7e6f2">Ollama / outros</text>
+  <line x1="780" y1="540" x2="846" y2="550" stroke="#9cc3d8" marker-end="url(#arrow)"/>
+
+  <!-- ai-jail boundary -->
+  <rect x="830" y="600" width="340" height="60" rx="2" fill="#10293c" stroke="#f87171" stroke-width="2"/>
+  <text x="846" y="625" font-size="12" fill="#f87171">ai-jail — sandbox OS-level</text>
+  <text x="846" y="645" font-size="10" fill="#9cc3d8">isolamento · masks · lockdown opcional</text>
+  <line x1="1000" y1="580" x2="1000" y2="600" stroke="#f87171" marker-end="url(#arrowDanger)"/>
+
+  <!-- Model -->
+  <rect x="830" y="690" width="340" height="50" rx="2" fill="#123a52" stroke="#1e3a5f"/>
+  <text x="846" y="720" font-size="12" fill="#d7e6f2">MODEL — componente, não o centro</text>
+  <line x1="1000" y1="660" x2="1000" y2="690" stroke="#9cc3d8" marker-end="url(#arrow)"/>
+
+  <!-- Telemetry feedback loop -->
+  <rect x="40" y="510" width="180" height="60" rx="2" fill="#10293c" stroke="#2dd4bf" stroke-width="2"/>
+  <text x="56" y="536" font-size="13" fill="#2dd4bf">Telemetry</text>
+  <text x="56" y="554" font-size="10" fill="#9cc3d8">tudo observável</text>
+  <line x1="130" y1="510" x2="130" y2="470" stroke="#2dd4bf" stroke-dasharray="4 3" marker-end="url(#arrowInfo)"/>
+  <path d="M40 540 Q10 540 10 400 Q10 260 40 245" fill="none" stroke="#2dd4bf" stroke-dasharray="4 3"/>
+  <text x="14" y="410" font-size="10" fill="#2dd4bf" transform="rotate(-90 14 410)">feedback → replanning</text>
+
+  <!-- invariants footer -->
+  <text x="32" y="788" font-size="11" fill="#9cc3d8">Invariantes: ai-jail nunca é bypassado · shared ConnectionPool (SQLite) · Event Bus único canal hub-and-spoke · runtime substituível · segurança em depth (app + OS)</text>
+</svg>

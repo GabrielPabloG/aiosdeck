@@ -1,0 +1,91 @@
+<svg width="1200" height="640" viewBox="0 0 1200 640" xmlns="http://www.w3.org/2000/svg" font-family="JetBrains Mono, Fira Code, monospace">
+  <defs>
+    <marker id="cA" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 z" fill="#9cc3d8"/></marker>
+    <marker id="cX" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 z" fill="#f87171"/></marker>
+  </defs>
+  <rect width="1200" height="640" fill="#0b1420"/>
+
+  <text x="32" y="44" font-size="22" fill="#00d4ff">◉ FLUXO DE CANCELAMENTO</text>
+  <line x1="32" y1="58" x2="1168" y2="58" stroke="#1e3a5f"/>
+
+  <!-- contract banner -->
+  <rect x="32" y="72" width="1136" height="34" rx="2" fill="#10293c" stroke="#fbbf24" stroke-width="2"/>
+  <text x="52" y="94" font-size="13" fill="#fbbf24">⚠ TARGET CONTRACT — comportamento desejado da epic E1.5 · AINDA NÃO IMPLEMENTADO (hoje: cancel() best-effort, shutdown(wait=True) pendura)</text>
+
+  <!-- triggers -->
+  <g font-size="12">
+    <rect x="32" y="150" width="170" height="72" rx="2" fill="#10293c" stroke="#f87171"/>
+    <text x="48" y="178" fill="#d7e6f2">↯ Ctrl+C / SIGINT</text>
+    <text x="48" y="198" font-size="10" fill="#9cc3d8">decisão do usuário</text>
+    <rect x="32" y="240" width="170" height="56" rx="2" fill="#10293c" stroke="#1e3a5f"/>
+    <text x="48" y="264" fill="#d7e6f2">SIGTERM</text>
+    <text x="48" y="282" font-size="10" fill="#9cc3d8">causa distinta</text>
+    <rect x="32" y="314" width="170" height="56" rx="2" fill="#10293c" stroke="#1e3a5f"/>
+    <text x="48" y="338" fill="#d7e6f2">TIMEOUT interno</text>
+    <text x="48" y="356" font-size="10" fill="#9cc3d8">E1.6 · por tipo/step</text>
+  </g>
+
+  <!-- main chain row 1 -->
+  <g font-size="12">
+    <rect x="252" y="216" width="180" height="80" rx="2" fill="#123a52" stroke="#38bdf8" stroke-width="2"/>
+    <text x="268" y="246" fill="#00d4ff">CANCEL_REQUESTED</text>
+    <text x="268" y="266" font-size="10" fill="#9cc3d8">evento único no bus</text>
+    <text x="268" y="282" font-size="10" fill="#9cc3d8">carrega a causa</text>
+
+    <rect x="482" y="216" width="170" height="80" rx="2" fill="#10293c" stroke="#1e3a5f"/>
+    <text x="498" y="246" fill="#d7e6f2">cancel agents</text>
+    <text x="498" y="266" font-size="10" fill="#9cc3d8">cooperativo · token</text>
+    <text x="498" y="282" font-size="10" fill="#9cc3d8">por execução viva</text>
+
+    <rect x="702" y="216" width="170" height="80" rx="2" fill="#10293c" stroke="#1e3a5f"/>
+    <text x="718" y="246" fill="#d7e6f2">cancel futures</text>
+    <text x="718" y="266" font-size="10" fill="#9cc3d8">pool + fila</text>
+
+    <rect x="922" y="216" width="210" height="80" rx="2" fill="#10293c" stroke="#f87171"/>
+    <text x="938" y="246" fill="#d7e6f2">terminate children</text>
+    <text x="938" y="266" font-size="10" fill="#9cc3d8">processos do runtime</text>
+    <text x="938" y="282" font-size="10" fill="#9cc3d8">dentro do ai-jail</text>
+  </g>
+
+  <!-- main chain row 2 -->
+  <g font-size="12">
+    <rect x="922" y="380" width="210" height="80" rx="2" fill="#10293c" stroke="#2dd4bf"/>
+    <text x="938" y="410" fill="#2dd4bf">flush telemetry</text>
+    <text x="938" y="430" font-size="10" fill="#9cc3d8">agent_cancelled</text>
+    <text x="938" y="446" font-size="10" fill="#9cc3d8">kernel_shutdown · custo</text>
+
+    <rect x="702" y="380" width="170" height="80" rx="2" fill="#10293c" stroke="#1e3a5f"/>
+    <text x="718" y="410" fill="#d7e6f2">kernel.shutdown</text>
+    <text x="718" y="430" font-size="10" fill="#9cc3d8">deadline próprio</text>
+    <text x="718" y="446" font-size="10" fill="#9cc3d8">wait=False + kill</text>
+
+    <rect x="482" y="380" width="170" height="80" rx="2" fill="#123a52" stroke="#2dd4bf" stroke-width="2"/>
+    <text x="498" y="410" fill="#2dd4bf">exit 130 — uma vez</text>
+    <text x="498" y="430" font-size="10" fill="#9cc3d8">sem threads vivas</text>
+    <text x="498" y="446" font-size="10" fill="#9cc3d8">sem segunda cascata</text>
+  </g>
+
+  <!-- arrows -->
+  <g stroke="#9cc3d8">
+    <line x1="202" y1="186" x2="252" y2="240" marker-end="url(#cA)"/>
+    <line x1="202" y1="268" x2="252" y2="258" marker-end="url(#cA)"/>
+    <line x1="202" y1="342" x2="252" y2="278" marker-end="url(#cA)"/>
+    <line x1="432" y1="256" x2="482" y2="256" marker-end="url(#cA)"/>
+    <line x1="652" y1="256" x2="702" y2="256" marker-end="url(#cA)"/>
+    <line x1="872" y1="256" x2="922" y2="256" marker-end="url(#cA)"/>
+    <line x1="1027" y1="296" x2="1027" y2="380" marker-end="url(#cA)"/>
+    <line x1="922" y1="420" x2="872" y2="420" marker-end="url(#cA)"/>
+    <line x1="702" y1="420" x2="652" y2="420" marker-end="url(#cA)"/>
+  </g>
+
+  <!-- forbidden -->
+  <rect x="32" y="420" width="380" height="120" rx="2" fill="none" stroke="#f87171" stroke-dasharray="5 4"/>
+  <text x="48" y="446" font-size="12" fill="#f87171">✗ PROIBIDO pelo contrato:</text>
+  <text x="48" y="468" font-size="11" fill="#9cc3d8">✗ fallback após user_cancelled (E1.7)</text>
+  <text x="48" y="486" font-size="11" fill="#9cc3d8">✗ SystemExit dentro de atexit/shutdown</text>
+  <text x="48" y="504" font-size="11" fill="#9cc3d8">✗ join() infinito em thread de agente</text>
+  <text x="48" y="522" font-size="11" fill="#9cc3d8">✗ SIGINT tratado como provider_error</text>
+
+  <text x="32" y="590" font-size="11" fill="#9cc3d8">causa importa: SIGINT (humano) ≠ SIGTERM (sistema) ≠ TIMEOUT (orçamento) — cada uma segue caminhos de fallback e estado diferentes (E1.8)</text>
+  <text x="32" y="612" font-size="11" fill="#fbbf24">este SVG é especificação visual da epic E1.5; quando implementado, remover o banner e referenciar via ADR-0007</text>
+</svg>

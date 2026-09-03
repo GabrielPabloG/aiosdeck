@@ -197,7 +197,10 @@ The following phases are shipped and verified by the test suite.
 
 ### Implementation Roadmap — What We Are Building Now
 
-The only roadmap that matters day to day. Everything else is blocked.
+The full, current roadmap is [roadmap.md](roadmap.md) — milestones M1–M8 plus
+the parallel design Track D, with every epic explicitly marked
+`implemented` / `in-progress` / `planned`. The incident driving M1's P0 epics
+is documented in [ADR-0007](decisions/ADR-0007-flappy-bird-incident.md).
 
 | Component | Version | Task |
 |-----------|---------|------|
@@ -206,6 +209,14 @@ The only roadmap that matters day to day. Everything else is blocked.
 | `aios benchmark compare` | v1.1.x | Baseline diff with per-mode guards (full vs bare) |
 
 **Rule**: Every abstraction must solve an existing problem. Never an anticipated one. If a component is not in this table, it has not earned its existence yet.
+
+### Design System — "Control Room"
+
+Visual identity, design tokens, and Penpot artifacts live in
+[design/](design/). The submarine control room is the metaphor: depth for
+context, sonar for scanning, missions for work, control rooms for agents.
+[design/style-guide.md](design/style-guide.md) defines the rules;
+[design/tokens.json](design/tokens.json) is the single source of visual truth.
 
 ### Agent Birth Timeline
 
@@ -469,6 +480,7 @@ Architecture Decision Records explain **why** each foundational choice was made 
 | [ADR-0004](decisions/ADR-0004-skills-over-monolithic-agents.md) | Skills over monolithic agent prompts |
 | [ADR-0005](decisions/ADR-0005-sqlite-for-memory.md) | SQLite for memory persistence |
 | [ADR-0006](decisions/ADR-0006-kanban-scrum-scheduler.md) | Kanban with Scrum for scheduler persistence |
+| [ADR-0007](decisions/ADR-0007-flappy-bird-incident.md) | Flappy Bird incident — capability-aware execution & cancellation contract (proposed) |
 
 ## Getting Started
 

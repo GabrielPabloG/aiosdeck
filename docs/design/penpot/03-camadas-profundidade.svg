@@ -1,0 +1,59 @@
+<svg width="960" height="720" viewBox="0 0 960 720" xmlns="http://www.w3.org/2000/svg" font-family="JetBrains Mono, Fira Code, monospace">
+  <defs>
+    <marker id="dA" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 z" fill="#38bdf8"/></marker>
+    <marker id="dR" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 z" fill="#2dd4bf"/></marker>
+  </defs>
+  <rect width="960" height="720" fill="#0b1420"/>
+
+  <text x="32" y="44" font-size="22" fill="#00d4ff">◉ CAMADAS DE PROFUNDIDADE — CONTEXT ENGINE</text>
+  <text x="32" y="64" font-size="12" fill="#9cc3d8">o agente mergulha só até onde a tarefa exige e sobe com contexto scoped · relevance/token &gt; tamanho</text>
+  <line x1="32" y1="78" x2="928" y2="78" stroke="#1e3a5f"/>
+
+  <!-- bands -->
+  <g>
+    <rect x="32" y="100" width="700" height="106" fill="#1d5463" stroke="#1e3a5f"/>
+    <text x="52" y="132" font-size="15" fill="#d7e6f2">L1 · SURFACE — intenção</text>
+    <text x="52" y="154" font-size="11" fill="#9cc3d8">missão do usuário · objetivo · restrições faladas</text>
+    <text x="52" y="174" font-size="11" fill="#9cc3d8">"refatorar o event bus sem quebrar contratos" → sempre presente</text>
+    <text x="668" y="130" font-size="11" fill="#d7e6f2" text-anchor="end">0 m</text>
+
+    <rect x="32" y="206" width="700" height="106" fill="#123a52" stroke="#1e3a5f"/>
+    <text x="52" y="238" font-size="15" fill="#d7e6f2">L2 · SHALLOW — tarefa</text>
+    <text x="52" y="260" font-size="11" fill="#9cc3d8">task atual · scope · acceptance criteria · artefatos esperados</text>
+    <text x="52" y="280" font-size="11" fill="#9cc3d8">troca a cada task do plano/graph — nunca histórico completo da missão</text>
+    <text x="668" y="236" font-size="11" fill="#9cc3d8" text-anchor="end">− 40 m</text>
+
+    <rect x="32" y="312" width="700" height="106" fill="#10293c" stroke="#1e3a5f"/>
+    <text x="52" y="344" font-size="15" fill="#d7e6f2">L3 · MID — projeto</text>
+    <text x="52" y="366" font-size="11" fill="#9cc3d8">manifest · detectors (linguagem, linters, testes) · conventions · arquitetura</text>
+    <text x="52" y="386" font-size="11" fill="#9cc3d8">cacheável por sessão · invalidação por contrato (E1.3 #44)</text>
+    <text x="668" y="342" font-size="11" fill="#9cc3d8" text-anchor="end">− 120 m</text>
+
+    <rect x="32" y="418" width="700" height="106" fill="#0d2234" stroke="#1e3a5f"/>
+    <text x="52" y="450" font-size="15" fill="#d7e6f2">L4 · DEEP — conhecimento do repositório</text>
+    <text x="52" y="472" font-size="11" fill="#9cc3d8">retrieval · knowledge store · skills sob demanda · código relevante ao scope</text>
+    <text x="52" y="492" font-size="11" fill="#9cc3d8">mergulho seletivo guiado pelo Scope Engine (E2.2) — não injeção total</text>
+    <text x="668" y="448" font-size="11" fill="#9cc3d8" text-anchor="end">− 400 m</text>
+
+    <rect x="32" y="524" width="700" height="106" fill="#0b1420" stroke="#1e3a5f"/>
+    <text x="52" y="556" font-size="15" fill="#d7e6f2">L5 · ABYSS — memória de longo prazo</text>
+    <text x="52" y="578" font-size="11" fill="#9cc3d8">SQLite · decisões · lições do Learning Engine · padrões entre sessões</text>
+    <text x="52" y="598" font-size="11" fill="#9cc3d8">persiste além do repositório · governança: observação → candidato → aprovação (E8.3)</text>
+    <text x="668" y="554" font-size="11" fill="#9cc3d8" text-anchor="end">− 1000 m</text>
+  </g>
+
+  <!-- dive path -->
+  <path d="M790 120 C 860 200 850 420 810 600" fill="none" stroke="#38bdf8" stroke-width="2" marker-end="url(#dA)"/>
+  <text x="868" y="340" font-size="11" fill="#38bdf8" transform="rotate(90 868 340)">mergulha quando necessário</text>
+  <path d="M920 600 C 940 420 930 200 880 130" fill="none" stroke="#2dd4bf" stroke-width="2" marker-end="url(#dR)"/>
+  <text x="905" y="340" font-size="11" fill="#2dd4bf" transform="rotate(90 905 340)">sobe com contexto scoped</text>
+
+  <!-- sonar rings -->
+  <g stroke="#1d5463" fill="none" opacity="0.55">
+    <circle cx="382" cy="577" r="26"/><circle cx="382" cy="577" r="52"/><circle cx="382" cy="577" r="78"/>
+  </g>
+  <circle cx="382" cy="577" r="4" fill="#38bdf8"/>
+
+  <text x="32" y="680" font-size="11" fill="#9cc3d8">regra de ouro: contexto irrelevante é ruído com custo — nunca resolver problema de contexto aumentando prompt (§6.1)</text>
+  <text x="32" y="700" font-size="11" fill="#9cc3d8">tokens: L1+L2 sempre · L3 cache · L4/L5 retrieval on demand</text>
+</svg>

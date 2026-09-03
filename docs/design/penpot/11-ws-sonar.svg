@@ -1,0 +1,60 @@
+<svg width="800" height="600" viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg" font-family="JetBrains Mono, Fira Code, monospace">
+  <rect width="800" height="600" fill="#0b1420"/>
+  <text x="20" y="38" font-size="20" fill="#00d4ff">◉ AIOSDECK</text>
+  <text x="780" y="38" font-size="12" fill="#9cc3d8" text-anchor="end">SONAR VIEW</text>
+  <line x1="20" y1="50" x2="780" y2="50" stroke="#1e3a5f"/>
+
+  <!-- sonar scope -->
+  <rect x="20" y="64" width="420" height="500" fill="#10293c" stroke="#1e3a5f"/>
+  <g stroke="#1d5463" fill="none">
+    <circle cx="230" cy="310" r="60"/><circle cx="230" cy="310" r="110"/><circle cx="230" cy="310" r="160"/><circle cx="230" cy="310" r="196"/>
+  </g>
+  <line x1="34" y1="310" x2="426" y2="310" stroke="#14283f"/><line x1="230" y1="114" x2="230" y2="506" stroke="#14283f"/>
+  <path d="M230 310 L230 114 A196 196 0 0 1 370 176 Z" fill="#38bdf8" opacity="0.08"/>
+  <line x1="230" y1="310" x2="370" y2="176" stroke="#38bdf8" stroke-width="2"/>
+  <circle cx="230" cy="310" r="4" fill="#38bdf8"/>
+  <g>
+    <circle cx="292" cy="248" r="4" fill="#38bdf8"/><text x="302" y="252" font-size="10" fill="#9cc3d8">engine.py</text>
+    <circle cx="170" cy="360" r="4" fill="#38bdf8"/><text x="120" y="376" font-size="10" fill="#9cc3d8">bus.py</text>
+    <circle cx="316" cy="380" r="4" fill="#2dd4bf"/><text x="286" y="396" font-size="10" fill="#9cc3d8">test_events.py</text>
+    <circle cx="140" cy="220" r="4" fill="#38bdf8"/><text x="96" y="212" font-size="10" fill="#9cc3d8">contracts.py</text>
+    <circle cx="252" cy="452" r="4" fill="#fbbf24"/><text x="200" y="468" font-size="10" fill="#9cc3d8">kernel.py</text>
+    <circle cx="340" cy="292" r="4" fill="#1d5463"/><text x="350" y="296" font-size="10" fill="#1d5463">docs/</text>
+  </g>
+  <text x="34" y="548" font-size="10" fill="#1d5463">varredura: 2.1s · raio = relevância ao scope da task</text>
+
+  <!-- detections -->
+  <rect x="456" y="64" width="324" height="280" fill="#10293c" stroke="#1e3a5f"/>
+  <text x="470" y="88" font-size="12" fill="#d7e6f2">DETECÇÕES · 14 arquivos</text>
+  <line x1="470" y1="96" x2="766" y2="96" stroke="#1e3a5f"/>
+  <g font-size="10">
+    <text x="470" y="120" fill="#d7e6f2">engine.py</text>      <text x="700" y="120" fill="#38bdf8" text-anchor="end">0.94</text><rect x="704" y="112" width="62" height="6" fill="#0b1420" stroke="#1e3a5f"/><rect x="704" y="112" width="58" height="6" fill="#38bdf8"/>
+    <text x="470" y="144" fill="#d7e6f2">bus.py</text>         <text x="700" y="144" fill="#38bdf8" text-anchor="end">0.91</text><rect x="704" y="136" width="62" height="6" fill="#0b1420" stroke="#1e3a5f"/><rect x="704" y="136" width="56" height="6" fill="#38bdf8"/>
+    <text x="470" y="168" fill="#d7e6f2">contracts.py</text>   <text x="700" y="168" fill="#38bdf8" text-anchor="end">0.83</text><rect x="704" y="160" width="62" height="6" fill="#0b1420" stroke="#1e3a5f"/><rect x="704" y="160" width="51" height="6" fill="#38bdf8"/>
+    <text x="470" y="192" fill="#d7e6f2">test_events.py</text> <text x="700" y="192" fill="#2dd4bf" text-anchor="end">0.77</text><rect x="704" y="184" width="62" height="6" fill="#0b1420" stroke="#1e3a5f"/><rect x="704" y="184" width="47" height="6" fill="#2dd4bf"/>
+    <text x="470" y="216" fill="#d7e6f2">kernel.py</text>      <text x="700" y="216" fill="#fbbf24" text-anchor="end">0.52</text><rect x="704" y="208" width="62" height="6" fill="#0b1420" stroke="#1e3a5f"/><rect x="704" y="208" width="32" height="6" fill="#fbbf24"/>
+    <text x="470" y="240" fill="#9cc3d8">+9 abaixo do limiar</text>
+  </g>
+  <text x="470" y="284" font-size="10" fill="#9cc3d8">consumido por: Context L4 (mergulho seletivo)</text>
+  <text x="470" y="304" font-size="10" fill="#9cc3d8">cache: válido até scope mudar (contrato #44)</text>
+  <text x="470" y="328" font-size="10" fill="#1d5463">ENTER inspecionar · S aprofundir · ESC voltar</text>
+
+  <!-- token budget -->
+  <rect x="456" y="360" width="324" height="204" fill="#10293c" stroke="#2dd4bf"/>
+  <text x="470" y="384" font-size="12" fill="#2dd4bf">ECONOMIA DE CONTEXTO</text>
+  <line x1="470" y1="392" x2="766" y2="392" stroke="#1e3a5f"/>
+  <g font-size="10">
+    <text x="470" y="416" fill="#9cc3d8">repo completo</text>   <text x="766" y="416" text-anchor="end" fill="#9cc3d8">1.2 M tok</text>
+    <text x="470" y="440" fill="#9cc3d8">scoped (sonar)</text>  <text x="766" y="440" text-anchor="end" fill="#2dd4bf">7.7 k tok</text>
+    <rect x="470" y="452" width="296" height="10" fill="#0b1420" stroke="#1e3a5f"/>
+    <rect x="470" y="452" width="296" height="10" fill="#1d5463"/>
+    <rect x="470" y="452" width="24" height="10" fill="#2dd4bf"/>
+    <text x="470" y="486" font-size="16" fill="#2dd4bf">−99.4%</text>
+    <text x="560" y="486" font-size="10" fill="#9cc3d8">tokens vs injeção total</text>
+    <text x="470" y="516" fill="#9cc3d8">janela efetiva usada: 24%</text>
+    <text x="470" y="540" fill="#1d5463">princípio: relevance per token (§6.1)</text>
+  </g>
+
+  <line x1="20" y1="576" x2="780" y2="576" stroke="#1e3a5f"/>
+  <text x="20" y="592" font-size="11" fill="#9cc3d8">F1 log · <tspan fill="#00d4ff">F2 sonar</tspan> · F3 agentes · F4 aprovações · F5 deep dive · q sair</text>
+</svg>

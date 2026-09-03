@@ -1,0 +1,60 @@
+<svg width="800" height="600" viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg" font-family="JetBrains Mono, Fira Code, monospace">
+  <rect width="800" height="600" fill="#0b1420"/>
+  <text x="20" y="38" font-size="20" fill="#00d4ff">◉ AIOSDECK</text>
+  <text x="780" y="38" font-size="12" fill="#9cc3d8" text-anchor="end">MISSION LOG — clone flappy bird</text>
+  <line x1="20" y1="50" x2="780" y2="50" stroke="#1e3a5f"/>
+
+  <!-- filters -->
+  <text x="20" y="76" font-size="11" fill="#9cc3d8">filtro:</text>
+  <rect x="64" y="62" width="52" height="20" fill="#123a52" stroke="#38bdf8"/><text x="90" y="76" font-size="10" fill="#00d4ff" text-anchor="middle">[all]</text>
+  <rect x="124" y="62" width="72" height="20" fill="#10293c" stroke="#1e3a5f"/><text x="160" y="76" font-size="10" fill="#9cc3d8" text-anchor="middle">[falhas]</text>
+  <rect x="204" y="62" width="92" height="20" fill="#10293c" stroke="#1e3a5f"/><text x="250" y="76" font-size="10" fill="#9cc3d8" text-anchor="middle">[aprovações]</text>
+  <text x="780" y="76" font-size="10" fill="#1d5463" text-anchor="end">cronologia, não chat</text>
+  <line x1="20" y1="92" x2="780" y2="92" stroke="#1e3a5f"/>
+
+  <!-- timeline -->
+  <line x1="112" y1="104" x2="112" y2="540" stroke="#14283f"/>
+  <g font-size="10">
+    <text x="20" y="122" fill="#1d5463">11:52:04</text><circle cx="112" cy="118" r="4" fill="#38bdf8"/>
+    <text x="130" y="122" fill="#d7e6f2">▸ plano criado — 10 tasks · complexidade: média · DIRECT? não → pipeline plan-run</text>
+
+    <text x="20" y="148" fill="#1d5463">11:52:09</text><circle cx="112" cy="144" r="4" fill="#2dd4bf"/>
+    <text x="130" y="148" fill="#9cc3d8">✓ t1–t3 estrutura HTML/CSS/JS · commits a1f…c93 · gates 6/6</text>
+
+    <text x="20" y="174" fill="#1d5463">11:58:40</text><circle cx="112" cy="170" r="4" fill="#2dd4bf"/>
+    <text x="130" y="174" fill="#9cc3d8">✓ t4–t7 física do jogo · colisões · sprites · 42 testes passando</text>
+
+    <text x="20" y="200" fill="#1d5463">12:02:11</text><circle cx="112" cy="196" r="4" fill="#2dd4bf"/>
+    <text x="130" y="200" fill="#9cc3d8">✓ t8 scoring · review aprovado (0 bloqueantes)</text>
+
+    <text x="20" y="232" fill="#f87171">12:03:58</text><circle cx="112" cy="228" r="5" fill="#f87171"/>
+    <rect x="130" y="212" width="630" height="88" fill="#10293c" stroke="#f87171"/>
+    <text x="142" y="232" fill="#f87171">✗ t9 TIMEOUT — "validação manual/EA de gameplay" · elapsed 600.02s</text>
+    <text x="142" y="250" fill="#9cc3d8">agent: developer · runtime: opencode · model: qwen3.8-flash</text>
+    <text x="142" y="268" fill="#9cc3d8">last action: npm run dev (servidor vivo, sem browser capability)</text>
+    <text x="142" y="286" fill="#fbbf24">causa raiz: task exigia [browser, interaction, visual_observation] — nunca houve matching (E2.5)</text>
+
+    <text x="20" y="330" fill="#fbbf24">12:04:01</text><circle cx="112" cy="326" r="5" fill="#fbbf24"/>
+    <rect x="130" y="312" width="630" height="52" fill="#10293c" stroke="#fbbf24"/>
+    <text x="142" y="332" fill="#fbbf24">↯ usuário cancelou (SIGINT) — Queda de braço: fallback Gemini iniciado APÓS o cancelamento</text>
+    <text x="142" y="352" fill="#9cc3d8">comportamento correto seria: user_cancelled ⇒ sem fallback (contrato E1.7 · diagrama 04)</text>
+
+    <text x="20" y="392" fill="#1d5463">12:04:30</text><circle cx="112" cy="388" r="4" fill="#9cc3d8"/>
+    <text x="130" y="392" fill="#9cc3d8">◌ segundo SIGINT → kernel shutdown · threads penduradas (bug E1.5)</text>
+
+    <text x="20" y="418" fill="#1d5463">12:04:31</text><circle cx="112" cy="414" r="4" fill="#2a718e"/>
+    <text x="130" y="418" fill="#9cc3d8">○ t10 documentation — pending · missão não pode completar sem validação</text>
+
+    <text x="20" y="450" fill="#2dd4bf">—</text><circle cx="112" cy="446" r="4" fill="#2dd4bf"/>
+    <text x="130" y="450" fill="#2dd4bf">estado final proposto: 8 ✓ · 1 ✗ TIMEOUT · 1 ○ PENDING · BLOCKED razão: capability</text>
+  </g>
+
+  <!-- footer actions -->
+  <rect x="20" y="470" width="760" height="70" fill="#10293c" stroke="#1e3a5f"/>
+  <text x="36" y="494" font-size="11" fill="#d7e6f2">ações sugeridas pelo sistema:</text>
+  <text x="36" y="514" font-size="10" fill="#38bdf8">[R] re-planejar t9 com validação declarativa (E4.5) · [B] marcar t9 BLOCKED e seguir t10 · [X] abortar missão</text>
+  <text x="36" y="532" font-size="10" fill="#1d5463">replanning mínimo — nunca reiniciar a missão inteira (§18)</text>
+
+  <line x1="20" y1="556" x2="780" y2="556" stroke="#1e3a5f"/>
+  <text x="20" y="580" font-size="11" fill="#9cc3d8"><tspan fill="#00d4ff">F1 log</tspan> · F2 sonar · F3 agentes · F4 aprovações · F5 deep dive · q sair</text>
+</svg>
