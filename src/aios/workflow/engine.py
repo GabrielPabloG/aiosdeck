@@ -65,6 +65,13 @@ from aios.workflow.models import (
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
 _GATE_TIMEOUT_SECONDS = 30.0
 
+# Conventional-commit types whose success does not require a code change in
+# src/ or tests/. Documentation and release-metadata tasks remain exceptions.
+_NON_IMPLEMENTATION_TYPES = frozenset({"docs", "chore", "release", "meta"})
+
+# Directories that count as a "relevant" implementation change for #79.
+_RELEVANT_PREFIXES = ("src/", "tests/")
+
 logger = logging.getLogger("aios.workflow")
 
 OPTIONAL_AGENTS = ("tester", "documentation", "git", "research")
@@ -432,6 +439,38 @@ class WorkflowEngine:
         notify(ctx.stages[-1])
         return subtasks, None
 
+    @staticmethod
+    def _first_error(dev_result: AgentResult, fallback: str) -> str:
+        """First error message, or *fallback* when the developer reported none.
+
+        *fallback* differs by call site ("Developer failed" for the stage,
+        "failed" for the aggregated error line), so both are preserved.
+        """
+        return dev_result.errors[0] if dev_result.errors else fallback
+
+    @staticmethod
+    def _subtask_type(subtask: dict) -> str:
+        """Subtask type, defaulting to 'code' when the planner omitted it."""
+        return subtask.get("type", "code")
+
+    @staticmethod
+    def _compute_produced_files(before: list[str], after: list[str]) -> list[str]:
+        """Sorted, de-duplicated paths that appeared between *before* and *after*."""
+        return sorted(set(after) - set(before))
+
+    @staticmethod
+    def _has_relevant_change(produced: list[str]) -> bool:
+        """True when any produced path lives under a relevant (src/ or tests/) prefix."""
+        return any(path.startswith(_RELEVANT_PREFIXES) for path in produced)
+
+    @staticmethod
+    def _noop_reason(produced: list[str]) -> str:
+        """Failure message for a no-op implementation task; lists produced files."""
+        files_str = ", ".join(produced) if produced else "none"
+        return (
+            f"Developer produced no changes in src/ or tests/ (no-op); changed files: {files_str}"
+        )
+
     def _run_developer_phase(  # noqa: PLR0913, PLR0917
         self,
         ctx: _WorkflowContext,
@@ -447,21 +486,22 @@ class WorkflowEngine:
         Returns ``None`` on success or a ``WorkflowResult`` on failure
         (caller must return it immediately).
         """
+        git = agents["git"]
+        before = self._changed_files(git) if git is not None else []
         for i, subtask in enumerate(subtasks):
             card = ctx.cards[i]
             agents["scheduler"].begin_work(card.id)
             dev_task = AgentTask(
-                description=subtask["description"], task_type=subtask.get("type", "code")
+                description=subtask["description"], task_type=self._subtask_type(subtask)
             )
             dev_result = self._run_agent(agents["developer"], dev_task, context)
             if not dev_result.success:
                 agents["scheduler"].block_card(card.id, reason="execution failed")
-                error = dev_result.errors[0] if dev_result.errors else "Developer failed"
                 ctx.stages.append(
                     WorkflowStage(
                         name=f"developer:{i + 1}",
                         success=False,
-                        error=error,
+                        error=self._first_error(dev_result, "Developer failed"),
                         details={
                             "description": subtask["description"],
                             "subtask_total": len(subtasks),
@@ -471,7 +511,7 @@ class WorkflowEngine:
                 notify(ctx.stages[-1])
                 ctx.errors.append(
                     f"Developer [{subtask['description']}]: "
-                    f"{dev_result.errors[0] if dev_result.errors else 'failed'}"
+                    f"{self._first_error(dev_result, 'failed')}"
                 )
                 return self._finish(ctx)
             agents["scheduler"].complete_work(card.id)
@@ -488,6 +528,32 @@ class WorkflowEngine:
             )
             notify(ctx.stages[-1])
 
+        # Detect changes actually produced by the developer (before/after delta),
+        # so a pre-existing dirty working tree cannot cause a false positive.
+        if git is not None:
+            after = self._changed_files(git)
+            produced = self._compute_produced_files(before, after)
+            ctx.changed_files = produced
+            ctx.produced_change = self._has_relevant_change(produced)
+            for stage in ctx.stages:
+                if stage.name.startswith("developer:"):
+                    stage.details = {**stage.details, "files": list(produced)}
+            if self._is_implementation_task(ctx.task) and not ctx.produced_change:
+                reason = self._noop_reason(produced)
+                if ctx.cards:
+                    agents["scheduler"].block_card(ctx.cards[-1].id, reason=reason)
+                ctx.stages.append(
+                    WorkflowStage(
+                        name="developer:noop",
+                        success=False,
+                        error=reason,
+                        details={"changed_files": produced},
+                    )
+                )
+                notify(ctx.stages[-1])
+                ctx.errors.append(reason)
+                return self._finish(ctx)
+
         if gates and not self._run_gate(
             ctx,
             gates,
@@ -498,6 +564,19 @@ class WorkflowEngine:
         ):
             return self._finish(ctx)
         return None
+
+    @staticmethod
+    def _is_implementation_task(task: Task) -> bool:
+        """A task is an implementation task unless its type is a docs/release one."""
+        return (task.task_type or "code") not in _NON_IMPLEMENTATION_TYPES
+
+    @staticmethod
+    def _changed_files(git) -> list[str]:
+        """Reuse the GitAgent change-set query; best-effort returns [] on error."""
+        try:
+            return list(git._changed_files())
+        except Exception:  # noqa: BLE001 - a failed status probe must not crash the run
+            return []
 
     @staticmethod
     def _apply_workflow_intent(context) -> None:

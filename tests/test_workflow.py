@@ -12,6 +12,7 @@ from aios.agents.developer import DeveloperAgent
 from aios.agents.documentation import DocumentationAgent
 from aios.agents.executor import AgentExecutor
 from aios.agents.git import GitAgent
+from aios.agents.models import AgentResult
 from aios.agents.planner import PlannerAgent
 from aios.agents.research import ResearchAgent
 from aios.agents.reviewer import ReviewerAgent
@@ -74,6 +75,10 @@ def _setup_project(tmp_path: Path) -> Path:
     subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=repo, check=True)
     subprocess.run(["git", "config", "user.name", "Test User"], cwd=repo, check=True)
 
+    src = repo / "src"
+    src.mkdir()
+    (src / "base.py").write_text("x = 1\n", encoding="utf-8")
+
     (repo / "health.py").write_text(
         '"""Health endpoint module."""\n'
         "def health_check():\n"
@@ -88,7 +93,26 @@ def _setup_project(tmp_path: Path) -> Path:
         "def test_health_check():\n    assert True\n",
         encoding="utf-8",
     )
+    subprocess.run(["git", "add", "."], cwd=repo, check=True)
+    subprocess.run(["git", "commit", "-qm", "initial"], cwd=repo, check=True)
     return repo
+
+
+def _dev_runtime_writes(repo: Path, stub: str = "Implementation complete.") -> MagicMock:
+    """A developer runtime that returns text AND writes a real file under src/."""
+    runtime = MagicMock()
+
+    def execute(*args, **kwargs):
+        src = repo / "src"
+        src.mkdir(parents=True, exist_ok=True)
+        (src / "health_endpoint.py").write_text(
+            'def health():\n    return "ok"\n',
+            encoding="utf-8",
+        )
+        return stub
+
+    runtime.execute.side_effect = execute
+    return runtime
 
 
 def _make_workflow(
@@ -123,8 +147,7 @@ def test_workflow_full_pipeline_succeeds(tmp_path):
 
     planner_runtime = MagicMock()
     planner_runtime.execute.return_value = json.dumps(VALID_PLAN)
-    dev_runtime = MagicMock()
-    dev_runtime.execute.return_value = "Implementation complete."
+    dev_runtime = _dev_runtime_writes(repo)
 
     workflow, scheduler, git = _make_workflow(tmp_path, repo, planner_runtime, dev_runtime)
     git.push = MagicMock()
@@ -141,6 +164,11 @@ def test_workflow_full_pipeline_succeeds(tmp_path):
         assert result.errors == ()
         assert result.finished_at is not None
         assert json.dumps(asdict(result))
+
+        # each subtask's declared type must reach the developer as the AgentTask
+        # task_type (VALID_PLAN: subtask 1 "code", subtask 2 "test")
+        task_types = [c.kwargs["task_type"] for c in dev_runtime.execute.call_args_list]
+        assert task_types == ["code", "test"]
 
         branch = subprocess.run(
             ["git", "branch", "--show-current"],
@@ -220,10 +248,19 @@ def test_workflow_developer_failure_stops(tmp_path):
 
         assert dev_runtime.execute.call_count == 1
 
+        dev_stage = next(s for s in result.stages if s.name == "developer:1")
+        assert dev_stage.success is False
+        assert dev_stage.error == "execution failed"
+        assert dev_stage.details["description"] == "Create /health route handler"
+        assert dev_stage.details["subtask_total"] == 2
+        assert "files" not in dev_stage.details  # failure returns before the merge
+        assert "Developer [Create /health route handler]: execution failed" in result.errors
+
         board = scheduler.list_boards()[0]
         cards = scheduler.list_cards(board.id)
         assert len(cards) == len(VALID_PLAN["subtasks"])
         assert cards[0].blocked is True
+        assert cards[0].block_reason == "execution failed"
         assert cards[1].column == "Backlog"
     finally:
         scheduler.shutdown()
@@ -240,8 +277,7 @@ def test_workflow_tester_failure_stops(tmp_path):
 
     planner_runtime = MagicMock()
     planner_runtime.execute.return_value = json.dumps(VALID_PLAN)
-    dev_runtime = MagicMock()
-    dev_runtime.execute.return_value = "Implementation complete."
+    dev_runtime = _dev_runtime_writes(repo)
 
     workflow, scheduler, _ = _make_workflow(tmp_path, repo, planner_runtime, dev_runtime)
     try:
@@ -430,8 +466,7 @@ def test_workflow_research_front_gate_feeds_planner(tmp_path):
 
     planner_runtime = MagicMock()
     planner_runtime.execute.return_value = json.dumps(VALID_PLAN)
-    dev_runtime = MagicMock()
-    dev_runtime.execute.return_value = "Implementation complete."
+    dev_runtime = _dev_runtime_writes(repo)
 
     workflow, scheduler, _ = _make_workflow(
         tmp_path,
@@ -478,3 +513,399 @@ def test_build_branch_short_goal_unchanged():
 
 def test_build_branch_goal_without_words():
     assert WorkflowEngine._build_branch(7, "!!!") == "feature/task-7"
+
+
+def test_is_implementation_task_true_for_code_types():
+    """feat/fix/code are implementation tasks (they require a relevant diff)."""
+    assert WorkflowEngine._is_implementation_task(Task(description="x", task_type="feat")) is True
+    assert WorkflowEngine._is_implementation_task(Task(description="x", task_type="code")) is True
+
+
+def test_is_implementation_task_false_for_docs_release_types():
+    """docs/chore/release/meta are valid exceptions — not implementation."""
+    for task_type in ("docs", "chore", "release", "meta"):
+        assert (
+            WorkflowEngine._is_implementation_task(Task(description="x", task_type=task_type))
+            is False
+        )
+
+
+def test_is_implementation_task_defaults_to_code_when_type_missing():
+    """An empty task_type falls back to 'code' and is treated as implementation."""
+    assert WorkflowEngine._is_implementation_task(Task(description="x", task_type="")) is True
+
+
+def _dev_runtime_noop(return_value: str = "No changes required.") -> MagicMock:
+    """A developer runtime that claims success but writes nothing to disk."""
+    runtime = MagicMock()
+    runtime.execute.return_value = return_value
+    return runtime
+
+
+def test_workflow_noop_implementation_fails(tmp_path):
+    """Regression (#79): an implementation task producing no src/ or tests/
+    change must fail, not pass, even though the developer returned text."""
+    repo = _setup_project(tmp_path)
+    context = _make_context(str(repo))
+
+    (repo / "docs").mkdir()
+    (repo / "docs" / "changelog-fragment-20260101-000000.md").write_text(
+        "# Changelog Fragment\n", encoding="utf-8"
+    )
+    (repo / "opencode.json").write_text('{"$schema": "opencode.json"}\n', encoding="utf-8")
+    (repo / "TODO.md").write_text("- [ ] fix me\n", encoding="utf-8")
+
+    planner_runtime = MagicMock()
+    planner_runtime.execute.return_value = json.dumps(VALID_PLAN)
+    dev_runtime = _dev_runtime_noop()
+
+    workflow, scheduler, _ = _make_workflow(tmp_path, repo, planner_runtime, dev_runtime)
+    try:
+        received: list = []
+        result = workflow.execute(
+            Task(description="Add endpoint /health", task_type="feat"),
+            context,
+            on_stage=received.append,
+        )
+
+        assert result.success is False
+        assert any("no changes in src/ or tests/" in err for err in result.errors)
+        assert result.changed_files == ()
+        assert "developer:noop" in [s.name for s in result.stages]
+        assert any(not s.success and s.name == "developer:noop" for s in result.stages)
+        # every stage is reported through on_stage in order, and the noop stage
+        # is the last one notified (kills notify(None)/notify(stages[+1])/[-2])
+        assert [s.name for s in received] == [s.name for s in result.stages]
+        assert received[-1].name == "developer:noop"
+
+        expected_reason = (
+            "Developer produced no changes in src/ or tests/ (no-op); changed files: none"
+        )
+        noop_stage = next(s for s in result.stages if s.name == "developer:noop")
+        assert noop_stage.success is False
+        assert noop_stage.error == expected_reason
+        assert noop_stage.details["changed_files"] == []
+        assert "files" not in noop_stage.details
+        assert expected_reason in result.errors
+        # developer stages carry the merged (empty) produced file list
+        for stage in result.stages:
+            if stage.name in ("developer:1", "developer:2"):
+                assert stage.details["files"] == []
+
+        # DocumentationAgent must not create a new changelog, and git must not
+        # commit anything as a successful implementation.
+        seeded = {"changelog-fragment-20260101-000000.md"}
+        actual = {p.name for p in (repo / "docs").glob("changelog-fragment-*.md")}
+        assert actual == seeded
+        log = subprocess.run(
+            ["git", "log", "--oneline"],
+            cwd=repo,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert "feat:" not in log.stdout
+    finally:
+        scheduler.shutdown()
+
+
+def test_workflow_pre_existing_dirty_tree_does_not_count_as_produced(tmp_path):
+    """A pre-existing relevant change in src/ must NOT make a no-op task pass."""
+    repo = _setup_project(tmp_path)
+    context = _make_context(str(repo))
+
+    src = repo / "src"
+    (src / "existing.py").write_text("OLD\n", encoding="utf-8")
+
+    planner_runtime = MagicMock()
+    planner_runtime.execute.return_value = json.dumps(VALID_PLAN)
+    dev_runtime = _dev_runtime_noop()
+
+    workflow, scheduler, _ = _make_workflow(tmp_path, repo, planner_runtime, dev_runtime)
+    try:
+        result = workflow.execute(
+            Task(description="Add endpoint /health", task_type="feat"), context
+        )
+
+        assert result.success is False
+        assert any("no changes in src/ or tests/" in err for err in result.errors)
+        assert result.changed_files == ()
+    finally:
+        scheduler.shutdown()
+
+
+def test_workflow_pre_existing_dirty_plus_new_relevant_file_succeeds(tmp_path):
+    """A no-op on src/existing.py but a NEW src/ file produced by the developer
+    is a real change, so the task succeeds."""
+    repo = _setup_project(tmp_path)
+    context = _make_context(str(repo))
+
+    src = repo / "src"
+    (src / "existing.py").write_text("OLD\n", encoding="utf-8")
+
+    planner_runtime = MagicMock()
+    planner_runtime.execute.return_value = json.dumps(VALID_PLAN)
+    dev_runtime = _dev_runtime_writes(repo)
+
+    workflow, scheduler, _ = _make_workflow(tmp_path, repo, planner_runtime, dev_runtime)
+    try:
+        result = workflow.execute(
+            Task(description="Add endpoint /health", task_type="feat"), context
+        )
+
+        assert result.success is True
+        assert "src/health_endpoint.py" in result.changed_files
+        dev_stage = next(s for s in result.stages if s.name == "developer:1")
+        assert dev_stage.details["files"] == ["src/health_endpoint.py"]
+    finally:
+        scheduler.shutdown()
+
+
+def test_workflow_docs_task_without_code_change_succeeds(tmp_path):
+    """A docs task changing only docs/ is a valid exception and must succeed."""
+    repo = _setup_project(tmp_path)
+    context = _make_context(str(repo))
+
+    planner_runtime = MagicMock()
+    planner_runtime.execute.return_value = json.dumps(
+        {
+            "goal": "Update docs",
+            "subtasks": [
+                {
+                    "id": "1",
+                    "description": "Document the endpoint",
+                    "type": "documentation",
+                    "priority": "low",
+                    "dependencies": [],
+                    "estimated_complexity": "low",
+                }
+            ],
+            "risks": [],
+            "unknowns": [],
+        }
+    )
+    dev_runtime = _dev_runtime_noop()
+
+    workflow, scheduler, _ = _make_workflow(tmp_path, repo, planner_runtime, dev_runtime)
+    try:
+        result = workflow.execute(Task(description="Update docs", task_type="docs"), context)
+
+        assert result.success is True
+        assert not any("no changes in src/ or tests/" in err for err in result.errors)
+    finally:
+        scheduler.shutdown()
+
+
+class TestWorkflowEngineHelpers:
+    """Unit tests for the pure helpers extracted from _run_developer_phase.
+
+    They are @staticmethods, so they are exercised directly (no engine
+    instance) to kill the ternary/set/any/f-string mutants cheaply.
+    """
+
+    def test_first_error_uses_first(self):
+        result = AgentResult(success=False, errors=["error1", "error2"])
+        assert WorkflowEngine._first_error(result, "fb") == "error1"
+
+    def test_first_error_empty_uses_fallback(self):
+        result = AgentResult(success=False, errors=[])
+        assert WorkflowEngine._first_error(result, "Developer failed") == "Developer failed"
+
+    def test_first_error_dual_fallbacks(self):
+        result = AgentResult(success=False, errors=[])
+        assert WorkflowEngine._first_error(result, "Developer failed") == "Developer failed"
+        assert WorkflowEngine._first_error(result, "failed") == "failed"
+
+    def test_subtask_type_present(self):
+        assert WorkflowEngine._subtask_type({"type": "review"}) == "review"
+
+    def test_subtask_type_defaults_to_code(self):
+        assert WorkflowEngine._subtask_type({}) == "code"
+        assert WorkflowEngine._subtask_type({"description": "x"}) == "code"
+
+    def test_compute_produced_files_added(self):
+        assert WorkflowEngine._compute_produced_files(
+            ["a.py", "b.py"], ["a.py", "b.py", "c.py"]
+        ) == ["c.py"]
+
+    def test_compute_produced_files_deletions_ignored(self):
+        assert (
+            WorkflowEngine._compute_produced_files(["a.py", "b.py", "c.py"], ["a.py", "b.py"]) == []
+        )
+
+    def test_compute_produced_files_sorted_and_deduped(self):
+        assert WorkflowEngine._compute_produced_files([], ["z.py", "a.py", "z.py", "m.py"]) == [
+            "a.py",
+            "m.py",
+            "z.py",
+        ]
+
+    def test_compute_produced_files_empty_after(self):
+        assert WorkflowEngine._compute_produced_files(["a.py"], []) == []
+
+    def test_has_relevant_change_src(self):
+        assert WorkflowEngine._has_relevant_change(["src/main.py"]) is True
+
+    def test_has_relevant_change_tests(self):
+        assert WorkflowEngine._has_relevant_change(["tests/test_main.py"]) is True
+
+    def test_has_relevant_change_irrelevant(self):
+        assert WorkflowEngine._has_relevant_change(["docs/readme.md"]) is False
+        assert WorkflowEngine._has_relevant_change(["README.md"]) is False
+
+    def test_has_relevant_change_empty(self):
+        assert WorkflowEngine._has_relevant_change([]) is False
+
+    def test_noop_reason_joins_files(self):
+        assert WorkflowEngine._noop_reason(["a.md", "b.txt"]) == (
+            "Developer produced no changes in src/ or tests/ (no-op); changed files: a.md, b.txt"
+        )
+
+    def test_noop_reason_single_file(self):
+        assert WorkflowEngine._noop_reason(["only.md"]) == (
+            "Developer produced no changes in src/ or tests/ (no-op); changed files: only.md"
+        )
+
+    def test_noop_reason_empty_uses_none(self):
+        assert WorkflowEngine._noop_reason([]) == (
+            "Developer produced no changes in src/ or tests/ (no-op); changed files: none"
+        )
+
+
+def test_workflow_noop_implementation_with_irrelevant_new_file(tmp_path):
+    """Developer adds a NEW file, but only under docs/ -> produced is non-empty
+    yet not relevant -> no-op failure. Exercises the comma-joined _noop_reason
+    branch and the `if ctx.cards` True path."""
+    repo = _setup_project(tmp_path)
+    context = _make_context(str(repo))
+
+    planner_runtime = MagicMock()
+    planner_runtime.execute.return_value = json.dumps(VALID_PLAN)
+    dev_runtime = MagicMock()
+
+    def _dev(*_a, **_k):
+        # A new file at the repo root (a tracked directory) reports individually,
+        # not collapsed into a directory entry, and is not under src/ or tests/.
+        (repo / "notes.txt").write_text("scratch\n", encoding="utf-8")
+        return "docs only"
+
+    dev_runtime.execute.side_effect = _dev
+
+    workflow, scheduler, _ = _make_workflow(tmp_path, repo, planner_runtime, dev_runtime)
+    try:
+        result = workflow.execute(
+            Task(description="Add endpoint /health", task_type="feat"), context
+        )
+
+        assert result.success is False
+        assert result.changed_files == ("notes.txt",)
+        assert any("no-op" in err and "notes.txt" in err for err in result.errors)
+
+        noop_stage = next(s for s in result.stages if s.name == "developer:noop")
+        assert noop_stage.error == (
+            "Developer produced no changes in src/ or tests/ (no-op); changed files: notes.txt"
+        )
+        assert noop_stage.details["changed_files"] == ["notes.txt"]
+        dev_stage = next(s for s in result.stages if s.name == "developer:1")
+        assert dev_stage.details["files"] == ["notes.txt"]
+    finally:
+        scheduler.shutdown()
+
+
+def test_workflow_noop_empty_subtasks(tmp_path):
+    """Zero subtasks: nothing produced and no cards exist, so the no-op path
+    must not touch a card (the `if ctx.cards` False branch)."""
+    repo = _setup_project(tmp_path)
+    context = _make_context(str(repo))
+
+    planner_runtime = MagicMock()
+    planner_runtime.execute.return_value = json.dumps(
+        {"goal": "g", "subtasks": [], "risks": [], "unknowns": []}
+    )
+    dev_runtime = _dev_runtime_noop()
+
+    workflow, scheduler, _ = _make_workflow(tmp_path, repo, planner_runtime, dev_runtime)
+    try:
+        result = workflow.execute(Task(description="g", task_type="feat"), context)
+
+        assert result.success is False
+        assert result.changed_files == ()
+        assert any("no-op" in err for err in result.errors)
+    finally:
+        scheduler.shutdown()
+
+
+def test_workflow_developer_failure_empty_errors_uses_fallbacks(tmp_path):
+    """When the developer fails with an EMPTY error list, the fallback strings
+    are used verbatim: the stage error is "Developer failed" and the aggregated
+    line ends with ": failed". This path is unreachable via the normal executor
+    (which always fills errors), so it is exercised by stubbing _run_agent.
+
+    Kills the _first_error fallback mutants at the two call sites.
+    """
+    repo = _setup_project(tmp_path)
+    context = _make_context(str(repo))
+
+    planner_runtime = MagicMock()
+    planner_runtime.execute.return_value = json.dumps(VALID_PLAN)
+    dev_runtime = MagicMock()
+
+    workflow, scheduler, _ = _make_workflow(tmp_path, repo, planner_runtime, dev_runtime)
+    original_run_agent = workflow._run_agent
+
+    def fake_run_agent(agent, task, ctx=None):
+        if agent is workflow._agents["developer"]:
+            return AgentResult(success=False, errors=[])
+        return original_run_agent(agent, task, ctx)
+
+    workflow._run_agent = fake_run_agent
+    try:
+        result = workflow.execute(
+            Task(description="Add endpoint /health", task_type="feat"), context
+        )
+
+        assert result.success is False
+        dev_stage = next(s for s in result.stages if s.name == "developer:1")
+        assert dev_stage.error == "Developer failed"
+        assert "Developer [Create /health route handler]: failed" in result.errors
+    finally:
+        scheduler.shutdown()
+
+
+def test_workflow_noop_blocks_last_card_with_reason(tmp_path):
+    """A no-op implementation task blocks exactly the LAST card, carrying the
+    no-op reason. With 3 cards this distinguishes cards[-1] from cards[-2],
+    cards[+1] and None (the block_card argument mutants)."""
+    repo = _setup_project(tmp_path)
+    context = _make_context(str(repo))
+
+    plan = {
+        "goal": "g",
+        "subtasks": [
+            {"id": str(i), "description": f"task {i}", "type": "code", "priority": "high"}
+            for i in range(1, 4)
+        ],
+        "risks": [],
+        "unknowns": [],
+    }
+    planner_runtime = MagicMock()
+    planner_runtime.execute.return_value = json.dumps(plan)
+    dev_runtime = _dev_runtime_noop()
+
+    workflow, scheduler, _ = _make_workflow(tmp_path, repo, planner_runtime, dev_runtime)
+    try:
+        result = workflow.execute(Task(description="g", task_type="feat"), context)
+
+        assert result.success is False
+        expected_reason = (
+            "Developer produced no changes in src/ or tests/ (no-op); changed files: none"
+        )
+        board = scheduler.list_boards()[0]
+        cards = scheduler.list_cards(board.id)
+        assert len(cards) == 3
+        assert cards[-1].blocked is True
+        assert cards[-1].block_reason == expected_reason
+        assert cards[-2].blocked is False
+        assert cards[0].blocked is False
+    finally:
+        scheduler.shutdown()

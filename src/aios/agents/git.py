@@ -17,6 +17,9 @@ from aios.agents.base import BaseAgent
 from aios.agents.contracts import RUNTIME_ERROR, AgentError, coerce_task
 from aios.agents.models import AgentResult
 
+# A porcelain record is "<XY> <path>": two status chars, one space, then path.
+_PORCELAIN_HEADER = 3
+
 
 @dataclass(frozen=True)
 class GitOperation:
@@ -102,6 +105,24 @@ class GitAgent(BaseAgent):
     def _create_tag(self, name: str) -> GitOperation:
         return self._run(["git", "tag", name])
 
+    def status(self) -> GitOperation:
+        """Report the change set as ``git status --porcelain=v1 -z`` output.
+
+        ``_changed_files()`` is the canonical consumer; the raw porcelain is
+        kept on the payload for transparency.
+        """
+        return self._run(["git", "status", "--porcelain=v1", "-z"])
+
+    def _changed_files(self) -> list[str]:
+        """Parsed changed paths (tracked modifications + untracked files).
+
+        Uses the NUL-delimited ``porcelain=v1`` format so paths containing
+        spaces are parsed reliably. Renames resolve to the new path; deletions
+        are excluded (a removed file cannot carry a new implementation).
+        """
+        raw = self.status().stdout
+        return _parse_porcelain(raw)
+
     def _push(self, approved: bool = False) -> GitOperation:
         command = ["git", "push"]
         if not approved:
@@ -147,3 +168,37 @@ class GitAgent(BaseAgent):
             stderr=result.stderr,
             returncode=result.returncode,
         )
+
+
+def _parse_porcelain(raw: str) -> list[str]:
+    """Parse ``git status --porcelain=v1 -z`` output into changed paths.
+
+    Entries are NUL-delimited so paths containing spaces are safe (and unquoted).
+    Each record begins with a two-character status followed by a single space
+    and the path. In ``-z`` mode a rename/copy spans two records: the first is
+    ``<status> <to>`` (the destination/new path) and the second is ``<from>``
+    (the source/old path, no status). Only the resulting (new) path is reported;
+    deletions are dropped because a removed file cannot carry a new change.
+
+    Iterates with a ``skip_next`` flag rather than manual index arithmetic, so no
+    single mutation can turn the loop into an infinite loop.
+    """
+    if not raw:
+        return []
+    paths: list[str] = []
+    skip_next = False
+    for record in [r for r in raw.split("\0") if r]:
+        if skip_next:
+            skip_next = False
+            continue
+        if len(record) < _PORCELAIN_HEADER:
+            continue
+        xy = record[0:2]
+        path = record[_PORCELAIN_HEADER:]
+        if xy[0] in "RC":  # rename/copy: first record already holds the new path
+            skip_next = True  # consume the following source (old) path record
+        elif "D" in xy:
+            continue
+        if path:
+            paths.append(path)
+    return paths

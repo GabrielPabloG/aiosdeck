@@ -67,6 +67,8 @@ class _WorkflowContext:
     metadata: dict[str, Any] = field(default_factory=dict)
     intent: Any = None
     finished_at: str | None = None
+    changed_files: list[str] = field(default_factory=list)
+    produced_change: bool = False
 
 
 @dataclass(frozen=True)
@@ -85,6 +87,7 @@ class WorkflowResult:
     started_at: str
     finished_at: str | None
     research_result: dict | None = None
+    changed_files: tuple[str, ...] = ()
 
     @classmethod
     def from_context(cls, ctx: _WorkflowContext) -> WorkflowResult:
@@ -101,6 +104,7 @@ class WorkflowResult:
             started_at=ctx.started_at,
             finished_at=ctx.finished_at,
             research_result=ctx.research_result,
+            changed_files=tuple(ctx.changed_files),
         )
 
 

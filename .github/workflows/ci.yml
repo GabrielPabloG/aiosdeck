@@ -73,21 +73,21 @@ jobs:
       - name: Install dependencies + mutmut
         run: pip install -e ".[dev]" mutmut
 
-      - name: Scope mutation to changed files and run
+      - name: Scope mutation to changed functions and run
         id: scope
         run: |
-          # Detecta arquivos Python modificados em src/aios/
-          CHANGED_FILES=$(git diff origin/main...HEAD --name-only -- 'src/aios/' | grep '\.py$' | tr '\n' ' ') || true
+          BASE=$(git merge-base origin/main HEAD)
 
+          # 1) arquivos Python modificados em src/aios/
+          CHANGED_FILES=$(git diff "$BASE" HEAD --name-only -- 'src/aios/' | grep '\.py$' | tr '\n' ' ') || true
           if [ -z "$CHANGED_FILES" ]; then
             echo "Nenhum arquivo fonte modificado. Pulando mutação."
             echo skip=true >> "$GITHUB_OUTPUT"
             exit 0
           fi
-
           echo "Arquivos a serem mutados: $CHANGED_FILES"
 
-          # mutmut 3 lê source_paths do [tool.mutmut]; substitui por só os arquivos mudados
+          # 2) mutmut 3 lê source_paths do [tool.mutmut]; restringe aos arquivos mudados
           CHANGED_JSON=$(printf '%s\n' $CHANGED_FILES | python -c 'import json, sys; print(json.dumps([l.strip() for l in sys.stdin if l.strip()]))')
           CHANGED_JSON="$CHANGED_JSON" python - <<'PY'
           import json, os, pathlib, re
@@ -102,70 +102,60 @@ jobs:
           print("source_paths atualizado para:", files)
           PY
 
-          mutmut run
+          # 3) AST sobre as linhas (+) do diff -> nomes das FUNÇÕES alteradas -> globs do mutmut
+          BASE="$BASE" python - <<'PY' > changed_funcs.txt
+          import ast, os, re, subprocess
+
+          base = os.environ["BASE"]
+          diff = subprocess.run(
+              ["git", "diff", "-U0", base, "HEAD", "--", "src/aios/"],
+              capture_output=True, text=True,
+          ).stdout
+          hunk = re.compile(r'^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@')
+          changed, cur = {}, None
+          for line in diff.splitlines():
+              if line.startswith("+++ b/"):
+                  cur = line[6:]
+                  changed.setdefault(cur, set())
+              elif line.startswith("@@") and cur:
+                  m = hunk.match(line)
+                  if m:
+                      start = int(m.group(1))
+                      count = int(m.group(2) or 1)
+                      changed[cur].update(range(start, start + count))
+
+          names = set()
+          for f, lines in changed.items():
+              if not f.endswith(".py") or not os.path.exists(f) or not lines:
+                  continue
+              tree = ast.parse(open(f, encoding="utf-8").read())
+              for node in ast.walk(tree):
+                  if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                      span = range(node.lineno, (node.end_lineno or node.lineno) + 1)
+                      if any(ln in lines for ln in span):
+                          names.add(node.name)
+          print("\n".join(f"*{n}*" for n in sorted(names)))
+          PY
+
+          GLOBS=()
+          while IFS= read -r g; do [ -n "$g" ] && GLOBS+=("$g"); done < changed_funcs.txt
+          if [ ${#GLOBS[@]} -eq 0 ]; then
+            echo "Nenhuma função alterada. Pulando mutação."
+            echo skip=true >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "Escopo de mutação (funções alteradas): ${GLOBS[*]}"
+
+          # 4) roda mutmut apenas nos mutantes das funções alteradas (fnmatch em mutant_names)
+          mutmut run "${GLOBS[@]}"
 
       - name: Check mutation results
         if: ${{ steps.scope.outputs.skip != 'true' }}
         run: |
           echo "--- mutmut results ---"
           mutmut results || true
-          mutmut export-cicd-stats
-          python - <<'PY'
-          import json, pathlib, subprocess
-
-          stats = json.loads(pathlib.Path("mutants/mutmut-cicd-stats.json").read_text())
-          print(json.dumps(stats, indent=2))
-
-          allowed = {
-              line.split("#", 1)[0].strip()
-              for line in pathlib.Path(".github/mutmut-equivalents.txt").read_text().splitlines()
-              if line.strip() and not line.lstrip().startswith("#")
-          }
-
-          out = subprocess.run(["mutmut", "results"], capture_output=True, text=True).stdout
-          statuses = ("survived", "suspicious", "timeout", "segfault", "no tests")
-          found = {
-              line.strip().rsplit(":", 1)[0].strip(): line.strip().rsplit(":", 1)[1].strip()
-              for line in out.splitlines()
-              if ": " in line and line.strip().endswith(statuses)
-          }
-          survivors = {name for name, status in found.items() if status != "no tests"}
-
-          unexpected = sorted(survivors - allowed)
-          for name in unexpected:
-              print(f"UNEXPECTED SURVIVOR: {name} ({found[name]})")
-
-          stale = sorted(allowed - set(found))
-          if stale:
-              # Informativo: o CI roda mutação apenas nos arquivos alterados do PR,
-              # então equivalentes de outros módulos aparecem como "stale" aqui.
-              print(f"{len(stale)} allowlist entradas ausentes nesta rodada (ok):")
-              for name in stale:
-                  print(f"  {name}")
-
-          hard = (
-              len(unexpected)
-              + stats["suspicious"]
-              + stats["timeout"]
-              + stats["segfault"]
-              + stats["no_tests"]
-          )
-          if hard:
-              raise SystemExit(
-                  f"Mutation failed: unexpected={len(unexpected)}, "
-                  f"suspicious={stats['suspicious']}, timeout={stats['timeout']}, "
-                  f"segfault={stats['segfault']}, no_tests={stats['no_tests']} — "
-                  f"equivalentes permitidos nesta rodada: "
-                  f"{stats['survived'] - len(unexpected)}"
-              )
-
-          matched = sorted(survivors & allowed)
-          print(
-              f"All non-equivalent mutants killed "
-              f"(killed={stats['killed']}/{stats['total']}); "
-              f"{len(matched)} equivalente(s) documentado(s) na allowlist."
-          )
-          PY
+          python .pre-commit/check_mutation_gate.py \
+            --allowlist .github/mutmut-equivalents.txt
 
       - name: Upload mutation report
         if: always()
