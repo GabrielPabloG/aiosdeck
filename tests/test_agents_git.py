@@ -204,3 +204,13 @@ class TestParsePorcelain:
     def test_mixed_records(self):
         raw = " M a.py\0R  b_new\0b_old\0?? new file\0 D gone\0"
         assert _parse_porcelain(raw) == ["a.py", "b_new", "new file"]
+
+    def test_short_record_does_not_truncate_the_scan(self):
+        """A too-short record is skipped, but scanning must CONTINUE to later
+        records (guards the len-check `continue`->`break` mutant)."""
+        assert _parse_porcelain("AB\0 M keep.py\0") == ["keep.py"]
+
+    def test_deletion_does_not_truncate_the_scan(self):
+        """A deletion is dropped, but later records must still be reported
+        (guards the deletion-branch `continue`->`break` mutant)."""
+        assert _parse_porcelain(" D gone.py\0 M keep.py\0") == ["keep.py"]

@@ -28,3 +28,8 @@ aios.runtime.opencode.xǁOpenCodeAdapterǁdiagnose__mutmut_187  # output f-strin
 aios.runtime.opencode.xǁOpenCodeAdapterǁdiagnose__mutmut_189  # output f-string: stderr or '' -> or 'XXXX' so difere quando stderr e falsy; literal 'XXXX' nunca coincide com o nome do modelo, decidindo model_unavailable/ok identicamente
 aios.workflow.engine.xǁWorkflowEngineǁ_is_implementation_task__mutmut_2  # (task_type or 'code') -> or '' : '' falsy -> default; neither '' nor 'code' in _NON_IMPLEMENTATION_TYPES, membership identical for all inputs
 aios.workflow.engine.xǁWorkflowEngineǁ_is_implementation_task__mutmut_3  # (task_type or 'code') -> or None : None falsy -> default; neither None nor 'code' in _NON_IMPLEMENTATION_TYPES, membership identical for all inputs
+aios.agents.git.x__parse_porcelain__mutmut_3  # skip_next initializer False->None: only ever read via `if skip_next:` (truthiness); None and False are both falsy -> identical
+aios.agents.git.x__parse_porcelain__mutmut_7  # skip_next reset False->None inside the rename/copy skip: same truthiness-only use -> identical
+aios.agents.git.x__parse_porcelain__mutmut_10 # len(record) < H -> <= : a length-3 record yields empty path (record[3:]=="") dropped by `if path:` either way -> identical output
+aios.agents.git.x__parse_porcelain__mutmut_14 # record[0:2] -> record[0:3] : index 2 is always the porcelain status/path space; widening cannot add a 'D' absent from the 2-char status field -> identical for all git-porcelain inputs
+aios.agents.git.x__parse_porcelain__mutmut_18 # "RC" -> "XXRCXX" : adds only 'X' to the accepted set, and no porcelain status first char is 'X' -> rename/copy detection identical for all git-porcelain inputs
