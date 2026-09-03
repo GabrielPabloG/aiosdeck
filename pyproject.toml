@@ -13,6 +13,9 @@ authors = [
     { name = "Gabriel Pablo Garcia" },
 ]
 keywords = ["ai", "agent", "orchestration", "developer-tools", "cli"]
+dependencies = [
+    "PyYAML>=6.0",
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",
