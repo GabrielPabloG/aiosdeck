@@ -8,25 +8,31 @@ sandbox: ai-jail
 
 routing:
   enabled: true
-  default_provider: "omniroute"
-  default_model: "auto/coding:free"
+  default_provider: "opencode-go"
+  default_model: "opencode-go/qwen3.8-flash"
   rules:
     - agent: "planner"
-      provider: "omniroute"
-      model: "auto/reasoning"
+      provider: "opencode-go"
+      model: "opencode-go/qwen3.8-flash"
       complexity: "high"  
 
     - agent: "developer"
-      provider: "omniroute"
-      model: "auto/coding:free"
-      complexity: "medium"    
+      provider: "opencode-go"
+      model: "opencode-go/qwen3.8-flash"
+      complexity: "low"
+
+    - agent: "reviewer"
+      provider: "opencode-go"
+      model: "opencode-go/qwen3.8-flash"
+      complexity: "medium"
 
   fallback_providers:
-    - provider: "omniroute"
-      model: "auto/coding:free"
 
     - provider: "google"
       model: "gemini-3.7-flash"
+
+    - provider: "ollama"
+      model: "qwen-opencode"
 
 skills:
   - project-dna
