@@ -1,5 +1,7 @@
 """CLI entry point for the aios command."""
 
+from __future__ import annotations
+
 import argparse
 import signal
 import sys
