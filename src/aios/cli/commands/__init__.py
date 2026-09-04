@@ -8,83 +8,20 @@ Command implementations are organized by domain:
 - cli/commands/exec_cmds.py — plan, research, review
 - cli/commands/memory.py — memory add/list/forget/search
 - <domain>/cli.py — each domain's own CLI commands (knowledge, routing, ...)
+
+Handlers are stored as ``"module.path:function"`` strings and resolved lazily
+via ``importlib`` so that importing the registry (and running ``--help`` /
+``--version``) never imports domain modules.
 """
 
 from __future__ import annotations
 
+import importlib
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from aios import __version__
-from aios.backlog.cli import (
-    cmd_backlog_add,
-    cmd_backlog_list,
-    cmd_backlog_run,
-    cmd_backlog_stats,
-)
-from aios.cli.commands.benchmark import cmd_benchmark
-from aios.cli.commands.core import (
-    cmd_complete,
-    cmd_completion,
-    cmd_dashboard,
-    cmd_doctor,
-    cmd_exit,
-    cmd_help,
-    cmd_init,
-)
-from aios.cli.commands.exec_cmds import (
-    _gate_label as _gate_label,
-)
-from aios.cli.commands.exec_cmds import (
-    _gates_json as _gates_json,
-)
-from aios.cli.commands.exec_cmds import (
-    _render_gate_trail as _render_gate_trail,
-)
-from aios.cli.commands.exec_cmds import (
-    _render_plan_list as _render_plan_list,
-)
-from aios.cli.commands.exec_cmds import (
-    _render_run_result as _render_run_result,
-)
-from aios.cli.commands.exec_cmds import (
-    _render_stage as _render_stage,
-)
-from aios.cli.commands.exec_cmds import (
-    _run_result_to_json as _run_result_to_json,
-)
-from aios.cli.commands.exec_cmds import (
-    cmd_plan,
-    cmd_research,
-    cmd_review,
-)
-from aios.cli.commands.memory import (
-    cmd_memory_add,
-    cmd_memory_forget,
-    cmd_memory_list,
-    cmd_memory_search,
-)
-from aios.knowledge.cli import (
-    cmd_knowledge_index,
-    cmd_knowledge_retrieve,
-    cmd_knowledge_search,
-    cmd_knowledge_sources,
-)
-from aios.learning.cli import cmd_learning  # noqa: E402
-from aios.quality.cli import cmd_quality_stats
-from aios.routing.cli import cmd_route
-from aios.security.cli import (
-    cmd_policy_show,
-    cmd_security_stats,
-)
-from aios.skills.cli import (
-    cmd_skills_discover,
-    cmd_skills_inspect,
-    cmd_skills_stats,
-)
-from aios.telemetry.cli import cmd_usage
-from aios.ui.cli import cmd_ocean
 
 
 @dataclass
@@ -93,8 +30,15 @@ class Command:
     description: str = ""
     aliases: list[str] = field(default_factory=list)
     subcommands: dict[str, Command] = field(default_factory=dict)
-    execute: Callable | None = None
+    handler: str | None = None
     hidden: bool = False
+
+    @property
+    def execute(self) -> Callable | None:
+        if self.handler is None:
+            return None
+        module_path, _, attr = self.handler.partition(":")
+        return getattr(importlib.import_module(module_path), attr)
 
 
 def _error(msg: str) -> None:
@@ -175,28 +119,28 @@ memory_add = Command(
         "pattern": Command(name="pattern", description="Add a design pattern"),
         "mistake": Command(name="mistake", description="Record a mistake to avoid"),
     },
-    execute=cmd_memory_add,
+    handler="aios.cli.commands.memory:cmd_memory_add",
 )
 
 memory_forget = Command(
     name="forget",
     description="Remove project knowledge",
     aliases=["rm"],
-    execute=cmd_memory_forget,
+    handler="aios.cli.commands.memory:cmd_memory_forget",
 )
 
 memory_list = Command(
     name="list",
     description="List project knowledge",
     aliases=["ls"],
-    execute=cmd_memory_list,
+    handler="aios.cli.commands.memory:cmd_memory_list",
 )
 
 memory_search = Command(
     name="search",
     description="Search project knowledge",
     aliases=["find"],
-    execute=cmd_memory_search,
+    handler="aios.cli.commands.memory:cmd_memory_search",
 )
 
 # ---------------------------------------------------------------------------
@@ -208,54 +152,54 @@ COMMANDS: dict[str, Command] = {
         name="dashboard",
         description="Show dashboard",
         aliases=["start", "status"],
-        execute=cmd_dashboard,
+        handler="aios.cli.commands.core:cmd_dashboard",
     ),
     "doctor": Command(
         name="doctor",
         description="Run diagnostics",
-        execute=cmd_doctor,
+        handler="aios.cli.commands.core:cmd_doctor",
     ),
     "init": Command(
         name="init",
         description="Initialize AiosDeck in the current project",
-        execute=cmd_init,
+        handler="aios.cli.commands.core:cmd_init",
     ),
     "plan": Command(
         name="plan",
         description="Decompose goal into subtasks",
-        execute=cmd_plan,
+        handler="aios.cli.commands.exec_cmds:cmd_plan",
     ),
     "research": Command(
         name="research",
         description="Research a question (repo/docs/web)",
         aliases=["r"],
-        execute=cmd_research,
+        handler="aios.cli.commands.exec_cmds:cmd_research",
     ),
     "review": Command(
         name="review",
         description="Review code, architecture, or conventions (read-only)",
         aliases=["rev"],
-        execute=cmd_review,
+        handler="aios.cli.commands.exec_cmds:cmd_review",
     ),
     "help": Command(
         name="help",
         description="Show help",
-        execute=cmd_help,
+        handler="aios.cli.commands.core:cmd_help",
     ),
     "completion": Command(
         name="completion",
         description="Print shell completion script (--bash | --zsh)",
-        execute=cmd_completion,
+        handler="aios.cli.commands.core:cmd_completion",
     ),
     "usage": Command(
         name="usage",
         description="Show token usage and cost telemetry",
-        execute=cmd_usage,
+        handler="aios.telemetry.cli:cmd_usage",
     ),
     "benchmark": Command(
         name="benchmark",
         description="Measure wall/CPU times for startup and commands",
-        execute=cmd_benchmark,
+        handler="aios.cli.commands.benchmark:cmd_benchmark",
     ),
     "quality": Command(
         name="quality",
@@ -265,7 +209,7 @@ COMMANDS: dict[str, Command] = {
                 name="stats",
                 description="Show quality gate stats or records",
                 aliases=["s"],
-                execute=cmd_quality_stats,
+                handler="aios.quality.cli:cmd_quality_stats",
             ),
         },
     ),
@@ -277,7 +221,7 @@ COMMANDS: dict[str, Command] = {
                 name="show",
                 description="Show canonical capabilities, default intents, and expansion",
                 aliases=["s"],
-                execute=cmd_policy_show,
+                handler="aios.security.cli:cmd_policy_show",
             ),
         },
     ),
@@ -289,7 +233,7 @@ COMMANDS: dict[str, Command] = {
                 name="stats",
                 description="Show security allow/deny decisions",
                 aliases=["s"],
-                execute=cmd_security_stats,
+                handler="aios.security.cli:cmd_security_stats",
             ),
         },
     ),
@@ -302,25 +246,25 @@ COMMANDS: dict[str, Command] = {
                 name="index",
                 description="Index project knowledge sources",
                 aliases=["i"],
-                execute=cmd_knowledge_index,
+                handler="aios.knowledge.cli:cmd_knowledge_index",
             ),
             "search": Command(
                 name="search",
                 description="Search indexed knowledge",
                 aliases=["s"],
-                execute=cmd_knowledge_search,
+                handler="aios.knowledge.cli:cmd_knowledge_search",
             ),
             "sources": Command(
                 name="sources",
                 description="List indexed knowledge sources",
                 aliases=["ls"],
-                execute=cmd_knowledge_sources,
+                handler="aios.knowledge.cli:cmd_knowledge_sources",
             ),
             "retrieve": Command(
                 name="retrieve",
                 description="Retrieve relevant knowledge with context selection",
                 aliases=["get"],
-                execute=cmd_knowledge_retrieve,
+                handler="aios.knowledge.cli:cmd_knowledge_retrieve",
             ),
         },
     ),
@@ -340,7 +284,7 @@ COMMANDS: dict[str, Command] = {
                 aliases=["s"],
             ),
         },
-        execute=cmd_route,
+        handler="aios.routing.cli:cmd_route",
     ),
     "skills": Command(
         name="skills",
@@ -351,17 +295,17 @@ COMMANDS: dict[str, Command] = {
                 name="discover",
                 description="Discover skills relevant to an intent",
                 aliases=["d"],
-                execute=cmd_skills_discover,
+                handler="aios.skills.cli:cmd_skills_discover",
             ),
             "inspect": Command(
                 name="inspect",
                 description="Show skill metadata and index status",
-                execute=cmd_skills_inspect,
+                handler="aios.skills.cli:cmd_skills_inspect",
             ),
             "stats": Command(
                 name="stats",
                 description="Show skill usage telemetry",
-                execute=cmd_skills_stats,
+                handler="aios.skills.cli:cmd_skills_stats",
             ),
         },
     ),
@@ -392,24 +336,24 @@ COMMANDS: dict[str, Command] = {
                 description="Export approved/ingested candidates to file",
             ),
         },
-        execute=cmd_learning,
+        handler="aios.learning.cli:cmd_learning",
     ),
     "ocean": Command(
         name="ocean",
         description="Open the ocean dashboard (interactive TUI)",
-        execute=cmd_ocean,
+        handler="aios.ui.cli:cmd_ocean",
     ),
     "exit": Command(
         name="exit",
         description="Shut down gracefully",
         hidden=True,
-        execute=cmd_exit,
+        handler="aios.cli.commands.core:cmd_exit",
     ),
     "__complete": Command(
         name="__complete",
         description="Autocomplete hook",
         hidden=True,
-        execute=cmd_complete,
+        handler="aios.cli.commands.core:cmd_complete",
     ),
     "memory": Command(
         name="memory",
@@ -431,25 +375,25 @@ COMMANDS: dict[str, Command] = {
                 name="run",
                 description="Execute backlog tasks sequentially",
                 aliases=["r"],
-                execute=cmd_backlog_run,
+                handler="aios.backlog.cli:cmd_backlog_run",
             ),
             "list": Command(
                 name="list",
                 description="List pending tasks from a source",
                 aliases=["ls"],
-                execute=cmd_backlog_list,
+                handler="aios.backlog.cli:cmd_backlog_list",
             ),
             "add": Command(
                 name="add",
                 description="Add a task to the kanban backlog board",
                 aliases=["a"],
-                execute=cmd_backlog_add,
+                handler="aios.backlog.cli:cmd_backlog_add",
             ),
             "stats": Command(
                 name="stats",
                 description="Show backlog run telemetry",
                 aliases=["s"],
-                execute=cmd_backlog_stats,
+                handler="aios.backlog.cli:cmd_backlog_stats",
             ),
         },
     ),

@@ -4,17 +4,13 @@ import argparse
 import signal
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from aios import __version__
 from aios.cli.commands import COMMANDS, _error, _print_command_help, _print_help
-from aios.core import Kernel
-from aios.core.factory import create_kernel
-from aios.integrations.projdesk import (
-    ProjDeskClient,
-    ProjDeskError,
-    ProjectAmbiguous,
-    ProjectNotFound,
-)
+
+if TYPE_CHECKING:
+    from aios.core import Kernel
 
 VERSION_TEXT = f"AiosDeck v{__version__}"
 
@@ -52,10 +48,12 @@ def main() -> None:
         sys.exit(0)
 
     if args.command is None:
+        from aios.integrations.projdesk.exceptions import ProjDeskError  # noqa: PLC0415
+
         try:
             project_path = _resolve_project([])
             _dispatch(COMMANDS["dashboard"], [], project_path)
-        except (ProjectNotFound, ProjectAmbiguous, ProjDeskError) as exc:
+        except ProjDeskError as exc:
             _error(str(exc))
         return
 
@@ -65,11 +63,13 @@ def main() -> None:
     if resolved is None:
         _error(f"Unknown command: {cmd_name}\nRun 'aios help' for available commands.")
 
+    from aios.integrations.projdesk.exceptions import ProjDeskError  # noqa: PLC0415
+
     try:
         positional_args = [a for a in args.args if not a.startswith("-")]
         project_path = _resolve_project(positional_args)
         _dispatch(resolved, args.args, project_path)
-    except (ProjectNotFound, ProjectAmbiguous, ProjDeskError) as exc:
+    except ProjDeskError as exc:
         _error(str(exc))
 
 
@@ -85,6 +85,11 @@ def _find_command(cmd_name: str):
 
 
 def _resolve_project(args: list[str]) -> Path:
+    from aios.integrations.projdesk import (  # noqa: PLC0415
+        ProjDeskClient,
+        ProjDeskError,
+    )
+
     candidate = args[0] if args else None
     if candidate is None:
         return Path.cwd()
@@ -100,7 +105,7 @@ def _resolve_project(args: list[str]) -> Path:
 
 
 def _dispatch(cmd, raw_args: list[str], project_path: Path) -> None:
-    if not raw_args and cmd.execute is not None:
+    if not raw_args and cmd.handler is not None:
         cmd.execute(raw_args, project_path, _kernel_factory)
         return
 
@@ -119,15 +124,15 @@ def _dispatch(cmd, raw_args: list[str], project_path: Path) -> None:
                 break
 
     if sub is not None:
-        if sub.subcommands or sub.execute is not None:
+        if sub.subcommands or sub.handler is not None:
             _dispatch(sub, remaining, project_path)
-        elif cmd.execute is not None:
+        elif cmd.handler is not None:
             cmd.execute(raw_args, project_path, _kernel_factory)
         else:
             _print_command_help(sub)
         return
 
-    if cmd.execute is not None:
+    if cmd.handler is not None:
         cmd.execute(raw_args, project_path, _kernel_factory)
         return
 
@@ -135,6 +140,8 @@ def _dispatch(cmd, raw_args: list[str], project_path: Path) -> None:
 
 
 def _kernel_factory(project_path: Path) -> Kernel:
+    from aios.core.factory import create_kernel  # noqa: PLC0415
+
     global _active_kernel  # noqa: PLW0603
     kernel = create_kernel(project_path)
     _active_kernel = kernel
