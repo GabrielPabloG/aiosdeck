@@ -6,6 +6,31 @@
 This checklist gates the v1.0.0 release candidate. Every item must pass before
 tagging `v1.0.0-rc1`; the GA (`v1.0.0`) adds only the release/regression gates.
 
+## v1.1.1 — Infrastructure Stability & Benchmark Suite
+
+**Status**: Confirmed (2026-09-03)
+**Scope**: manifest-configurable routing fallbacks (#82), sandboxed
+OllamaAdapter + provider config + preflight diagnostics (#66/#80/#81),
+benchmark compare gate (#72) and telemetry microbenchmarks (#69/#71),
+buffered telemetry writer (#65), ConnectionPool (#64), persistent thread
+pool (#73), shared event loop (#74), workflow no-op gate (#90), runtime
+agent selection fix (#83), PyYAML loud failure (#93), fair mutation-score
+CI gate (#145).
+
+Automated gates (all green at release time, on `main`):
+
+- [x] `pytest tests/ -q` — full suite green, 0 failures.
+- [x] `ruff check src/ tests/` — zero errors.
+- [x] `ruff format --check src/ tests/` — zero reformatting.
+- [x] Version consistency — `pyproject.toml` = `aios.__version__` = `1.1.1`.
+- [x] Official baseline `v1.1.1.json` validated (`aios benchmark validate`);
+      first bare baseline `v1.1.1-bare.json` captured on the same commit
+      (plan p50 14.9 s full vs 5.2 s bare — orchestration overhead).
+- [x] `v1.1.1-qwen-local.json` kept as a non-official hardware stress record.
+- [x] `docs/CHANGELOG.md` `[1.1.1]` section matches the released notes.
+- [ ] Tag `v1.1.1` (annotated) on `main`; push triggers the CD pipeline
+      (gates → build → `twine check` → PyPI → GitHub Release).
+
 ## v1.1.0 — Benchmark Instrumentation Milestone
 
 **Status**: Prepared (2026-08-12) — tag `v1.1.0` pending

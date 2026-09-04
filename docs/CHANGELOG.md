@@ -7,23 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
-
-- **Runtime agent selection** — write-capable executions (granted
-  `filesystem_write` or `shell`) now explicitly run the OpenCode `build`
-  agent (`--agent build`). The headless invocation previously relied on the
-  runtime's default agent, so a plan-only session could answer with text and
-  never edit a file. Read-only runs, bare benchmark probes and
-  `OPENCODE_PERMISSION` enforcement are unchanged.
+## [1.1.1] — 2026-09-03
 
 ### Added
 
+- **Manifest-configurable routing fallbacks (#82)** — `routing.fallback_providers`
+  in `.aios/project.yaml` now feeds the runtime fallback chain (introduced in
+  v0.9.11); on provider failure/timeout the workflow re-routes to the next
+  entry and raises `RouteFallbackExhausted` only when the chain is exhausted.
+- **Sandboxed OllamaAdapter (#66)** — replaceable local runtime (Local First),
+  with the OpenCode provider wired for it (#80) and preflight diagnostics
+  that fail fast with actionable output (#81).
+- **Benchmark suite operational** — `aios benchmark compare` regression gate
+  (#72); telemetry hot-path (#69) and contention (#71) microbenchmarks;
+  buffered async telemetry writer (#65).
+- **Infrastructure consolidation** — SQLite `ConnectionPool` (#64), persistent
+  agent thread pool (#73), shared event loop across workflow phases (#74).
 - Opt-in end-to-end gate test (`AIOS_E2E_RUNTIME=1`) proving file creation
   through `ai-jail opencode --agent build` in a disposable in-repo directory.
 - OpenCode adapter characterization tests — exhaustive coverage of
   `__init__`/`initialize`/command resolution, sandbox detection and health
   checks, every `diagnose()` branch, `execute()` argument/env/error handling,
   `_redact_detail`, and the legacy/effective permission builders.
+- CI: fair mutation-score gate with survivor triage on the nightly run (#145).
+
+### Fixed
+
+- **Runtime agent selection (#83)** — write-capable executions (granted
+  `filesystem_write` or `shell`) now explicitly run the OpenCode `build`
+  agent (`--agent build`). The headless invocation previously relied on the
+  runtime's default agent, so a plan-only session could answer with text and
+  never edit a file. Read-only runs, bare benchmark probes and
+  `OPENCODE_PERMISSION` enforcement are unchanged.
+- **Workflow no-op gate (#90)** — an implementation task now succeeds only
+  when the developer produces a relevant change in `src/` or `tests/`; a
+  no-op run blocks before the documentation and git-commit stages, so
+  unrelated artifacts are never committed as a successful implementation.
+- **Manifest loading (#93)** — PyYAML declared as a dependency and unreadable
+  manifests fail loudly instead of silently falling back to defaults.
 
 ### Documentation
 
@@ -31,6 +52,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   sandbox behavior and limitations (persistence, network, secrets, resource
   limits, backends); `ADR-0002` updated with verified limitations and the
   planned, backend-agnostic Execution-Environment Awareness capability.
+- **v1.1.1 baselines** — `v1.1.1.json` is the official full baseline
+  (`opencode-go/qwen3.8-flash`; plan phase p50 ≈ 15 s, no core regressions vs
+  v1.1.0); the first bare-mode baseline (`v1.1.1-bare.json`) quantifies pure
+  model latency (plan p50 5.2 s / agent_exec p50 5.5 s — ≈10 s of
+  orchestration overhead); `v1.1.1-qwen-local.json` kept as a historical
+  hardware stress record (local Ollama), excluded from the official metrics.
 
 ## [1.1.0] — 2026-08-12
 

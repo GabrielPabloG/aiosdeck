@@ -8,8 +8,11 @@ of specialized agents — each with one responsibility, governed by a kernel tha
 manages context, memory, scheduling, workflows, and security.
 
 - **Status**: Implemented — core orchestration, agents, workflows, security,
-  and telemetry are shipped and tested (1400+ tests). v1.1 benchmark
-  instrumentation shipped; see [docs/README.md](docs/README.md).
+  and telemetry are shipped and tested (1400+ tests). The routing engine
+  supports a configurable fallback chain (`routing.fallback_providers`), and
+  the benchmark suite is operational with a versioned v1.1.1 baseline
+  (full + bare); see [docs/README.md](docs/README.md) and
+  [.aios/benchmarks/README.md](.aios/benchmarks/README.md).
 - **Platform**: Linux
 - **Language**: Python 3.12+ (zero runtime dependencies)
 
