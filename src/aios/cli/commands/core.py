@@ -13,7 +13,6 @@ from collections.abc import Callable
 from pathlib import Path
 
 from aios.cli.completion_scripts import BASH_COMPLETION, ZSH_COMPLETION
-from aios.core.console import render_row, render_section
 
 VERSION_TEXT = "AiosDeck"
 
@@ -44,6 +43,8 @@ def cmd_dashboard(raw_args: list[str], project_path: Path, kernel_factory: Calla
 
 
 def cmd_doctor(raw_args: list[str], project_path: Path, kernel_factory: Callable) -> None:
+    from aios.core.console import render_row, render_section  # noqa: PLC0415
+
     as_json = "--json" in (raw_args or [])
 
     kernel = kernel_factory(project_path)

@@ -33,3 +33,15 @@ aios.agents.git.x__parse_porcelain__mutmut_7  # skip_next reset False->None insi
 aios.agents.git.x__parse_porcelain__mutmut_10 # len(record) < H -> <= : a length-3 record yields empty path (record[3:]=="") dropped by `if path:` either way -> identical output
 aios.agents.git.x__parse_porcelain__mutmut_14 # record[0:2] -> record[0:3] : index 2 is always the porcelain status/path space; widening cannot add a 'D' absent from the 2-char status field -> identical for all git-porcelain inputs
 aios.agents.git.x__parse_porcelain__mutmut_18 # "RC" -> "XXRCXX" : adds only 'X' to the accepted set, and no porcelain status first char is 'X' -> rename/copy detection identical for all git-porcelain inputs
+aios.cli.main.x_main__mutmut_10   # prog="aios"->None: argparse defaults prog to basename(sys.argv[0]) which is "aios" for the console script; prog only surfaces in argparse usage/error text, unreachable here (add_help=False, REMAINDER swallows unknown flags) -> no observable change
+aios.cli.main.x_main__mutmut_11   # description->None: only rendered by argparse's own --help, which is disabled (add_help=False); CLI help comes from _print_help -> unobservable
+aios.cli.main.x_main__mutmut_12   # add_help=False->None: falsy->falsy, argparse suppresses -h identically
+aios.cli.main.x_main__mutmut_13   # prog kwarg removed: identical to default basename(argv[0])="aios"; see mutmut_10
+aios.cli.main.x_main__mutmut_14   # description kwarg removed: never rendered (add_help=False); see mutmut_11
+aios.cli.main.x_main__mutmut_16   # prog="XXaiosXX": prog text unreachable (see mutmut_10)
+aios.cli.main.x_main__mutmut_17   # prog="AIOS": prog text unreachable (see mutmut_10)
+aios.cli.main.x_main__mutmut_18   # description wrapped in XX: never rendered (see mutmut_11)
+aios.cli.main.x_main__mutmut_19   # description lowercased: never rendered (see mutmut_11)
+aios.cli.main.x_main__mutmut_20   # description uppercased: never rendered (see mutmut_11)
+aios.cli.main.x_main__mutmut_50   # default=None removed from nargs="?": argparse's implicit default for optionals-with-nargs-? is None anyway -> identical namespace
+aios.cli.main.x_main__mutmut_68   # _resolve_project([])->_resolve_project(None): `args[0] if args else None` treats both as falsy -> candidate None -> Path.cwd() either way
