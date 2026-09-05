@@ -27,6 +27,7 @@ html/
 **/.aios/memory.db-wal
 .ai-jail
 mutants/
+mutation-report/
 TODO.md
 .baseline-test-durations.txt
 scripts/
