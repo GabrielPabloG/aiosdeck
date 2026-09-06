@@ -78,6 +78,39 @@ def test_find_test_locations_limit():
 
 
 # --------------------------------------------------------------------------- #
+# _find_literal_line / _extract_exception_type / _extract_log_level
+# --------------------------------------------------------------------------- #
+def test_find_literal_line_finds_exact_line():
+    src = "def foo():\n    x = 1\n    raise TypeError('bad input')\n    return x\n"
+    result = sp._find_literal_line(src, "bad input")
+    assert result is not None
+    assert result["line"] == 3
+    assert "bad input" in result["code"]
+    assert result["context_before"] == ["def foo():", "    x = 1"]
+    assert result["context_after"] == ["    return x"]
+
+
+def test_find_literal_line_returns_none_if_missing():
+    assert sp._find_literal_line("def foo(): pass", "nope") is None
+
+
+def test_find_literal_line_none_literal():
+    assert sp._find_literal_line("x = 1", None) is None
+
+
+def test_extract_exception_type():
+    assert sp._extract_exception_type('    raise TypeError("bad input")') == "TypeError"
+    assert sp._extract_exception_type('    raise KnowledgeError("store")') == "KnowledgeError"
+    assert sp._extract_exception_type("    return 42") is None
+
+
+def test_extract_log_level():
+    assert sp._extract_log_level('    logger.debug("entering")') == "debug"
+    assert sp._extract_log_level('    logger.warning("deprecated")') == "warning"
+    assert sp._extract_log_level("    return 42") is None
+
+
+# --------------------------------------------------------------------------- #
 # build_proofs end-to-end
 # --------------------------------------------------------------------------- #
 def _make_evidence(out: Path) -> Path:
@@ -138,6 +171,15 @@ def test_build_proofs_filters_and_enriches(tmp_path):
     assert p.literal_in_tests is True
     assert len(p.test_locations) == 1
     assert p.source_context is not None
+    # new fields
+    assert p.source_evidence is not None
+    assert p.source_evidence["line"] == 2  # raise line in "def _msg():\n    raise TypeError..."
+    assert "bad input" in p.source_evidence["code"]
+    assert p.exception_type == "TypeError"
+    assert p.log_level is None
+    assert p.literal_consumers == ()
+    assert p.caller_locations == ()
+    assert p.catch_locations == ()
     assert p.human_disposition is None
 
 

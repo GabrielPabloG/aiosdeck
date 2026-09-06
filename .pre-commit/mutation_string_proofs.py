@@ -45,6 +45,12 @@ class ProofSite:
     literal_in_tests: bool | None
     test_locations: tuple[dict, ...]
     source_context: dict | None
+    source_evidence: dict | None
+    exception_type: str | None
+    log_level: str | None
+    literal_consumers: tuple[str, ...]
+    caller_locations: tuple[str, ...]
+    catch_locations: tuple[str, ...]
     suggested_disposition: str
     human_disposition: str | None
     human_reason: str | None
@@ -135,7 +141,37 @@ def _find_test_locations(literal: str, tests_dir: Path) -> list[dict]:
     return results[:10]
 
 
-def build_proofs(evidence_path: Path, repo_root: Path, tests_dir: Path) -> list[ProofSite]:
+def _find_literal_line(source_text: str, literal: str) -> dict | None:
+    """Locate the exact line containing the literal with context before/after."""
+    if not literal:
+        return None
+    lines = source_text.splitlines()
+    for i, line in enumerate(lines):
+        if literal in line:
+            start = max(0, i - 2)
+            end = min(len(lines), i + 3)
+            return {
+                "line": i + 1,
+                "code": line.rstrip(),
+                "context_before": [lines[j].rstrip() for j in range(start, i)],
+                "context_after": [lines[j].rstrip() for j in range(i + 1, end)],
+            }
+    return None
+
+
+def _extract_exception_type(line: str) -> str | None:
+    """Extract exception class name from a raise statement."""
+    m = re.search(r"\braise\s+(\w+(?:Error|Exception))\b", line)
+    return m.group(1) if m else None
+
+
+def _extract_log_level(line: str) -> str | None:
+    """Extract log level from logger.debug/info/warning/error call."""
+    m = re.search(r"\blogger\.(debug|info|warning|error)\(", line)
+    return m.group(1) if m else None
+
+
+def build_proofs(evidence_path: Path, repo_root: Path, tests_dir: Path) -> list[ProofSite]:  # noqa: PLR0912
     data = json.loads(evidence_path.read_text(encoding="utf-8"))
     sites = [
         s for s in data.get("sites", []) if s.get("suggested_disposition") == "EQUIVALENT_CANDIDATE"
@@ -150,6 +186,7 @@ def build_proofs(evidence_path: Path, repo_root: Path, tests_dir: Path) -> list[
         # source context
         src_file = repo_root / s["file"]
         ctx = None
+        src_text = None
         if src_file.is_file():
             func_key = s.get("func", "")
             span_key = func_key.rsplit(".", 1)[-1] if "." in func_key else func_key
@@ -159,9 +196,8 @@ def build_proofs(evidence_path: Path, repo_root: Path, tests_dir: Path) -> list[
                 if len(parts) > 1
                 else (span_key[2:] if span_key.startswith("x_") else span_key)
             )
-            raw = _extract_function_body(
-                src_file.read_text(encoding="utf-8", errors="ignore"), func_name
-            )
+            src_text = src_file.read_text(encoding="utf-8", errors="ignore")
+            raw = _extract_function_body(src_text, func_name)
             if raw:
                 ctx = {"start_line": raw[0], "end_line": raw[1], "code": raw[2]}
 
@@ -174,6 +210,16 @@ def build_proofs(evidence_path: Path, repo_root: Path, tests_dir: Path) -> list[
                     break
         elif ctx and ctx["code"]:
             kind = classify_context_kind(ctx["code"])
+
+        # source evidence: exact line where literal appears + context
+        src_evidence = None
+        exc_type = None
+        log_lvl = None
+        if src_text and orig_lit:
+            src_evidence = _find_literal_line(src_text, orig_lit)
+            if src_evidence:
+                exc_type = _extract_exception_type(src_evidence["code"])
+                log_lvl = _extract_log_level(src_evidence["code"])
 
         # test locations
         test_locs = _find_test_locations(orig_lit, tests_dir) if orig_lit else []
@@ -198,6 +244,12 @@ def build_proofs(evidence_path: Path, repo_root: Path, tests_dir: Path) -> list[
                 literal_in_tests=lit_in_tests,
                 test_locations=tuple(test_locs),
                 source_context=ctx,
+                source_evidence=src_evidence,
+                exception_type=exc_type,
+                log_level=log_lvl,
+                literal_consumers=(),
+                caller_locations=(),
+                catch_locations=(),
                 suggested_disposition="EQUIVALENT_CANDIDATE",
                 human_disposition=None,
                 human_reason=None,
@@ -236,13 +288,23 @@ def render_md(proofs: list[ProofSite]) -> str:
                     lines.append(f"  - {loc['file']}:{loc['line']}")
             if p.source_context:
                 sc = p.source_context
-                lines.append(
-                    f"- **source_context** [{sc['start_line']}-{sc['end_line']}]:"
-                )
+                lines.append(f"- **source_context** [{sc['start_line']}-{sc['end_line']}]:")
                 lines.append("  ```")
                 for cline in sc["code"].splitlines()[:30]:
                     lines.append(f"  {cline}")
                 lines.append("  ```")
+            if p.source_evidence:
+                se = p.source_evidence
+                lines.append(f"- **source_evidence** [linha {se['line']}]:")
+                for bl in se["context_before"]:
+                    lines.append(f"    {bl}")
+                lines.append(f"  >> {se['code']}")
+                for al in se["context_after"]:
+                    lines.append(f"    {al}")
+            if p.exception_type:
+                lines.append(f"- **exception_type**: {p.exception_type}")
+            if p.log_level:
+                lines.append(f"- **log_level**: {p.log_level}")
             lines.append("- **human_disposition**: (DECIDED/DEFERRED/BLOCKED)")
             lines.append("- **human_reason**: (preencher)")
             lines.append("")
