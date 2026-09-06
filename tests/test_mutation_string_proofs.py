@@ -10,12 +10,19 @@ from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / ".pre-commit"))
 
-_spec = importlib.util.spec_from_file_location(
-    "mutation_string_proofs",
-    Path(__file__).resolve().parent.parent / ".pre-commit" / "mutation_string_proofs.py",
-)
+def _locate_script() -> Path:
+    here = Path(__file__).resolve()
+    for parent in here.parents:
+        candidate = parent / ".pre-commit" / "mutation_string_proofs.py"
+        if candidate.is_file():
+            return candidate
+    raise FileNotFoundError("mutation_string_proofs.py")
+
+
+_SCRIPT = _locate_script()
+sys.path.insert(0, str(_SCRIPT.parent))
+_spec = importlib.util.spec_from_file_location("mutation_string_proofs", _SCRIPT)
 assert _spec is not None and _spec.loader is not None
 sp = importlib.util.module_from_spec(_spec)
 sys.modules[_spec.name] = sp
