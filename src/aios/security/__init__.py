@@ -104,4 +104,4 @@ class SecurityEngine:
             self._audit_path.touch(exist_ok=True)
         except OSError:
             self._audit_path = None
-            logger.debug("Audit log unavailable (filesystem restriction)")
+            logger.debug("Audit log unavailable (filesystem restriction)")  # pragma: no mutate

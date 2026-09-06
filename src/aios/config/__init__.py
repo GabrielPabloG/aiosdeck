@@ -19,7 +19,7 @@ class ConfigEngine:
     def initialize(self) -> None:
         loader = ConfigLoader(project_path=self._project_path)
         self.config = loader.load()
-        logger.debug("Configuration loaded (%d sources)", len(self.config._sources))
+        logger.debug("Configuration loaded (%d sources)", len(self.config._sources))  # pragma: no mutate
 
     def health_check(self) -> bool:
         return self.config is not None
