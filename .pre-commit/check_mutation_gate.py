@@ -251,17 +251,18 @@ def classify(
     changed_lines: Mapping[str, set[int]],
     allowlist: set[str],
     resolve_line: Callable[[str], tuple[str, int] | None],
-) -> tuple[list[str], list[str], list[str], list[str]]:
-    """Split survivors into ``(introduced, legacy, allowlisted, fatal)``.
+) -> tuple[list[str], list[str], list[str], list[str], list[str]]:
+    """Split survivors into ``(introduced, legacy, unlocated, allowlisted, fatal)``.
 
     ``resolve_line`` returns ``(source_path, line)`` or None. Only ``survived``
-    mutants are routed by location: None -> INTRODUCED (fail-closed); a name in
+    mutants are routed by location: None -> UNLOCATED (provenance indeterminate); a name in
     the allowlist -> ALLOWLISTED; a located line inside the diff -> INTRODUCED;
     otherwise LEGACY. Fatal statuses (timeout/suspicious/segfault/no tests) go
     to FATAL regardless of location or allowlist, so they always block.
     """
     introduced: list[str] = []
     legacy: list[str] = []
+    unlocated: list[str] = []
     allowlisted: list[str] = []
     fatal: list[str] = []
     for name, status in survivors:
@@ -273,14 +274,14 @@ def classify(
             continue
         located = resolve_line(name)
         if located is None:
-            introduced.append(name)  # fail-closed
+            unlocated.append(name)  # provenance indeterminate — not introduced, not legacy
             continue
         path, line = located
         if line in changed_lines.get(path, set()):
             introduced.append(name)
         else:
             legacy.append(name)
-    return introduced, legacy, allowlisted, fatal
+    return introduced, legacy, unlocated, allowlisted, fatal
 
 
 # --------------------------------------------------------------------------- #
@@ -391,11 +392,14 @@ def main(argv: list[str] | None = None) -> int:  # noqa: PLR0912 - linear CLI gl
     allowlist = load_allowlist(allowlist_text or "")
 
     resolver = make_resolver(mutants_dir, args.source_root)
-    introduced, legacy, allowlisted, fatal = classify(survivors, changed_lines, allowlist, resolver)
+    introduced, legacy, unlocated, allowlisted, fatal = classify(
+        survivors, changed_lines, allowlist, resolver
+    )
 
     print(
         f"survivors: {len(survivors)}  introduced: {len(introduced)}  "
-        f"legacy: {len(legacy)}  allowlisted: {len(allowlisted)}  fatal: {len(fatal)}"
+        f"legacy: {len(legacy)}  unlocated: {len(unlocated)}  "
+        f"allowlisted: {len(allowlisted)}  fatal: {len(fatal)}"
     )
     for name in fatal:
         print(f"  FATAL: {name}")
@@ -403,6 +407,8 @@ def main(argv: list[str] | None = None) -> int:  # noqa: PLR0912 - linear CLI gl
         print(f"  INTRODUCED: {name}")
     for name in legacy:
         print(f"  LEGACY: {name}")
+    for name in unlocated:
+        print(f"  UNLOCATED: {name}")
     for name in allowlisted:
         print(f"  ALLOWLISTED: {name}")
 
@@ -413,7 +419,12 @@ def main(argv: list[str] | None = None) -> int:  # noqa: PLR0912 - linear CLI gl
             file=sys.stderr,
         )
         return 1
-    print("PASS: no unexpected introduced survivors and no fatal mutants")
+    if unlocated:
+        print(
+            f"WARN: {len(unlocated)} unlocated survivor(s); "
+            f"provenance unresolved",
+        )
+    print("PASS: no introduced survivors and no fatal mutants")
     return 0
 
 

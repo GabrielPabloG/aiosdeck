@@ -34,6 +34,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from check_mutation_gate import resolve_survivor_line  # noqa: E402
 from mutation_classifier import (  # noqa: E402
     STRING_MUTATION,
     UNKNOWN,
@@ -116,6 +117,7 @@ class EvidenceSite:
     func_has_test: bool
     suggested_disposition: str
     mutant_ids: tuple[str, ...] = field(default_factory=tuple)
+    mutant_line: int | None = None
 
 
 def _site_id(file: str, func: str, category: str, line: str) -> str:
@@ -145,20 +147,37 @@ def build_sites(mutants_dir: Path, tests_blob: str, tests_by_func: dict) -> list
         pair = changed_line_pair(orig, mut) or ("", "")
         key = (r.file, r.func, r.category, pair[0])
         g = groups.setdefault(
-            key, {"status": r.status, "module": r.module, "lines": pair, "ids": []}
+            key,
+            {"status": r.status, "module": r.module, "lines": pair, "ids": [], "real_line": None},
         )
         g["ids"].append(r.mutant_id)
 
+    # Compute real_line per group (one resolve_survivor_line per group, not per mutant)
+    for (file, _func, _cat, _line), g in groups.items():
+        if not g["ids"]:
+            continue
+        rep_id = g["ids"][0]  # representative mutant
+        if file not in cache:
+            continue
+        gen_lines, spans = cache[file]
+        real_source = _read(Path("src") / str(file).removeprefix("src/"))
+        if real_source is not None:
+            g["real_line"] = resolve_survivor_line(rep_id, spans, "\n".join(gen_lines), real_source)
+
     sites: list[EvidenceSite] = []
-    for (file, func, category, o_line), g in groups.items():
-        context = string_context(o_line) if category == STRING_MUTATION else "n/a"
-        lit = literal_of(o_line) if category == STRING_MUTATION else None
+    for (file, func, category, _key_val), g in groups.items():
+        # Use the generated-file line text for context/literal extraction
+        o_line_text = g["lines"][0] if g["lines"] else ""
+        context = string_context(o_line_text) if category == STRING_MUTATION else "n/a"
+        lit = literal_of(o_line_text) if category == STRING_MUTATION else None
         in_tests = (lit in tests_blob) if lit else None
         func_has_test = bool(tests_by_func.get(func))
         disp = suggest_disposition(category, context, in_tests, func_has_test)
+        # mutant_line: real source line where ALL mutants in this site mutate.
+        m_line = g["real_line"]
         sites.append(
             EvidenceSite(
-                _site_id(file, func, category, o_line),
+                _site_id(file, func, category, str(m_line or "")),
                 file,
                 g["module"],
                 func,
@@ -170,6 +189,7 @@ def build_sites(mutants_dir: Path, tests_blob: str, tests_by_func: dict) -> list
                 func_has_test,
                 disp,
                 tuple(sorted(g["ids"])),
+                m_line,
             )
         )
     return sorted(sites, key=lambda s: (s.suggested_disposition, s.file, s.func, s.site_id))
@@ -184,6 +204,42 @@ def summarize(sites: list[EvidenceSite]) -> dict:
         ),
         "sites": len(sites),
     }
+
+
+def validate_evidence_integrity(sites: list[EvidenceSite], mutants_dir: Path) -> list[dict]:
+    """Check that every mutant_id's real line matches its site's mutant_line.
+
+    Returns a list of violations (empty = all OK).
+    """
+    violations = []
+    for site in sites:
+        if site.mutant_line is None:
+            continue
+        for mid in site.mutant_ids:
+            parsed = split_mutant_key(mid)
+            if not parsed:
+                continue
+            _module, span_key, n = parsed
+            rel = Path(site.file)
+            gen_text = _read(mutants_dir / rel)
+            if gen_text is None:
+                continue
+            real_source = _read(Path("src") / str(rel).removeprefix("src/"))
+            if real_source is None:
+                continue
+            spans_data = _load_json(mutants_dir / f"{rel}.spans") or {}
+            spans = spans_data.get("spans", {})
+            real_line = resolve_survivor_line(mid, spans, gen_text, real_source)
+            if real_line is not None and real_line != site.mutant_line:
+                violations.append(
+                    {
+                        "mutant_id": mid,
+                        "site_id": site.site_id,
+                        "site_mutant_line": site.mutant_line,
+                        "actual_real_line": real_line,
+                    }
+                )
+    return violations
 
 
 def render_log_md(sites: list[EvidenceSite]) -> str:
