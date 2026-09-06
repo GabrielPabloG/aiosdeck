@@ -77,3 +77,14 @@ class TestPricingTableCoverage:
         resolver = PricingResolver(version="v1")
         cost = resolver.resolve("openrouter", "deepseek-v4-flash-0731", 1_000_000, 500_000)
         assert round(cost["total_cost"], 6) == round(0.08 + 0.126, 6)
+
+    def test_opencode_go_models_priced(self):
+        resolver = PricingResolver(version="v1")
+        for model in ("qwen3.8-flash", "deepseek-v4-flash", "longcat-2.0", "mimo-v2.5"):
+            cost = resolver.resolve("opencode-go", model, 1_000_000, 500_000)
+            assert cost["status"] == "priced"
+
+    def test_opencode_go_deepseek_cost(self):
+        resolver = PricingResolver(version="v1")
+        cost = resolver.resolve("opencode-go", "deepseek-v4-flash", 1_000_000, 500_000)
+        assert round(cost["total_cost"], 6) == round(0.22 + 0.33, 6)
