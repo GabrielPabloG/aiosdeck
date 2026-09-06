@@ -432,9 +432,9 @@ def _run_bare_probe(kernel, phase: str) -> tuple[str | None, str]:
 def _extract_observability(run_result) -> dict:
     """Extract observability fields from a RunResult, coercing types for JSON safety."""
     obs = {}
-    int_fields = ("tool_calls", "llm_turns")
+    int_fields = ("tool_calls", "llm_turns", "steps_used", "repeated_tool_calls")
     float_fields = ("total_cost",)
-    str_fields = ("model", "provider")
+    str_fields = ("model", "provider", "exit_reason")
     bool_fields = ("fallback_used",)
 
     for field in int_fields:
@@ -463,6 +463,10 @@ def _extract_observability(run_result) -> dict:
         obs["tool_durations_ms"] = [
             float(d) for d in tool_durations if isinstance(d, (int, float))
         ]
+
+    turn_sequence = getattr(run_result, "turn_sequence", ())
+    if isinstance(turn_sequence, (list, tuple)):
+        obs["turn_sequence"] = [str(s) for s in turn_sequence]
 
     tokens = getattr(run_result, "tokens", {})
     if isinstance(tokens, dict):

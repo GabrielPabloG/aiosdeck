@@ -99,7 +99,7 @@ class TestFallbackUsed:
     def test_fallback_triggered(self):
         call_count = 0
 
-        def side_effect(prompt, skills, caps, permissions, *, model="", variant=""):  # noqa: PLR0913
+        def side_effect(prompt, skills, caps, permissions, *, model="", variant="", max_steps=0):  # noqa: PLR0913
             nonlocal call_count
             call_count += 1
             if call_count == 1:

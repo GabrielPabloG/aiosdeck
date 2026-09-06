@@ -68,3 +68,7 @@ routing:
 skills:
   - project-dna
   - coding-style
+
+agents:
+  developer:
+    max_steps: 0

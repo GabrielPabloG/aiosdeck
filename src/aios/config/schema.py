@@ -94,6 +94,13 @@ class RouteConfig:
 
 
 @dataclass
+class AgentBudgetConfig:
+    """Per-agent execution budget (max steps, loop detection thresholds)."""
+
+    max_steps: int = 0  # 0 = unlimited (default OpenCode behaviour)
+
+
+@dataclass
 class ProjectConfig:
     """Project identity and skill set."""
 
@@ -116,5 +123,6 @@ class AiosDeckConfig:
     project: ProjectConfig = field(default_factory=ProjectConfig)
     learning: LearningConfig = field(default_factory=LearningConfig)
     routing: RouteConfig = field(default_factory=RouteConfig)
+    agent_budget: AgentBudgetConfig = field(default_factory=AgentBudgetConfig)
 
     _sources: dict[str, str] = field(default_factory=dict, repr=False)

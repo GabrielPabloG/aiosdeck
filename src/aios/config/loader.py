@@ -177,6 +177,15 @@ class ConfigLoader:
                 if value is not None:
                     self._set_field(config, f"routing.{key}", value, source)
 
+        agents = data.get("agents")
+        if isinstance(agents, dict):
+            dev_config = agents.get("developer")
+            if isinstance(dev_config, dict):
+                max_steps = dev_config.get("max_steps")
+                if isinstance(max_steps, int):
+                    config.agent_budget.max_steps = max_steps
+                    self._sources["agent_budget.max_steps"] = source
+
         return config
 
     def _apply_detection(self, config: AiosDeckConfig) -> AiosDeckConfig:

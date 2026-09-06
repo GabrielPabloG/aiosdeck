@@ -94,6 +94,7 @@ class RuntimeEngine:
         complexity: str = "medium",
         context_size: int = 0,
         model: str = "",
+        max_steps: int = 0,
     ) -> AgentResult:
         decision_model = ""
         decision_variant = ""
@@ -141,6 +142,7 @@ class RuntimeEngine:
                     permissions,
                     model=attempt["model"],
                     variant=attempt.get("variant", ""),
+                    max_steps=max_steps,
                 )
                 result = AgentResult(output=raw) if isinstance(raw, str) else raw
                 result.model = attempt["model"]

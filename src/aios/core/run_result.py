@@ -45,6 +45,10 @@ class RunResult:
     model: str = ""
     provider: str = ""
     fallback_used: bool = False
+    steps_used: int = 0
+    repeated_tool_calls: int = 0
+    turn_sequence: tuple[str, ...] = ()
+    exit_reason: str = "stop"
 
     @classmethod
     def from_agent(cls, agent_result) -> RunResult:
@@ -63,6 +67,10 @@ class RunResult:
             model=getattr(agent_result, "model", ""),
             provider=getattr(agent_result, "provider", ""),
             fallback_used=getattr(agent_result, "fallback_used", False),
+            steps_used=getattr(agent_result, "steps_used", 0),
+            repeated_tool_calls=getattr(agent_result, "repeated_tool_calls", 0),
+            turn_sequence=tuple(getattr(agent_result, "turn_sequence", [])),
+            exit_reason=getattr(agent_result, "exit_reason", "stop"),
             stages=(
                 StageSummary(
                     name="planner",

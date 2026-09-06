@@ -260,6 +260,10 @@ class AgentExecutor:
                     "model": getattr(result, "model", ""),
                     "provider": getattr(result, "provider", ""),
                     "fallback_used": getattr(result, "fallback_used", False),
+                    "steps_used": getattr(result, "steps_used", 0),
+                    "repeated_tool_calls": getattr(result, "repeated_tool_calls", 0),
+                    "turn_sequence": getattr(result, "turn_sequence", []),
+                    "exit_reason": getattr(result, "exit_reason", "stop"),
                 }
                 if result.success:
                     lifecycle.transition(STATE_SUCCEEDED)

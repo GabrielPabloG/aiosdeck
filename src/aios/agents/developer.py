@@ -31,12 +31,14 @@ class DeveloperAgent(BaseAgent):
         builder: PromptBuilder | None = None,
         skills=None,
         assembler=None,
+        max_steps: int = 0,
     ) -> None:
         super().__init__()
         self._runtime = runtime
         self._builder = builder or PromptBuilder()
         self._skills = skills
         self._assembler = assembler
+        self._max_steps = max_steps
 
     def execute(self, task, context) -> AgentResult:
         agent_task = coerce_task(task)
@@ -68,6 +70,7 @@ class DeveloperAgent(BaseAgent):
             task_type=agent_task.task_type,
             complexity=agent_task.params.get("complexity", "medium"),
             context_size=len(prompt.split()),
+            max_steps=self._max_steps,
         )
         return AgentResult(
             success=True,
@@ -85,4 +88,8 @@ class DeveloperAgent(BaseAgent):
             model=result.model,
             provider=result.provider,
             fallback_used=result.fallback_used,
+            steps_used=result.steps_used,
+            repeated_tool_calls=result.repeated_tool_calls,
+            turn_sequence=result.turn_sequence,
+            exit_reason=result.exit_reason,
         )

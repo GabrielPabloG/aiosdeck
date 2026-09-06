@@ -79,3 +79,7 @@ class AgentResult:
     model: str = ""
     provider: str = ""
     fallback_used: bool = False
+    steps_used: int = 0
+    repeated_tool_calls: int = 0
+    turn_sequence: list[str] = field(default_factory=list)
+    exit_reason: str = "stop"
