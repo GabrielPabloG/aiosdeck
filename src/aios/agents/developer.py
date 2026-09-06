@@ -59,7 +59,7 @@ class DeveloperAgent(BaseAgent):
         )
         intent = getattr(context, "intent", None)
         effective = effective_permissions(intent, self.capabilities) if intent else None
-        output = self._runtime.execute(
+        result = self._runtime.execute(
             prompt,
             self.required_skills,
             self.required_capabilities,
@@ -71,9 +71,18 @@ class DeveloperAgent(BaseAgent):
         )
         return AgentResult(
             success=True,
-            output=output,
+            output=result.output,
             status=STATE_SUCCEEDED,
             agent=self.name,
             task_id=agent_task.task_id,
             correlation_id=agent_task.correlation_id,
+            tool_calls=result.tool_calls,
+            tool_names=result.tool_names,
+            tool_durations_ms=result.tool_durations_ms,
+            llm_turns=result.llm_turns,
+            total_cost=result.total_cost,
+            tokens=result.tokens,
+            model=result.model,
+            provider=result.provider,
+            fallback_used=result.fallback_used,
         )

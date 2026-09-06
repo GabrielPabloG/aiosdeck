@@ -409,7 +409,7 @@ def _run_bare_probe(kernel, phase: str) -> tuple[str | None, str]:
         raise RuntimeError("runtime engine not available")
     route_input = _PHASE_ROUTING[phase]
     model = _resolve_phase_model(kernel, phase)
-    output = runtime.execute(
+    result = runtime.execute(
         BARE_PROMPT,
         [],
         [],
@@ -419,6 +419,7 @@ def _run_bare_probe(kernel, phase: str) -> tuple[str | None, str]:
         complexity=route_input.complexity,
         model=model,
     )
+    output = result.output
     if not output.strip().upper().startswith("OK"):
         return "bare probe reply is not 'OK' (tolerant check)", model
     return None, model

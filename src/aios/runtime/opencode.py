@@ -1,11 +1,15 @@
 """OpenCode runtime adapter — always invoked through ai-jail."""
 
+from __future__ import annotations
+
 import json
 import logging
 import os
 import shutil
 import subprocess
+from dataclasses import dataclass, field
 
+from aios.agents.models import AgentResult
 from aios.runtime.diagnostics import RuntimeDiagnostic
 from aios.security.actions import (
     FILESYSTEM_READ_ACTION,
@@ -35,6 +39,87 @@ _BASH_RULES: dict[str, str] = {
 }
 
 _WRITE_AGENT = "build"
+
+
+@dataclass
+class AgentMetrics:
+    """Structured metrics extracted from OpenCode JSONL output."""
+
+    tool_calls: int = 0
+    tool_names: list[str] = field(default_factory=list)
+    tool_durations_ms: list[float] = field(default_factory=list)
+    llm_turns: int = 0
+    total_cost: float = 0.0
+    tokens: dict[str, int] = field(default_factory=dict)
+
+
+def _parse_jsonl(output: str) -> tuple[str, AgentMetrics]:
+    """Parse OpenCode ``--format json`` JSONL output into text and metrics.
+
+    Pure function — no side effects, easy to test. Returns the final text
+    output and an :class:`AgentMetrics` summary. Tolerant of unknown events
+    and malformed lines.
+    """
+    metrics = AgentMetrics()
+    text_parts: list[str] = []
+    tool_durations: dict[str, float] = {}
+    tool_counts: dict[str, int] = {}
+
+    for raw_line in output.splitlines():
+        line = raw_line.strip()
+        if not line or not line.startswith("{"):
+            continue
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+
+        event_type = event.get("type", "")
+        part = event.get("part", {})
+
+        if event_type == "step_start":
+            metrics.llm_turns += 1
+
+        elif event_type == "text":
+            text = part.get("text", "")
+            if text:
+                text_parts.append(text)
+
+        elif event_type == "tool_use":
+            tool_name = part.get("tool", "")
+            state = part.get("state", {})
+            if state.get("status") == "completed":
+                tool_counts[tool_name] = tool_counts.get(tool_name, 0) + 1
+                timing = state.get("time", {})
+                start = timing.get("start", 0)
+                end = timing.get("end", 0)
+                if start and end:
+                    tool_durations[tool_name] = tool_durations.get(tool_name, 0.0) + (
+                        end - start
+                    )
+
+        elif event_type == "step_finish":
+            tokens_part = part.get("tokens", {})
+            if tokens_part:
+                metrics.tokens = {
+                    "input": tokens_part.get("input", 0),
+                    "output": tokens_part.get("output", 0),
+                    "reasoning": tokens_part.get("reasoning", 0),
+                    "cache_read": tokens_part.get("cache", {}).get("read", 0),
+                    "cache_write": tokens_part.get("cache", {}).get("write", 0),
+                }
+            metrics.total_cost += part.get("cost", 0.0)
+
+    metrics.tool_calls = sum(tool_counts.values())
+    metrics.tool_names = [
+        name for name, _ in sorted(tool_counts.items(), key=lambda x: -x[1])
+    ]
+    metrics.tool_durations_ms = [
+        tool_durations.get(name, 0.0) for name in metrics.tool_names
+    ]
+
+    text = "\n".join(text_parts)
+    return text, metrics
 
 
 class OpenCodeAdapter:
@@ -206,9 +291,9 @@ class OpenCodeAdapter:
         *,
         model: str = "",
         variant: str = "",
-    ) -> str:
+    ) -> AgentResult:
         args = self._resolved_command.split()
-        args.extend(["run", prompt])
+        args.extend(["run", prompt, "--format", "json"])
 
         if model:
             args.extend(["-m", model])
@@ -252,7 +337,25 @@ class OpenCodeAdapter:
             )
             raise RuntimeError(f"Runtime exited with code {result.returncode}: {stderr}")
 
-        return result.stdout.strip() if result.stdout else ""
+        stdout = result.stdout.strip() if result.stdout else ""
+        try:
+            text, metrics = _parse_jsonl(stdout)
+        except Exception:
+            logger.warning("JSONL parser failed; falling back to raw stdout")
+            text = stdout
+            metrics = AgentMetrics()
+
+        return AgentResult(
+            success=True,
+            output=text,
+            tool_calls=metrics.tool_calls,
+            tool_names=metrics.tool_names,
+            tool_durations_ms=metrics.tool_durations_ms,
+            llm_turns=metrics.llm_turns,
+            total_cost=metrics.total_cost,
+            tokens=metrics.tokens,
+            model=model,
+        )
 
     @staticmethod
     def _is_write_capable(
