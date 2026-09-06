@@ -101,7 +101,7 @@ def _validate_run(errors: list[str], index: int, run_index: int, run: object) ->
         if metric not in run:
             errors.append(f"{label} missing metric {metric}")
     for key in run:
-        if key not in METRICS and key not in ("error", "timings"):
+        if key not in METRICS and key not in ("error", "timings", "warning", "observability"):
             errors.append(f"{label} unknown key {key!r}")
     timings = run.get("timings")
     if timings is not None and not isinstance(timings, dict):
