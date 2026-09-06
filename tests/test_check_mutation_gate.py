@@ -251,26 +251,33 @@ def test_classify_buckets():
         {
             "a.x__f__mutmut_1": ("src/a.py", 10),  # introduced
             "a.x__g__mutmut_1": ("src/a.py", 99),  # legacy
-            "a.x__h__mutmut_1": None,  # fail-closed -> introduced
+            "a.x__h__mutmut_1": None,  # unlocated (provenance indeterminate)
             "a.x__k__mutmut_1": ("src/a.py", 10),  # allowlisted (wins over location)
         }
     )
-    introduced, legacy, allowlisted, fatal = cmg.classify(survivors, changed, allowlist, resolver)
-    assert sorted(introduced) == ["a.x__f__mutmut_1", "a.x__h__mutmut_1"]
+    introduced, legacy, unlocated, allowlisted, fatal = cmg.classify(
+        survivors, changed, allowlist, resolver
+    )
+    assert sorted(introduced) == ["a.x__f__mutmut_1"]
     assert legacy == ["a.x__g__mutmut_1"]
+    assert unlocated == ["a.x__h__mutmut_1"]
     assert allowlisted == ["a.x__k__mutmut_1"]
     assert fatal == []
 
 
-def test_classify_fail_closed_never_legacy():
+def test_classify_unlocated_never_introduced_or_legacy():
+    """Mutants that resolve to None are unlocated, not introduced or legacy."""
     survivors = [("a.x__f__mutmut_1", "survived")]
-    introduced, legacy, _, _ = cmg.classify(survivors, {"src/a.py": {5}}, set(), _resolver({}))
-    assert introduced == ["a.x__f__mutmut_1"]
-    assert legacy == []
+    _, _, unlocated, _, _ = cmg.classify(survivors, {"src/a.py": {5}}, set(), _resolver({}))
+    assert unlocated == ["a.x__f__mutmut_1"]
+    # confirm NOT in introduced or legacy (the core invariant)
+    introduced, legacy, _, _, _ = cmg.classify(survivors, {"src/a.py": {5}}, set(), _resolver({}))
+    assert "a.x__f__mutmut_1" not in introduced
+    assert "a.x__f__mutmut_1" not in legacy
 
 
 def test_classify_empty_survivors():
-    assert cmg.classify([], {}, set(), _resolver({})) == ([], [], [], [])
+    assert cmg.classify([], {}, set(), _resolver({})) == ([], [], [], [], [])
 
 
 @pytest.mark.parametrize("status", ["timeout", "suspicious", "segfault", "no tests"])
@@ -280,10 +287,13 @@ def test_classify_fatal_blocks_even_on_legacy_line(status):
     survivors = [("a.x__f__mutmut_1", status)]
     changed = {"src/a.py": {10}}  # line 99 is NOT in the diff -> would be legacy
     resolver = _resolver({"a.x__f__mutmut_1": ("src/a.py", 99)})
-    introduced, legacy, allowlisted, fatal = cmg.classify(survivors, changed, set(), resolver)
+    introduced, legacy, unlocated, allowlisted, fatal = cmg.classify(
+        survivors, changed, set(), resolver
+    )
     assert fatal == ["a.x__f__mutmut_1"]
     assert legacy == []
     assert introduced == []
+    assert unlocated == []
     assert allowlisted == []
 
 
@@ -291,7 +301,7 @@ def test_classify_fatal_ignores_allowlist():
     """Allowlisting cannot rescue a fatal mutant."""
     survivors = [("a.x__f__mutmut_1", "timeout")]
     resolver = _resolver({"a.x__f__mutmut_1": ("src/a.py", 99)})
-    _introduced, _legacy, allowlisted, fatal = cmg.classify(
+    _introduced, _legacy, _unlocated, allowlisted, fatal = cmg.classify(
         survivors, {}, {"a.x__f__mutmut_1"}, resolver
     )
     assert fatal == ["a.x__f__mutmut_1"]
