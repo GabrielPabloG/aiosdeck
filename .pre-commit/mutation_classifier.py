@@ -253,7 +253,10 @@ def _parse_line(line: str):
 
 def _ast_features(line: str) -> Counter[str]:
     """Fine-grained feature multiset for a line (operator symbols, constants)."""
-    import libcst as cst  # noqa: PLC0415 - lazy: only the AST escalation needs libcst
+    try:
+        import libcst as cst  # noqa: PLC0415 - lazy: only the AST escalation needs libcst
+    except ImportError:
+        return Counter()  # AST unavailable -> UNKNOWN, hybrid keeps heuristic
 
     symbol = {
         cst.LessThan: "<",
