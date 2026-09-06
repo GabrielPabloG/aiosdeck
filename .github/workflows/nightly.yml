@@ -48,6 +48,12 @@ jobs:
         if: always()
         run: python .pre-commit/mutation_triage.py --mutants-dir mutants --out mutation-report
 
+      # Evidencia: colapsa sobreviventes em "sites" com contexto de uso +
+      # sinal de teste + disposicao SUGERIDA (harness de triagem epistemica).
+      - name: Mutation evidence (triage log)
+        if: always()
+        run: python .pre-commit/mutation_evidence.py --mutants-dir mutants --out mutation-report
+
       - name: Upload mutation triage report
         if: always()
         uses: actions/upload-artifact@v4
