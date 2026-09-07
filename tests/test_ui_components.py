@@ -20,6 +20,7 @@ from aios.ui import (
     render_status_pill,
     render,
 )
+from aios.ui.pages import _render_usage
 from tests.ui_snapshots import ANSI_RE, HEX_RE, SNAPSHOTS, WIDGET_CASES, clean_env, render_widget
 
 
@@ -86,3 +87,32 @@ def test_widget_source_has_no_hardcoded_ansi_or_hex():
         assert ANSI_RE.search(source) is None
         assert "\x1b[" not in source
         assert HEX_RE.search(source) is None
+
+
+def test_render_usage_output_contains_expected_sections():
+    """_render_usage renders data into a string with all expected sections.
+
+    Verifies that arguments to render_section_header, render_metric_card,
+    and render_table are actually used in the output.
+    """
+    ctx = RenderContext(width=80, height=24, resolver=ColorResolver(ocean_theme, ColorMode.MONO))
+    data = {
+        "totals": {"requests": 120, "tokens": 50000},
+        "by_agent": {"planner": 40, "developer": 60, "reviewer": 20},
+        "by_model": {"gpt-4": 80, "gpt-3.5": 40},
+        "cost_records": [
+            {"agent": "planner", "model": "gpt-4", "cost": 0.1234},
+            {"agent": "developer", "model": "gpt-3.5", "cost": 0.0567},
+        ],
+    }
+    output = _render_usage(data, ctx)
+
+    assert "Usage" in output
+    assert "120" in output
+    assert "50000" in output
+    assert "planner" in output
+    assert "developer" in output
+    assert "gpt-4" in output
+    assert "gpt-3.5" in output
+    assert "$0.1234" in output
+    assert "$0.0567" in output

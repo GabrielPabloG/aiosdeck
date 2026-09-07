@@ -277,6 +277,17 @@ def test_base_agent_execute_raises():
 
 # ──────────────────────────────────────────────────────────
 # AgentExecutor — lifecycle and event contract
+#
+# Decision log (mutation triage 2026-09-07):
+#   9 _publish_lifecycle survivors after payload + state tests:
+#     _sequence mutations (+1 → =1/-=1/+=2) → DEFERRED
+#       May be internal implementation detail, not product contract.
+#     execution_id=None → DEFERRED
+#       Consistency test doesn't imply non-nullability yet.
+#     status=None → DEFERRED
+#       current_state != status; needs product decision.
+#   Mutation score impact: 42 → 9 survivors (33 killed, 79%).
+# ──────────────────────────────────────────────────────────
 # ──────────────────────────────────────────────────────────
 
 
