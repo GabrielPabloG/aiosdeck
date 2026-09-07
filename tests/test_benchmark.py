@@ -455,6 +455,34 @@ class TestBenchmarkCli:
         assert "plan" in result
         assert "agent_exec" in result
 
+
+def test_measure_lifecycle_timing_values_are_positive_and_error_free():
+    """Happy-path: all phases produce non-negative timing and no error keys.
+
+    Catches mutations on elapsed() arguments (wall/user/system) that would
+    cause TypeError and trigger the except fallback (which adds an error key).
+    Also catches mutations that remove timing keys from the result dict.
+    """
+    kernel = MagicMock()
+    kernel.start = MagicMock()
+    kernel.get_context = MagicMock(return_value=None)
+    kernel.run = MagicMock(return_value=MagicMock(success=True))
+    kernel.run_agent = MagicMock(return_value=MagicMock(success=True))
+    kernel.shutdown = MagicMock()
+
+    result = measure_lifecycle(".", lambda _: kernel, skip_agents=False)
+
+    timing_phases = ["startup", "kernel_init", "context_load", "skill_load",
+                     "plan", "agent_exec", "telemetry_flush"]
+    for phase in timing_phases:
+        assert phase in result, f"missing phase: {phase}"
+        entry = result[phase]
+        assert "wall_time_ms" in entry, f"{phase} missing wall_time_ms"
+        assert "cpu_user_ms" in entry, f"{phase} missing cpu_user_ms"
+        assert "cpu_system_ms" in entry, f"{phase} missing cpu_system_ms"
+        assert entry["wall_time_ms"] >= 0, f"{phase} wall_time_ms negative"
+        assert "error" not in entry, f"{phase} has error key (fallback path taken)"
+
     def test_phases_bar_shows_sample_and_phase(self, tmp_path, capsys):
         with patch("aios.cli.commands.benchmark.ProgressBar") as mock_bar_cls:
             mock_bar = MagicMock()
