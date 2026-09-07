@@ -95,6 +95,7 @@ class RuntimeEngine:
         context_size: int = 0,
         model: str = "",
         max_steps: int = 0,
+        project_path: str = "",
     ) -> AgentResult:
         decision_model = ""
         decision_variant = ""
@@ -143,6 +144,7 @@ class RuntimeEngine:
                     model=attempt["model"],
                     variant=attempt.get("variant", ""),
                     max_steps=max_steps,
+                    project_path=project_path,
                 )
                 result = AgentResult(output=raw) if isinstance(raw, str) else raw
                 result.model = attempt["model"]

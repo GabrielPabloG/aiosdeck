@@ -25,13 +25,14 @@ class DeveloperAgent(BaseAgent):
     required_capabilities = ["filesystem_read", "filesystem_write", "shell"]
     required_skills = ["project-dna", "coding-style"]
 
-    def __init__(
+    def __init__(  # noqa: PLR0913, PLR0917
         self,
         runtime,
         builder: PromptBuilder | None = None,
         skills=None,
         assembler=None,
         max_steps: int = 0,
+        project_path: str = "",
     ) -> None:
         super().__init__()
         self._runtime = runtime
@@ -39,6 +40,7 @@ class DeveloperAgent(BaseAgent):
         self._skills = skills
         self._assembler = assembler
         self._max_steps = max_steps
+        self._project_path = project_path
 
     def execute(self, task, context) -> AgentResult:
         agent_task = coerce_task(task)
@@ -71,6 +73,7 @@ class DeveloperAgent(BaseAgent):
             complexity=agent_task.params.get("complexity", "medium"),
             context_size=len(prompt.split()),
             max_steps=self._max_steps,
+            project_path=self._project_path,
         )
         return AgentResult(
             success=True,

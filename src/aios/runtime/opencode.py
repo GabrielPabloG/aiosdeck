@@ -382,6 +382,7 @@ class OpenCodeAdapter:
         model: str = "",
         variant: str = "",
         max_steps: int = 0,
+        project_path: str = "",
     ) -> AgentResult:
         args = self._resolved_command.split()
         args.extend(["run", prompt, "--format", "json"])
@@ -409,9 +410,11 @@ class OpenCodeAdapter:
         env["OPENCODE_PERMISSION"] = permissions_json
 
         tmp_config_dir = None
-        if max_steps > 0:
+        if max_steps > 0 and project_path:
             try:
-                tmp_config_dir = tempfile.mkdtemp(prefix="aios_oc_")
+                project_tmp = Path(project_path) / ".aios" / ".tmp"
+                project_tmp.mkdir(parents=True, exist_ok=True)
+                tmp_config_dir = tempfile.mkdtemp(dir=project_tmp, prefix="oc_")
                 oc_dir = Path(tmp_config_dir) / ".opencode"
                 oc_dir.mkdir(parents=True, exist_ok=True)
                 config_path = oc_dir / "opencode.json"

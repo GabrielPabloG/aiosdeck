@@ -91,8 +91,10 @@ class OllamaAdapter:
         *,
         model: str = "",
         variant: str = "",
+        max_steps: int = 0,
+        project_path: str = "",
     ) -> str:
-        del skills, capabilities, permissions, variant
+        del skills, capabilities, permissions, variant, max_steps, project_path
         if not self._ai_jail_installed:
             raise RuntimeError("OllamaAdapter requires ai-jail (sandbox is mandatory)")
         body = {

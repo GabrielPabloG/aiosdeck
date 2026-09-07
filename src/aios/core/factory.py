@@ -98,6 +98,7 @@ def create_kernel(project_path: Path) -> Kernel:
     developer = DeveloperAgent(
         runtime, skills=assembler, assembler=context_assembler,
         max_steps=config.agent_budget.max_steps,
+        project_path=str(project_path),
     )
     planner = PlannerAgent(runtime, skills=assembler, assembler=context_assembler)
     reviewer = ReviewerAgent()

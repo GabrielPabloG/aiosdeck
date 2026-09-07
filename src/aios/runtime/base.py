@@ -33,6 +33,8 @@ class RuntimeAdapter(Protocol):
         *,
         model: str = "",
         variant: str = "",
+        max_steps: int = 0,
+        project_path: str = "",
     ) -> str:
         """Execute a prompt with the runtime. Returns raw output.
 
@@ -49,5 +51,7 @@ class RuntimeAdapter(Protocol):
                    When non-empty, passed as ``-m`` to the runtime.
             variant: Optional variant override (e.g. ``high``). When non-empty,
                      passed as ``--variant`` to the runtime.
+            max_steps: Optional step budget for the run (0 = unlimited).
+            project_path: Root directory of the project (for temp files etc.).
         """
         ...
