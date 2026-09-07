@@ -235,10 +235,16 @@ _MIGRATION_COLUMNS_V1_1_2 = [
 
 def _migrate(conn) -> None:
     """Idempotent migration: add columns that may be missing in older DBs."""
-    for table, column, typedef in _MIGRATION_COLUMNS_V1_1_2:
-        existing = {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
+    existing = {
+        row[1]
+        for row in conn.execute("PRAGMA table_info(telemetry_executions)")
+    }
+    for _table, column, typedef in _MIGRATION_COLUMNS_V1_1_2:
         if column not in existing:
-            conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {typedef}")
+            conn.execute(
+                f"ALTER TABLE telemetry_executions ADD COLUMN {column} {typedef}"
+            )
+            existing.add(column)
 
 
 def _row_execution(record: dict, project_id: str) -> tuple:
