@@ -162,9 +162,7 @@ def _parse_jsonl(output: str) -> tuple[str, AgentMetrics]:  # noqa: PLR0912, PLR
                 start = timing.get("start", 0)
                 end = timing.get("end", 0)
                 if start and end:
-                    tool_durations[tool_name] = tool_durations.get(tool_name, 0.0) + (
-                        end - start
-                    )
+                    tool_durations[tool_name] = tool_durations.get(tool_name, 0.0) + (end - start)
                     # Update turn duration from tool timing
                     if current_turn_index >= 0 and turns:
                         turns[-1].duration_ms += end - start
@@ -199,12 +197,8 @@ def _parse_jsonl(output: str) -> tuple[str, AgentMetrics]:  # noqa: PLR0912, PLR
 
     _finalize_turn()
     metrics.tool_calls = sum(tool_counts.values())
-    metrics.tool_names = [
-        name for name, _ in sorted(tool_counts.items(), key=lambda x: -x[1])
-    ]
-    metrics.tool_durations_ms = [
-        tool_durations.get(name, 0.0) for name in metrics.tool_names
-    ]
+    metrics.tool_names = [name for name, _ in sorted(tool_counts.items(), key=lambda x: -x[1])]
+    metrics.tool_durations_ms = [tool_durations.get(name, 0.0) for name in metrics.tool_names]
     metrics.llm_turns = len(turns)
     metrics.turns = turns
 
@@ -419,7 +413,7 @@ class OpenCodeAdapter:
                 oc_dir.mkdir(parents=True, exist_ok=True)
                 config_path = oc_dir / "opencode.json"
                 config_path.write_text(
-                    json.dumps({"agent": {"build": {"maxSteps": max_steps}}}),
+                    json.dumps({"agent": {"build": {"steps": max_steps}}}),
                     encoding="utf-8",
                 )
                 args.extend(["--dir", tmp_config_dir])
