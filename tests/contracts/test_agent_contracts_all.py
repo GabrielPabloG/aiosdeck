@@ -31,6 +31,7 @@ from aios.agents.contracts import (
 from aios.agents.executor import AgentExecutor, make_request
 from aios.agents.models import AgentResult, ExecutionOutcome
 from aios.core.run_result import RunResult, StageSummary, stage_to_summary
+from aios.events.events import AGENT_LIFECYCLE_CHANGED
 from aios.security.contracts import EffectivePermissions, IntentPolicy, SecurityDecision
 from aios.workflow.models import WorkflowStage
 from tests.agent_compliance_matrix import AGENT_COMPLIANCE_MATRIX
@@ -305,6 +306,59 @@ def test_executor_publishes_failure_events():
     assert not outcome.success
     events = [c[0][0] for c in bus.publish.call_args_list]
     assert "agent.execution.failed" in events
+
+
+def test_executor_publishes_lifecycle_event_payloads():
+    """Cada evento lifecycle contém execution_id consistente,
+    agent correto, e task_id correto -- não apenas o topic name."""
+    agent = _FakeLifecycleAgent()
+    bus = MagicMock()
+    executor = AgentExecutor(event_bus=bus)
+    task = AgentTask(description="test")
+    request = make_request(agent, task)
+    executor.execute(request)
+
+    lifecycle_events = [
+        call.args[1]
+        for call in bus.publish.call_args_list
+        if call.args[0] == AGENT_LIFECYCLE_CHANGED
+    ]
+    assert len(lifecycle_events) >= 2
+
+    execution_ids = {e["execution_id"] for e in lifecycle_events}
+    assert len(execution_ids) == 1, "execution_id must be consistent across all events"
+
+    agent_names = {e["agent"] for e in lifecycle_events}
+    assert agent_names == {"lifecycle-test"}
+
+    task_ids = {e["task_id"] for e in lifecycle_events}
+    assert task_ids == {task.task_id}
+
+
+def test_executor_publishes_lifecycle_state_transitions():
+    """Sequência de estados no caminho feliz:
+    created→created, created→validated, validated→queued,
+    queued→running, running→succeeded."""
+    agent = _FakeLifecycleAgent()
+    bus = MagicMock()
+    executor = AgentExecutor(event_bus=bus)
+    request = make_request(agent, AgentTask(description="test"))
+    executor.execute(request)
+
+    lifecycle_events = [
+        call.args[1]
+        for call in bus.publish.call_args_list
+        if call.args[0] == AGENT_LIFECYCLE_CHANGED
+    ]
+    transitions = [(e["previous_state"], e["current_state"]) for e in lifecycle_events]
+
+    assert transitions == [
+        ("created", "created"),
+        ("created", "validated"),
+        ("validated", "queued"),
+        ("queued", "running"),
+        ("running", "succeeded"),
+    ]
 
 
 class _FakeLifecycleAgent:
