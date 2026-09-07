@@ -30,7 +30,11 @@ def test_full_flow(tmp_path):
         patch("aios.runtime.opencode.subprocess.run") as mock_run,
     ):
         mock_run.return_value.returncode = 0
-        mock_run.return_value.stdout = "Implementation complete.\n"
+        mock_run.return_value.stdout = (
+            '{"type":"step_start","timestamp":1000,"part":{"id":"p1","type":"step-start"}}\n'
+            '{"type":"text","timestamp":1001,"part":{"type":"text","text":"Implementation complete."}}\n'
+            '{"type":"step_finish","timestamp":1002,"part":{"id":"p2","reason":"stop","type":"step-finish"}}\n'
+        )
 
         kernel.start()
         status = kernel.status()

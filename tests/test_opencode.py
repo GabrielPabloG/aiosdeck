@@ -99,7 +99,7 @@ def test_execute_with_question_handles_none_stdout():
 
         result = adapter.execute("test", skills=[], capabilities=["question"])
 
-        assert result == ""
+        assert result.output == ""
 
 
 def test_execute_with_question_handles_none_stderr_on_error():
@@ -592,6 +592,8 @@ def test_execute_runs_provider_model_variant_and_auto():
         "opencode",
         "run",
         "hello",
+        "--format",
+        "json",
         "-m",
         "ollama/llama3.2",
         "--variant",
@@ -683,10 +685,14 @@ def test_execute_returns_stdout_stripped():
     adapter = _runnable_adapter()
     with patch("aios.runtime.opencode.subprocess.run") as mock_run:
         mock_run.return_value.returncode = 0
-        mock_run.return_value.stdout = "  done output  "
+        mock_run.return_value.stdout = (
+            '{"type":"step_start","timestamp":1000,"part":{"id":"p1","type":"step-start"}}\n'
+            '{"type":"text","timestamp":1001,"part":{"type":"text","text":"  done output  "}}\n'
+            '{"type":"step_finish","timestamp":1002,"part":{"id":"p2","reason":"stop","type":"step-finish"}}\n'
+        )
         mock_run.return_value.stderr = ""
         result = adapter.execute("test", skills=[], capabilities=[])
-    assert result == "done output"
+    assert result.output == "  done output  "
 
 
 # ---------------------------------------------------------------------------

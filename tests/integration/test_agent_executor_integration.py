@@ -64,7 +64,7 @@ def _init_repo(tmp_path: Path) -> Path:
 def _agent_and_task(name: str, tmp_path: Path):  # noqa: PLR0911 - one branch per agent
     if name == "planner":
         runtime = MagicMock()
-        runtime.execute.return_value = VALID_PLAN
+        runtime.execute.return_value = AgentResult(output=VALID_PLAN)
         return (
             PlannerAgent(runtime),
             AgentTask(description="plan something", task_type="plan"),
@@ -72,7 +72,7 @@ def _agent_and_task(name: str, tmp_path: Path):  # noqa: PLR0911 - one branch pe
         )
     if name == "developer":
         runtime = MagicMock()
-        runtime.execute.return_value = "implementation complete"
+        runtime.execute.return_value = AgentResult(output="implementation complete")
         return DeveloperAgent(runtime), AgentTask(description="implement feature"), _context()
     if name == "research":
         return ResearchAgent(), AgentTask(description="auth flow", params={"scope": "web"}), None

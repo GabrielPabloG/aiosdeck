@@ -12,6 +12,7 @@ from unittest.mock import MagicMock, patch
 
 from aios.agents.contracts import AgentTask
 from aios.agents.developer import DeveloperAgent
+from aios.agents.models import AgentResult
 from aios.context.packet import ContextPacket
 from aios.runtime.opencode import OpenCodeAdapter
 from aios.security import EffectivePermissions
@@ -115,7 +116,7 @@ def test_execute_injects_bash_policy_into_permission_env():
 
 def test_developer_passes_effective_permissions_to_runtime():
     runtime = MagicMock()
-    runtime.execute.return_value = "ok"
+    runtime.execute.return_value = AgentResult(output="ok")
     agent = DeveloperAgent(runtime)
     context = ContextPacket()
     context.intent = WORKFLOW_INTENT
@@ -130,7 +131,7 @@ def test_developer_passes_effective_permissions_to_runtime():
 
 def test_developer_without_intent_passes_none_permissions():
     runtime = MagicMock()
-    runtime.execute.return_value = "ok"
+    runtime.execute.return_value = AgentResult(output="ok")
     agent = DeveloperAgent(runtime)
 
     agent.execute(AgentTask(description="implement feature"), ContextPacket())

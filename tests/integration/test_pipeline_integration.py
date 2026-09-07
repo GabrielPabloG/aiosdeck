@@ -17,6 +17,7 @@ from unittest.mock import MagicMock
 from aios.agents.developer import DeveloperAgent
 from aios.agents.documentation import DocumentationAgent
 from aios.agents.git import GitAgent
+from aios.agents.models import AgentResult
 from aios.agents.planner import PlannerAgent
 from aios.agents.reviewer import ReviewerAgent
 from aios.agents.tester import TesterAgent
@@ -88,7 +89,7 @@ def test_pipeline_a_planner_to_scheduler(tmp_path):
     context = _make_context(str(repo))
 
     runtime = MagicMock()
-    runtime.execute.return_value = json.dumps(VALID_PLAN)
+    runtime.execute.return_value = AgentResult(output=json.dumps(VALID_PLAN))
     planner = PlannerAgent(runtime)
 
     plan_result = planner.execute(Task(description="Add endpoint /health"), context)
@@ -125,7 +126,7 @@ def test_pipeline_b_developer_to_git(tmp_path):
     context = _make_context(str(repo))
 
     dev_runtime = MagicMock()
-    dev_runtime.execute.return_value = "Created /health route handler."
+    dev_runtime.execute.return_value = AgentResult(output="Created /health route handler.")
     developer = DeveloperAgent(dev_runtime)
 
     dev_result = developer.execute(Task(description="Create /health route handler"), context)

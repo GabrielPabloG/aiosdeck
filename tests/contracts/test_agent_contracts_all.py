@@ -41,7 +41,7 @@ def _instantiate(spec):
     cls = spec["agent_class"]
     if cls.__name__ in ("PlannerAgent", "DeveloperAgent"):
         adapter = MagicMock()
-        adapter.execute.return_value = "{}"
+        adapter.execute.return_value = AgentResult(output="{}")
         return cls(adapter)
     return cls()
 

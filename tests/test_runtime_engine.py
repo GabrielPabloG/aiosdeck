@@ -5,6 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from aios.agents.models import AgentResult
 from aios.routing.models import RouteDecision
 from aios.runtime import RouteFallbackExhausted, RuntimeEngine
 
@@ -40,7 +41,16 @@ class _Adapter:
         self._fail_times = fail_times
 
     def execute(  # noqa: PLR0913
-        self, prompt, skills, capabilities, permissions, *, model="", variant=""
+        self,
+        prompt,
+        skills,
+        capabilities,
+        permissions,
+        *,
+        model="",
+        variant="",
+        max_steps=0,
+        project_path=None,
     ):
         self.calls.append(
             {
@@ -50,6 +60,7 @@ class _Adapter:
                 "permissions": permissions,
                 "model": model,
                 "variant": variant,
+                "max_steps": max_steps,
             }
         )
         should_fail = self._error is not None and (
@@ -71,7 +82,8 @@ def test_execute_legacy_defaults_forwarded_and_emitted():
 
     result = engine.execute("prompt", ["skill"], ["fs"], "perms")
 
-    assert result == "ok"
+    assert result.output == "ok"
+    assert isinstance(result, AgentResult)
     assert adapter.calls == [
         {
             "prompt": "prompt",
@@ -80,6 +92,7 @@ def test_execute_legacy_defaults_forwarded_and_emitted():
             "permissions": "perms",
             "model": "",
             "variant": "",
+            "max_steps": 0,
         }
     ]
     topic, payload = bus.events[0]
@@ -175,7 +188,7 @@ def test_execute_sparse_fallback_attempt_uses_empty_defaults():
 
     result = engine.execute("p", [])
 
-    assert result == "ok"
+    assert result.output == "ok"
     assert adapter.calls[1]["model"] == "solo"
     assert adapter.calls[1]["variant"] == ""
 
@@ -222,7 +235,7 @@ def test_route_event_publish_errors_are_swallowed_and_logged(caplog):
     with caplog.at_level(logging.DEBUG, logger="aios.runtime"):
         result = engine.execute("p", [], model="m")
 
-    assert result == "ok"
+    assert result.output == "ok"
     debugs = [r for r in caplog.records if r.levelno == logging.DEBUG]
     assert debugs[-1].getMessage() == "Failed to emit route event: bus down"
 

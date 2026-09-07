@@ -45,7 +45,16 @@ class FakeAdapter:
         return False
 
     def execute(  # noqa: PLR0913
-        self, prompt, skills, capabilities=None, permissions=None, *, model="", variant=""
+        self,
+        prompt,
+        skills,
+        capabilities=None,
+        permissions=None,
+        *,
+        model="",
+        variant="",
+        max_steps=0,
+        project_path=None,
     ):
         self.calls.append({"model": model, "variant": variant})
         return json.dumps({"ok": True, "model": model})

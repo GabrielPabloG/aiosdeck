@@ -19,7 +19,7 @@ def _make_context(language: str = "python") -> ContextPacket:
 
 def _make_runtime(return_value: str | None = None) -> MagicMock:
     runtime = MagicMock()
-    runtime.execute.return_value = return_value or "[output from runtime]"
+    runtime.execute.return_value = AgentResult(output=return_value or "[output from runtime]")
     return runtime
 
 
