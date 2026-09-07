@@ -96,7 +96,9 @@ def create_kernel(project_path: Path) -> Kernel:
     assembler = _build_skill_assembler(project_path, kernel)
     context_assembler = _build_context_assembler(project_path, kernel)
     developer = DeveloperAgent(
-        runtime, skills=assembler, assembler=context_assembler,
+        runtime,
+        skills=assembler,
+        assembler=context_assembler,
         max_steps=config.agent_budget.max_steps,
         project_path=str(project_path),
     )

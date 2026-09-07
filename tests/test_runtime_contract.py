@@ -99,7 +99,9 @@ class TestFallbackUsed:
     def test_fallback_triggered(self):
         call_count = 0
 
-        def side_effect(prompt, skills, caps, permissions, *, model="", variant="", max_steps=0, project_path=""):  # noqa: PLR0913
+        def side_effect(  # noqa: PLR0913
+            prompt, skills, caps, permissions, *, model="", variant="", max_steps=0, project_path=""
+        ):
             nonlocal call_count
             call_count += 1
             if call_count == 1:
@@ -133,9 +135,7 @@ class TestFallbackUsed:
         router = RuleBasedRouter(config)
         engine = _make_engine(adapter=adapter, router=router)
         try:
-            engine.execute(
-                "prompt", [], [], agent="dev", task_type="code", complexity="medium"
-            )
+            engine.execute("prompt", [], [], agent="dev", task_type="code", complexity="medium")
             raise AssertionError("Should have raised")
         except RuntimeError as exc:
             assert "exhausted" in str(exc).lower()
@@ -171,9 +171,7 @@ class TestOpenCodeAdapterContract:
         with patch("aios.runtime.opencode.subprocess") as mock_sub:
             mock_sub.run.return_value = mock_result
             mock_sub.TimeoutExpired = subprocess.TimeoutExpired
-            result = adapter.execute(
-                "prompt", [], [], None, model="test/model"
-            )
+            result = adapter.execute("prompt", [], [], None, model="test/model")
 
         assert isinstance(result, AgentResult)
         assert result.output == "hello"

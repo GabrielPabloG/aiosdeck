@@ -460,9 +460,7 @@ def _extract_observability(run_result) -> dict:
 
     tool_durations = getattr(run_result, "tool_durations_ms", ())
     if isinstance(tool_durations, (list, tuple)):
-        obs["tool_durations_ms"] = [
-            float(d) for d in tool_durations if isinstance(d, (int, float))
-        ]
+        obs["tool_durations_ms"] = [float(d) for d in tool_durations if isinstance(d, (int, float))]
 
     turn_sequence = getattr(run_result, "turn_sequence", ())
     if isinstance(turn_sequence, (list, tuple)):
@@ -470,9 +468,7 @@ def _extract_observability(run_result) -> dict:
 
     tokens = getattr(run_result, "tokens", {})
     if isinstance(tokens, dict):
-        obs["tokens"] = {
-            k: int(v) for k, v in tokens.items() if isinstance(v, (int, float))
-        }
+        obs["tokens"] = {k: int(v) for k, v in tokens.items() if isinstance(v, (int, float))}
 
     return obs
 

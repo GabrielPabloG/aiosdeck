@@ -71,4 +71,4 @@ skills:
 
 agents:
   developer:
-    max_steps: 24
+    max_steps: 0
