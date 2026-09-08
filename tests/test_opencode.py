@@ -1052,7 +1052,7 @@ class TestTempConfigLifecycle:
             patch("aios.runtime.opencode.shutil.rmtree"),
         ):
             _successful_run(mock_run)
-            result = adapter.execute(
+            adapter.execute(
                 "prompt", [], _DEVELOPER_CAPABILITIES,
                 permissions=_DEVELOPER_EFFECTIVE,
                 model="test/model",

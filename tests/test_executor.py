@@ -31,7 +31,6 @@ from aios.agents.contracts import (
 from aios.agents.executor import AgentExecutor, make_request
 from aios.agents.models import AgentResult
 from aios.events.events import (
-    AGENT_EXECUTION_CANCELLED,
     AGENT_EXECUTION_COMPLETED,
     AGENT_EXECUTION_FAILED,
     AGENT_EXECUTION_RETRIED,
