@@ -1053,7 +1053,9 @@ class TestTempConfigLifecycle:
         ):
             _successful_run(mock_run)
             adapter.execute(
-                "prompt", [], _DEVELOPER_CAPABILITIES,
+                "prompt",
+                [],
+                _DEVELOPER_CAPABILITIES,
                 permissions=_DEVELOPER_EFFECTIVE,
                 model="test/model",
                 max_steps=10,
@@ -1076,9 +1078,13 @@ class TestTempConfigLifecycle:
         with patch("aios.runtime.opencode.subprocess.run") as mock_run:
             _successful_run(mock_run)
             adapter.execute(
-                "prompt", [], _DEVELOPER_CAPABILITIES,
+                "prompt",
+                [],
+                _DEVELOPER_CAPABILITIES,
                 permissions=_DEVELOPER_EFFECTIVE,
-                model="m", max_steps=0, project_path=str(tmp_path),
+                model="m",
+                max_steps=0,
+                project_path=str(tmp_path),
             )
             tmp_dir = tmp_path / ".aios" / ".tmp"
             assert not tmp_dir.exists()
@@ -1088,9 +1094,13 @@ class TestTempConfigLifecycle:
         with patch("aios.runtime.opencode.subprocess.run") as mock_run:
             _successful_run(mock_run)
             adapter.execute(
-                "prompt", [], _DEVELOPER_CAPABILITIES,
+                "prompt",
+                [],
+                _DEVELOPER_CAPABILITIES,
                 permissions=_DEVELOPER_EFFECTIVE,
-                model="m", max_steps=10, project_path=str(tmp_path),
+                model="m",
+                max_steps=10,
+                project_path=str(tmp_path),
             )
             # Temp dir should be cleaned up (no oc_ directories remain)
             tmp_dir = tmp_path / ".aios" / ".tmp"
@@ -1105,9 +1115,13 @@ class TestTempConfigLifecycle:
             mock_run.return_value.stderr = "fail"
             try:
                 adapter.execute(
-                    "prompt", [], _DEVELOPER_CAPABILITIES,
+                    "prompt",
+                    [],
+                    _DEVELOPER_CAPABILITIES,
                     permissions=_DEVELOPER_EFFECTIVE,
-                    model="m", max_steps=10, project_path=str(tmp_path),
+                    model="m",
+                    max_steps=10,
+                    project_path=str(tmp_path),
                 )
             except RuntimeError:
                 pass
@@ -1133,16 +1147,22 @@ class TestTempConfigLifecycle:
             patch("aios.runtime.opencode.subprocess.run") as mock_run,
             patch("aios.runtime.opencode.Path") as mock_path_cls,
         ):
-            mock_tmp_dir = mock_path_cls.return_value.__truediv__.return_value.__truediv__.return_value
+            mock_tmp_dir = (
+                mock_path_cls.return_value.__truediv__.return_value.__truediv__.return_value
+            )
             mock_tmp_dir.mkdir.side_effect = OSError("Permission denied")
             mock_run.return_value.returncode = 0
             mock_run.return_value.stdout = valid_jsonl
             mock_run.return_value.stderr = ""
             with caplog.at_level(logging.WARNING):
                 result = adapter.execute(
-                    "prompt", [], _DEVELOPER_CAPABILITIES,
+                    "prompt",
+                    [],
+                    _DEVELOPER_CAPABILITIES,
                     permissions=_DEVELOPER_EFFECTIVE,
-                    model="m", max_steps=10, project_path="/p",
+                    model="m",
+                    max_steps=10,
+                    project_path="/p",
                 )
             assert "Could not create temp config" in caplog.text
             assert result.output == "done"  # execution continued
@@ -1162,7 +1182,11 @@ class TestJsonlFallback:
             mock_run.return_value.stderr = ""
             with caplog.at_level(logging.WARNING):
                 result = adapter.execute(
-                    "prompt", [], None, permissions=None, model="m",
+                    "prompt",
+                    [],
+                    None,
+                    permissions=None,
+                    model="m",
                 )
             assert result.output == "raw output here"
             assert result.tool_calls == 0

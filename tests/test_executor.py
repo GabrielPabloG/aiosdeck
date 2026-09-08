@@ -368,9 +368,7 @@ class TestObservabilityContract:
     def test_publish_execution_forwards_observability(self):
         bus = MagicMock()
         executor = AgentExecutor(event_bus=bus)
-        agent = _FakeAgent(
-            fn=lambda t, c: AgentResult(success=True, output="ok")
-        )
+        agent = _FakeAgent(fn=lambda t, c: AgentResult(success=True, output="ok"))
         request = make_request(agent, _task())
         obs = {"tool_calls": 10, "model": "x"}
         # Call execute to set up internal state, then test _publish_execution directly
@@ -391,14 +389,10 @@ class TestObservabilityContract:
     def test_failed_event_has_no_observability(self):
         bus = MagicMock()
         executor = AgentExecutor(event_bus=bus)
-        agent = _FakeAgent(
-            fn=lambda t, c: AgentResult(success=False, output="", errors=["fail"])
-        )
+        agent = _FakeAgent(fn=lambda t, c: AgentResult(success=False, output="", errors=["fail"]))
         executor.execute(make_request(agent, _task()))
         failed = [
-            c.args[1]
-            for c in bus.publish.call_args_list
-            if c.args[0] == AGENT_EXECUTION_FAILED
+            c.args[1] for c in bus.publish.call_args_list if c.args[0] == AGENT_EXECUTION_FAILED
         ]
         assert len(failed) == 1
         assert failed[0].get("observability") is None
@@ -414,9 +408,7 @@ class TestObservabilityContract:
         outcome = executor.execute(make_request(agent, _task()))
         assert outcome.status == "timed_out"
         timed_out = [
-            c.args[1]
-            for c in bus.publish.call_args_list
-            if c.args[0] == AGENT_EXECUTION_TIMED_OUT
+            c.args[1] for c in bus.publish.call_args_list if c.args[0] == AGENT_EXECUTION_TIMED_OUT
         ]
         assert len(timed_out) == 1
         assert timed_out[0].get("observability") is None
