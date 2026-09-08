@@ -230,7 +230,7 @@ Hard precondition: E6.2 metrics supporting autonomy. No privileged path.
 | Epic | Focus | Status |
 |---|---|---|
 | E8.1 | AiosDeck-as-Project — the repo registered as a regular project/workspace: same manifest, capabilities, ai-jail, gates. Zero special self-modification code | 🟦 |
-| E8.2 | Self-Dev Loop — `Mission → Scope → Graph → Workflows → tests → mutation → benchmarks → review → human approval → merge` executed on the repo under existing branch governance | 🟦 |
+| E8.2 | **Self-Dev Loop** — `Mission → Scope → Graph → Workflows → tests → mutation-guided verification → benchmarks → review → human approval → merge`, executed on the repo under existing branch governance. *Mutation-Guided Verification: mutation survivors are treated as adversarial evidence of insufficient test strength; semantically relevant survivors may trigger a bounded correction loop under existing branch and human-approval governance before review.* | 🟦 |
 | E8.3 | Learning Governance — `Observation → candidate → confidence → Advisor/policy → approval → memory/architecture`, applied to patterns mined from its own missions (E5.1 consumes E1.8 failure telemetry) | 🟦 |
 
 ## Track D — Design System "Control Room" (parallel)
