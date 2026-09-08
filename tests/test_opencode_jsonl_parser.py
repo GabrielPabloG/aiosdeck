@@ -430,6 +430,45 @@ class TestRepeatedToolCalls:
         text, metrics = _parse_jsonl(output)
         assert metrics.repeated_tool_calls == 0
 
+    def test_multiple_consecutive_repeated_calls(self):
+        output = (
+            '{"type":"step_start","timestamp":1000,'
+            '"part":{"id":"p1","messageID":"m1","sessionID":"s1",'
+            '"type":"step-start"}}\n'
+            '{"type":"tool_use","timestamp":1001,'
+            '"part":{"type":"tool","tool":"read","callID":"c1",'
+            '"state":{"status":"completed","input":{"file":"a.py"},'
+            '"output":"c1"}}}\n'
+            '{"type":"step_finish","timestamp":1020,'
+            '"part":{"id":"p2","reason":"tool-calls","messageID":"m1",'
+            '"sessionID":"s1","type":"step-finish",'
+            '"tokens":{},"cost":0.0}}\n'
+            '{"type":"step_start","timestamp":1100,'
+            '"part":{"id":"p3","messageID":"m1","sessionID":"s1",'
+            '"type":"step-start"}}\n'
+            '{"type":"tool_use","timestamp":1101,'
+            '"part":{"type":"tool","tool":"read","callID":"c2",'
+            '"state":{"status":"completed","input":{"file":"a.py"},'
+            '"output":"c2"}}}\n'
+            '{"type":"step_finish","timestamp":1120,'
+            '"part":{"id":"p4","reason":"tool-calls","messageID":"m1",'
+            '"sessionID":"s1","type":"step-finish",'
+            '"tokens":{},"cost":0.0}}\n'
+            '{"type":"step_start","timestamp":1200,'
+            '"part":{"id":"p5","messageID":"m1","sessionID":"s1",'
+            '"type":"step-start"}}\n'
+            '{"type":"tool_use","timestamp":1201,'
+            '"part":{"type":"tool","tool":"read","callID":"c3",'
+            '"state":{"status":"completed","input":{"file":"a.py"},'
+            '"output":"c3"}}}\n'
+            '{"type":"step_finish","timestamp":1220,'
+            '"part":{"id":"p6","reason":"tool-calls","messageID":"m1",'
+            '"sessionID":"s1","type":"step-finish",'
+            '"tokens":{},"cost":0.0}}'
+        )
+        text, metrics = _parse_jsonl(output)
+        assert metrics.repeated_tool_calls == 2
+
 
 class TestExitReason:
     def test_exit_reason_stop(self):
@@ -483,3 +522,183 @@ class TestExitReason:
         )
         _, metrics = _parse_jsonl(output)
         assert metrics.exit_reason == "stop"  # default when no non-tool-calls reason
+
+
+class TestGate2Coverage:
+    """Gate 2: tests targeting specific branches in _parse_jsonl for mutation survival."""
+
+    def test_reasoning_turn(self):
+        output = (
+            '{"type":"step_start","timestamp":1000,'
+            '"part":{"id":"p1","messageID":"m1","sessionID":"s1",'
+            '"type":"step-start"}}\n'
+            '{"type":"reasoning","timestamp":1001,'
+            '"part":{"id":"p2","messageID":"m1","sessionID":"s1",'
+            '"type":"reasoning","text":"thinking..."}}\n'
+            '{"type":"step_finish","timestamp":1003,'
+            '"part":{"id":"p4","reason":"stop","messageID":"m1",'
+            '"sessionID":"s1","type":"step-finish",'
+            '"tokens":{},"cost":0.0}}'
+        )
+        text, metrics = _parse_jsonl(output)
+        assert len(metrics.turns) == 1
+        assert metrics.turns[0].kind == "reasoning"
+
+    def test_tool_pending_not_counted(self):
+        output = (
+            '{"type":"step_start","timestamp":1000,'
+            '"part":{"id":"p1","messageID":"m1","sessionID":"s1",'
+            '"type":"step-start"}}\n'
+            '{"type":"tool_use","timestamp":1001,'
+            '"part":{"type":"tool","tool":"read","callID":"c1",'
+            '"state":{"status":"pending","input":{},"output":""}}}\n'
+            '{"type":"step_finish","timestamp":1100,'
+            '"part":{"id":"p2","reason":"stop","messageID":"m1",'
+            '"sessionID":"s1","type":"step-finish",'
+            '"tokens":{},"cost":0.0}}'
+        )
+        text, metrics = _parse_jsonl(output)
+        assert metrics.tool_calls == 0
+        assert metrics.tool_names == []
+
+    def test_text_before_step_start(self):
+        output = (
+            '{"type":"text","timestamp":1000,'
+            '"part":{"id":"p1","messageID":"m1","sessionID":"s1",'
+            '"type":"text","text":"orphan"}}\n'
+            '{"type":"step_start","timestamp":1001,'
+            '"part":{"id":"p2","messageID":"m1","sessionID":"s1",'
+            '"type":"step-start"}}\n'
+            '{"type":"text","timestamp":1002,'
+            '"part":{"id":"p3","messageID":"m1","sessionID":"s1",'
+            '"type":"text","text":"ok"}}\n'
+            '{"type":"step_finish","timestamp":1003,'
+            '"part":{"id":"p4","reason":"stop","messageID":"m1",'
+            '"sessionID":"s1","type":"step-finish",'
+            '"tokens":{},"cost":0.0}}'
+        )
+        text, metrics = _parse_jsonl(output)
+        assert text == "orphan\nok"
+        assert metrics.llm_turns == 1
+
+    def test_multiple_text_in_one_turn(self):
+        output = (
+            '{"type":"step_start","timestamp":1000,'
+            '"part":{"id":"p1","messageID":"m1","sessionID":"s1",'
+            '"type":"step-start"}}\n'
+            '{"type":"text","timestamp":1001,'
+            '"part":{"id":"p2","messageID":"m1","sessionID":"s1",'
+            '"type":"text","text":"hello"}}\n'
+            '{"type":"text","timestamp":1002,'
+            '"part":{"id":"p3","messageID":"m1","sessionID":"s1",'
+            '"type":"text","text":" world"}}\n'
+            '{"type":"step_finish","timestamp":1003,'
+            '"part":{"id":"p4","reason":"stop","messageID":"m1",'
+            '"sessionID":"s1","type":"step-finish",'
+            '"tokens":{},"cost":0.0}}'
+        )
+        text, metrics = _parse_jsonl(output)
+        assert text == "hello\n world"
+        assert len(metrics.turns) == 1
+
+    def test_tool_duration_no_turns(self):
+        output = (
+            '{"type":"tool_use","timestamp":1001,'
+            '"part":{"type":"tool","tool":"bash","callID":"c1",'
+            '"state":{"status":"completed","input":{},"output":"r",'
+            '"time":{"start":1001,"end":1020}}}}\n'
+            '{"type":"step_finish","timestamp":1100,'
+            '"part":{"id":"p1","reason":"stop","messageID":"m1",'
+            '"sessionID":"s1","type":"step-finish",'
+            '"tokens":{},"cost":0.0}}'
+        )
+        text, metrics = _parse_jsonl(output)
+        assert metrics.tool_calls == 1
+        assert metrics.tool_names == ["bash"]
+        assert metrics.tool_durations_ms == [19.0]
+        assert metrics.llm_turns == 0
+
+    def test_step_finish_empty_tokens(self):
+        output = (
+            '{"type":"step_start","timestamp":1000,'
+            '"part":{"id":"p1","messageID":"m1","sessionID":"s1",'
+            '"type":"step-start"}}\n'
+            '{"type":"text","timestamp":1001,'
+            '"part":{"id":"p2","messageID":"m1","sessionID":"s1",'
+            '"type":"text","text":"ok"}}\n'
+            '{"type":"step_finish","timestamp":1002,'
+            '"part":{"id":"p3","reason":"stop","messageID":"m1",'
+            '"sessionID":"s1","type":"step-finish",'
+            '"tokens":{},"cost":0.005}}'
+        )
+        text, metrics = _parse_jsonl(output)
+        assert text == "ok"
+        assert metrics.total_cost == 0.005
+        assert metrics.tokens == {}
+
+    def test_realistic_multiturn_session(self):
+        output = (
+            # Turn 1: glob
+            '{"type":"step_start","timestamp":1000,'
+            '"part":{"id":"p1","messageID":"m1","sessionID":"s1",'
+            '"type":"step-start"}}\n'
+            '{"type":"tool_use","timestamp":1001,'
+            '"part":{"type":"tool","tool":"glob","callID":"c1",'
+            '"state":{"status":"completed","input":{"pattern":"*.py"},'
+            '"output":"files",'
+            '"time":{"start":1001,"end":1050}}}}\n'
+            '{"type":"step_finish","timestamp":1060,'
+            '"part":{"id":"p2","reason":"tool-calls","messageID":"m1",'
+            '"sessionID":"s1","type":"step-finish",'
+            '"tokens":{"input":10,"output":20,"reasoning":0,'
+            '"cache":{"read":0,"write":0}},"cost":0.001}}\n'
+            # Turn 2: bash (repeated)
+            '{"type":"step_start","timestamp":2000,'
+            '"part":{"id":"p3","messageID":"m1","sessionID":"s1",'
+            '"type":"step-start"}}\n'
+            '{"type":"tool_use","timestamp":2001,'
+            '"part":{"type":"tool","tool":"bash","callID":"c2",'
+            '"state":{"status":"completed","input":{"command":"ls"},'
+            '"output":"result1",'
+            '"time":{"start":2001,"end":2010}}}}\n'
+            '{"type":"tool_use","timestamp":2020,'
+            '"part":{"type":"tool","tool":"bash","callID":"c3",'
+            '"state":{"status":"completed","input":{"command":"ls"},'
+            '"output":"result2",'
+            '"time":{"start":2020,"end":2030}}}}\n'
+            '{"type":"step_finish","timestamp":2040,'
+            '"part":{"id":"p4","reason":"tool-calls","messageID":"m1",'
+            '"sessionID":"s1","type":"step-finish",'
+            '"tokens":{"input":30,"output":40,"reasoning":0,'
+            '"cache":{"read":100,"write":10}},"cost":0.002}}\n'
+            # Turn 3: text final
+            '{"type":"step_start","timestamp":3000,'
+            '"part":{"id":"p5","messageID":"m1","sessionID":"s1",'
+            '"type":"step-start"}}\n'
+            '{"type":"text","timestamp":3001,'
+            '"part":{"id":"p6","messageID":"m1","sessionID":"s1",'
+            '"type":"text","text":"done"}}\n'
+            '{"type":"step_finish","timestamp":3010,'
+            '"part":{"id":"p7","reason":"stop","messageID":"m1",'
+            '"sessionID":"s1","type":"step-finish",'
+            '"tokens":{"input":50,"output":100,"reasoning":0,'
+            '"cache":{"read":200,"write":20}},"cost":0.003}}'
+        )
+        text, metrics = _parse_jsonl(output)
+        # 3 turns
+        assert len(metrics.turns) == 3
+        assert metrics.llm_turns == 3
+        # 3 tool calls (1 glob + 2 bash)
+        assert metrics.tool_calls == 3
+        assert metrics.tool_names[0] == "bash"  # most frequent
+        # 1 repeated call (bash with same input)
+        assert metrics.repeated_tool_calls == 1
+        # text
+        assert text == "done"
+        # cost accumulated
+        assert metrics.total_cost == pytest.approx(0.006)
+        # tokens from last step_finish
+        assert metrics.tokens["input"] == 50
+        assert metrics.tokens["output"] == 100
+        # exit reason
+        assert metrics.exit_reason == "stop"

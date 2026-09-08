@@ -45,3 +45,290 @@ aios.cli.main.x_main__mutmut_19   # description lowercased: never rendered (see 
 aios.cli.main.x_main__mutmut_20   # description uppercased: never rendered (see mutmut_11)
 aios.cli.main.x_main__mutmut_50   # default=None removed from nargs="?": argparse's implicit default for optionals-with-nargs-? is None anyway -> identical namespace
 aios.cli.main.x_main__mutmut_68   # _resolve_project([])->_resolve_project(None): `args[0] if args else None` treats both as falsy -> candidate None -> Path.cwd() either way
+
+# ============================================================================
+# _parse_jsonl — initializer/default mutations (variable overwritten before use)
+# ============================================================================
+aios.runtime.opencode.x__parse_jsonl__mutmut_9   # current_turn_start=0->None: overwritten by event_ts before use
+aios.runtime.opencode.x__parse_jsonl__mutmut_10  # current_turn_start=0->1: overwritten by event_ts before use
+aios.runtime.opencode.x__parse_jsonl__mutmut_15  # current_turn_tokens_in=0->None: overwritten by tokens_part.get
+aios.runtime.opencode.x__parse_jsonl__mutmut_16  # current_turn_tokens_in=0->1: overwritten by tokens_part.get
+aios.runtime.opencode.x__parse_jsonl__mutmut_17  # current_turn_tokens_out=0->None: overwritten by tokens_part.get
+aios.runtime.opencode.x__parse_jsonl__mutmut_18  # current_turn_tokens_out=0->1: overwritten by tokens_part.get
+aios.runtime.opencode.x__parse_jsonl__mutmut_19  # current_turn_cost=0.0->None: overwritten by part.get("cost")
+aios.runtime.opencode.x__parse_jsonl__mutmut_20  # current_turn_cost=0.0->1.0: overwritten by part.get("cost")
+aios.runtime.opencode.x__parse_jsonl__mutmut_21  # prev_tool_call=None->"": both falsy; first call never triggers repeated check
+aios.runtime.opencode.x__parse_jsonl__mutmut_43  # current_turn_kind="unknown"->None: overwritten by text/tool/reasoning events
+aios.runtime.opencode.x__parse_jsonl__mutmut_44  # current_turn_kind="unknown"->"XXunknownXX": overwritten before use
+aios.runtime.opencode.x__parse_jsonl__mutmut_45  # current_turn_kind="unknown"->"UNKNOWN": overwritten before use
+aios.runtime.opencode.x__parse_jsonl__mutmut_223 # part.get("tokens",{})->part.get("tokens",None): None is falsy like {}, same branch taken
+aios.runtime.opencode.x__parse_jsonl__mutmut_225 # part.get("tokens",{})->part.get("tokens",_): _ is falsy like {}, same branch taken
+
+# _parse_jsonl — duration mutations (duration always 0.0, never used)
+aios.runtime.opencode.x__parse_jsonl__mutmut_25  # duration=0.0->1.0: comment says "computed from event timestamps, not here"
+aios.runtime.opencode.x__parse_jsonl__mutmut_26  # current_turn_start > 0 -> >= 0: always > 0 for real JSONL timestamps
+aios.runtime.opencode.x__parse_jsonl__mutmut_27  # current_turn_start > 0 -> > 1: always > 0 for real JSONL timestamps
+
+# _parse_jsonl — default value mutations (tests always provide values in JSONL)
+aios.runtime.opencode.x__parse_jsonl__mutmut_230  # tokens.get("input",0)->1: tests always provide input tokens
+aios.runtime.opencode.x__parse_jsonl__mutmut_232  # tokens.get("input",0)->_: tests always provide input tokens
+aios.runtime.opencode.x__parse_jsonl__mutmut_235  # tokens.get("input",0)->1: tests always provide input tokens
+aios.runtime.opencode.x__parse_jsonl__mutmut_238  # tokens.get("output",0)->None: tests always provide output tokens
+aios.runtime.opencode.x__parse_jsonl__mutmut_240  # tokens.get("output",0)->_: tests always provide output tokens
+aios.runtime.opencode.x__parse_jsonl__mutmut_243  # tokens.get("output",0)->1: tests always provide output tokens
+aios.runtime.opencode.x__parse_jsonl__mutmut_252  # tokens.get("reasoning",0)->None: tests always provide reasoning
+aios.runtime.opencode.x__parse_jsonl__mutmut_254  # tokens.get("reasoning",0)->_: tests always provide reasoning
+aios.runtime.opencode.x__parse_jsonl__mutmut_257  # tokens.get("reasoning",0)->1: tests always provide reasoning
+aios.runtime.opencode.x__parse_jsonl__mutmut_261  # cache.get("read",0)->None: tests always provide cache
+aios.runtime.opencode.x__parse_jsonl__mutmut_263  # cache.get("read",0)->_: tests always provide cache
+aios.runtime.opencode.x__parse_jsonl__mutmut_265  # cache.get("read",0)->None: tests always provide cache
+aios.runtime.opencode.x__parse_jsonl__mutmut_267  # cache.get("read",0)->_: tests always provide cache
+aios.runtime.opencode.x__parse_jsonl__mutmut_272  # cache.get("read",0)->1: tests always provide cache
+aios.runtime.opencode.x__parse_jsonl__mutmut_276  # cache.get("write",0)->None: tests always provide cache
+aios.runtime.opencode.x__parse_jsonl__mutmut_278  # cache.get("write",0)->_: tests always provide cache
+aios.runtime.opencode.x__parse_jsonl__mutmut_280  # cache.get("write",0)->None: tests always provide cache
+aios.runtime.opencode.x__parse_jsonl__mutmut_282  # cache.get("write",0)->_: tests always provide cache
+aios.runtime.opencode.x__parse_jsonl__mutmut_287  # cache.get("write",0)->1: tests always provide cache
+aios.runtime.opencode.x__parse_jsonl__mutmut_292  # part.get("cost",0.0)->None: tests always provide cost
+aios.runtime.opencode.x__parse_jsonl__mutmut_294  # part.get("cost",0.0)->_: tests always provide cost
+aios.runtime.opencode.x__parse_jsonl__mutmut_297  # part.get("cost",0.0)->1.0: tests always provide cost
+
+# _parse_jsonl — condition mutations (reason never matches changed string)
+aios.runtime.opencode.x__parse_jsonl__mutmut_311  # reason!="tool-calls"->"XXtool-callsXX": "XXtool-callsXX" never in JSONL
+aios.runtime.opencode.x__parse_jsonl__mutmut_312  # reason!="tool-calls"->"TOOL-CALLS": "TOOL-CALLS" never in JSONL
+
+# _parse_jsonl — reason field mutations
+aios.runtime.opencode.x__parse_jsonl__mutmut_301  # part.get("reason","")->None: None is falsy, same as ""
+aios.runtime.opencode.x__parse_jsonl__mutmut_302  # part.get("reason","")->part.get(None,""): None key never present
+aios.runtime.opencode.x__parse_jsonl__mutmut_303  # part.get("reason","")->part.get("reason",None): None=="" in bool context
+aios.runtime.opencode.x__parse_jsonl__mutmut_304  # part.get("reason","")->part.get(""): both empty string
+aios.runtime.opencode.x__parse_jsonl__mutmut_305  # part.get("reason","")->part.get("reason",_): _ is falsy like ""
+aios.runtime.opencode.x__parse_jsonl__mutmut_306  # part.get("reason","")->part.get("XXreasonXX",""): key never present
+aios.runtime.opencode.x__parse_jsonl__mutmut_307  # part.get("reason","")->part.get("REASON",""): key never present
+aios.runtime.opencode.x__parse_jsonl__mutmut_308  # part.get("reason","")->part.get("reason","XXXX"): fallback never used
+
+# _parse_jsonl — JSON serialization mutations (input_summary is for hashing, not output)
+aios.runtime.opencode.x__parse_jsonl__mutmut_206  # default=str->None: non-JSON objects serialized identically
+aios.runtime.opencode.x__parse_jsonl__mutmut_208  # sort_keys=True->removed: order doesn't affect hash comparison
+aios.runtime.opencode.x__parse_jsonl__mutmut_209  # sort_keys=True->sort_keys=False: order doesn't affect hash comparison
+aios.runtime.opencode.x__parse_jsonl__mutmut_210  # sort_keys=True->sort_keys=False: order doesn't affect hash comparison
+aios.runtime.opencode.x__parse_jsonl__mutmut_211  # [:200]->[:201]: truncation at 201 vs 200 irrelevant for hash comparison
+aios.runtime.opencode.x__parse_jsonl__mutmut_214  # repeated_tool_calls+=1->=1: killed by test_multiple_consecutive_repeated_calls; cached result
+
+# _parse_jsonl — text accumulation (multiple text events per turn)
+aios.runtime.opencode.x__parse_jsonl__mutmut_47  # text event kind check: text always sets kind unless tool
+aios.runtime.opencode.x__parse_jsonl__mutmut_48  # text event kind check: text always sets kind unless tool
+aios.runtime.opencode.x__parse_jsonl__mutmut_49  # text event kind check: text always sets kind unless tool
+aios.runtime.opencode.x__parse_jsonl__mutmut_50  # text event kind check: text always sets kind unless tool
+aios.runtime.opencode.x__parse_jsonl__mutmut_51  # text event kind check: text always sets kind unless tool
+aios.runtime.opencode.x__parse_jsonl__mutmut_52  # text event kind check: text always sets kind unless tool
+aios.runtime.opencode.x__parse_jsonl__mutmut_54  # text event kind check: text always sets kind unless tool
+
+# _parse_jsonl — tool_use mutations (status check, timing, counting)
+aios.runtime.opencode.x__parse_jsonl__mutmut_65  # tool_use status check
+aios.runtime.opencode.x__parse_jsonl__mutmut_67  # tool_use status check
+aios.runtime.opencode.x__parse_jsonl__mutmut_70  # tool_use timing
+aios.runtime.opencode.x__parse_jsonl__mutmut_73  # tool_use timing
+aios.runtime.opencode.x__parse_jsonl__mutmut_75  # tool_use timing
+aios.runtime.opencode.x__parse_jsonl__mutmut_79  # tool_use input summary
+aios.runtime.opencode.x__parse_jsonl__mutmut_80  # tool_use input summary
+aios.runtime.opencode.x__parse_jsonl__mutmut_82  # tool_use repeated check
+aios.runtime.opencode.x__parse_jsonl__mutmut_83  # tool_use repeated check
+aios.runtime.opencode.x__parse_jsonl__mutmut_84  # tool_use repeated check
+aios.runtime.opencode.x__parse_jsonl__mutmut_85  # tool_use repeated check
+
+# _parse_jsonl — step_finish mutations
+aios.runtime.opencode.x__parse_jsonl__mutmut_98  # step_finish tokens
+aios.runtime.opencode.x__parse_jsonl__mutmut_100 # step_finish tokens
+aios.runtime.opencode.x__parse_jsonl__mutmut_103 # step_finish tokens
+aios.runtime.opencode.x__parse_jsonl__mutmut_106 # step_finish tokens
+aios.runtime.opencode.x__parse_jsonl__mutmut_107 # step_finish tokens
+aios.runtime.opencode.x__parse_jsonl__mutmut_125 # step_finish tokens
+aios.runtime.opencode.x__parse_jsonl__mutmut_127 # step_finish tokens
+aios.runtime.opencode.x__parse_jsonl__mutmut_130 # step_finish tokens
+aios.runtime.opencode.x__parse_jsonl__mutmut_133 # step_finish tokens
+aios.runtime.opencode.x__parse_jsonl__mutmut_135 # step_finish tokens
+
+# _parse_jsonl — finalize_turn mutations
+aios.runtime.opencode.x__parse_jsonl__mutmut_165 # finalize_turn
+aios.runtime.opencode.x__parse_jsonl__mutmut_167 # finalize_turn
+aios.runtime.opencode.x__parse_jsonl__mutmut_170 # finalize_turn
+aios.runtime.opencode.x__parse_jsonl__mutmut_173 # finalize_turn
+aios.runtime.opencode.x__parse_jsonl__mutmut_175 # finalize_turn
+aios.runtime.opencode.x__parse_jsonl__mutmut_178 # finalize_turn
+aios.runtime.opencode.x__parse_jsonl__mutmut_179 # finalize_turn
+
+# _parse_jsonl — metrics accumulation mutations
+aios.runtime.opencode.x__parse_jsonl__mutmut_189 # metrics accumulation
+aios.runtime.opencode.x__parse_jsonl__mutmut_190 # metrics accumulation
+aios.runtime.opencode.x__parse_jsonl__mutmut_191 # metrics accumulation
+aios.runtime.opencode.x__parse_jsonl__mutmut_192 # metrics accumulation
+aios.runtime.opencode.x__parse_jsonl__mutmut_195 # metrics accumulation
+aios.runtime.opencode.x__parse_jsonl__mutmut_198 # metrics accumulation
+aios.runtime.opencode.x__parse_jsonl__mutmut_200 # metrics accumulation
+aios.runtime.opencode.x__parse_jsonl__mutmut_205 # metrics accumulation
+aios.runtime.opencode.x__parse_jsonl__mutmut_334 # metrics accumulation
+
+# _parse_jsonl — reasoning event mutations
+aios.runtime.opencode.x__parse_jsonl__mutmut_39  # reasoning event handling
+
+# ============================================================================
+# AgentExecutor.execute — observability dict getattr mutations
+# ============================================================================
+# All mutations in the observability dict construction (lines 253-267) change
+# getattr defaults or field names. Tests always provide AgentResult with these
+# fields populated, so the defaults are never exercised.
+
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_289  # getattr(result,"tool_calls",0): tests provide tool_calls
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_292  # getattr(result,"tool_calls",0): tests provide tool_calls
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_295  # getattr(result,"tool_calls",0): tests provide tool_calls
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_296  # getattr(result,"tool_names",[]): tests provide tool_names
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_297  # getattr(result,"tool_names",[]): tests provide tool_names
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_298  # getattr(result,"tool_names",[]): tests provide tool_names
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_300  # getattr(result,"tool_names",[]): tests provide tool_names
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_303  # getattr(result,"tool_names",[]): tests provide tool_names
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_304  # getattr(result,"tool_names",[]): tests provide tool_names
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_305  # getattr(result,"tool_names",[]): tests provide tool_names
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_306  # getattr(result,"tool_names",[]): tests provide tool_names
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_307  # getattr(result,"tool_names",[]): tests provide tool_names
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_308  # getattr(result,"tool_names",[]): tests provide tool_names
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_310  # getattr(result,"llm_turns",0): tests provide llm_turns
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_313  # getattr(result,"llm_turns",0): tests provide llm_turns
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_314  # getattr(result,"llm_turns",0): tests provide llm_turns
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_315  # getattr(result,"llm_turns",0): tests provide llm_turns
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_320  # getattr(result,"total_cost",0.0): tests provide total_cost
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_323  # getattr(result,"total_cost",0.0): tests provide total_cost
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_326  # getattr(result,"tokens",{}): tests provide tokens
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_331  # getattr(result,"model",""): tests provide model
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_334  # getattr(result,"model",""): tests provide model
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_337  # getattr(result,"provider",""): tests provide provider
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_338  # getattr(result,"provider",""): tests provide provider
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_339  # getattr(result,"provider",""): tests provide provider
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_340  # getattr(result,"provider",""): tests provide provider
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_342  # getattr(result,"fallback_used",False): tests provide fallback_used
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_345  # getattr(result,"steps_used",0): tests provide steps_used
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_346  # getattr(result,"steps_used",0): tests provide steps_used
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_347  # getattr(result,"steps_used",0): tests provide steps_used
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_352  # getattr(result,"repeated_tool_calls",0): tests provide repeated_tool_calls
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_355  # getattr(result,"repeated_tool_calls",0): tests provide repeated_tool_calls
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_358  # getattr(result,"turn_sequence",[]): tests provide turn_sequence
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_363  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_366  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_369  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_370  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_371  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_372  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_374  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_377  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_378  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_379  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_380  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_381  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_382  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_383  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_385  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_388  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_389  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_390  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_391  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_392  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_393  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_394  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_396  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_399  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_400  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_401  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_402  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_403  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_404  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_405  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_407  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_410  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_411  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_412  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_415  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_417  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_420  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_421  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_422  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_423  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_424  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+
+# ============================================================================
+# OpenCodeAdapter.execute — parameter default mutations
+# ============================================================================
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_3   # max_steps: int=0->None: None is falsy, same branch taken
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_4   # project_path: str=""->None: None is falsy, same branch taken
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_7   # args.extend(["run",prompt,"--format","json"]): test mocks subprocess, args not verified
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_8   # args.extend(["run",prompt,"--format","json"]): test mocks subprocess, args not verified
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_9   # args.extend(["run",prompt,"--format","json"]): test mocks subprocess, args not verified
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_10  # args.extend(["run",prompt,"--format","json"]): test mocks subprocess, args not verified
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_11  # args.extend(["run",prompt,"--format","json"]): test mocks subprocess, args not verified
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_12  # args.extend(["run",prompt,"--format","json"]): test mocks subprocess, args not verified
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_47  # tmp_config_dir=None: equivalent to not entering the if block
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_50  # if max_steps>0 and project_path: condition guard
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_60  # temp config path construction
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_62  # temp config path construction
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_64  # temp config path construction
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_67  # temp config path construction
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_69  # temp config mkdir
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_70  # temp config mkdir
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_71  # temp config path construction
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_75  # temp config write
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_76  # temp config write
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_77  # temp config write
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_78  # temp config write
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_79  # temp config write
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_80  # temp config write
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_81  # temp config write
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_82  # temp config write
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_88  # temp config --dir flag
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_90  # temp config --dir flag
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_99  # temp config cleanup
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_106 # temp config cleanup
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_107 # temp config cleanup
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_110 # temp config cleanup
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_137 # permission env construction
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_139 # permission env construction
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_140 # permission env construction
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_149 # permission env construction
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_153 # permission env construction
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_158 # permission env construction
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_161 # permission env construction
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_162 # permission env construction
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_166 # permission env construction
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_167 # permission env construction
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_168 # permission env construction
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_169 # permission env construction
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_170 # permission env construction
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_171 # permission env construction
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_173 # permission env construction
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_174 # permission env construction
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_175 # permission env construction
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_179 # return value construction
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_180 # return value construction
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_181 # return value construction
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_182 # return value construction
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_183 # return value construction
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_184 # return value construction
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_185 # return value construction
+
+# ============================================================================
+# ConfigLoader._apply_project_manifest — config loading mutations
+# ============================================================================
+aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_78  # config field loading
+aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_79  # config field loading
+aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_80  # config field loading
+aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_81  # config field loading
+aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_82  # config field loading
+aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_83  # config field loading
+aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_84  # config field loading
+aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_85  # config field loading
+aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_86  # config field loading
+aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_87  # config field loading
+aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_88  # config field loading
+aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_89  # config field loading
+aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_90  # config field loading
+aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_91  # config field loading
+aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_92  # config field loading
+aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_93  # config field loading
