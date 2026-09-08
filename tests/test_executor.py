@@ -31,7 +31,9 @@ from aios.agents.contracts import (
 from aios.agents.executor import AgentExecutor, make_request
 from aios.agents.models import AgentResult
 from aios.events.events import (
+    AGENT_EXECUTION_CANCELLED,
     AGENT_EXECUTION_COMPLETED,
+    AGENT_EXECUTION_FAILED,
     AGENT_EXECUTION_RETRIED,
     AGENT_EXECUTION_STARTED,
     AGENT_EXECUTION_TIMED_OUT,
@@ -319,3 +321,103 @@ def test_cancellation():
     thread.join(timeout=4)
     assert result_holder
     assert result_holder[0].status == "cancelled"
+
+
+# ---------------------------------------------------------------------------
+# Gate 1: observability + timeout contract tests
+# ---------------------------------------------------------------------------
+
+
+def _get_completed_payload(bus):
+    """Extract the payload from the most recent AGENT_EXECUTION_COMPLETED event."""
+    completed = [
+        c.args[1] for c in bus.publish.call_args_list if c.args[0] == AGENT_EXECUTION_COMPLETED
+    ]
+    assert len(completed) >= 1, "No AGENT_EXECUTION_COMPLETED event published"
+    return completed[-1]
+
+
+class TestObservabilityContract:
+    """Verify that observability data flows from AgentResult to event bus."""
+
+    def test_completed_event_carries_observability(self):
+        bus = MagicMock()
+        executor = AgentExecutor(event_bus=bus)
+        agent = _FakeAgent(
+            fn=lambda t, c: AgentResult(
+                success=True,
+                output="ok",
+                tool_calls=5,
+                llm_turns=3,
+                model="m",
+                provider="p",
+                total_cost=0.01,
+                exit_reason="stop",
+            )
+        )
+        executor.execute(make_request(agent, _task()))
+        payload = _get_completed_payload(bus)
+        assert "observability" in payload
+        obs = payload["observability"]
+        assert obs["tool_calls"] == 5
+        assert obs["llm_turns"] == 3
+        assert obs["model"] == "m"
+        assert obs["provider"] == "p"
+        assert obs["total_cost"] == 0.01
+        assert obs["exit_reason"] == "stop"
+
+    def test_publish_execution_forwards_observability(self):
+        bus = MagicMock()
+        executor = AgentExecutor(event_bus=bus)
+        agent = _FakeAgent(
+            fn=lambda t, c: AgentResult(success=True, output="ok")
+        )
+        request = make_request(agent, _task())
+        obs = {"tool_calls": 10, "model": "x"}
+        # Call execute to set up internal state, then test _publish_execution directly
+        executor.execute(request)
+        bus.reset_mock()
+        executor._publish_execution(
+            "exec-1",
+            request,
+            AGENT_EXECUTION_COMPLETED,
+            STATE_SUCCEEDED,
+            1.0,
+            1,
+            observability=obs,
+        )
+        payload = bus.publish.call_args_list[-1].args[1]
+        assert payload["observability"] == obs
+
+    def test_failed_event_has_no_observability(self):
+        bus = MagicMock()
+        executor = AgentExecutor(event_bus=bus)
+        agent = _FakeAgent(
+            fn=lambda t, c: AgentResult(success=False, output="", errors=["fail"])
+        )
+        executor.execute(make_request(agent, _task()))
+        failed = [
+            c.args[1]
+            for c in bus.publish.call_args_list
+            if c.args[0] == AGENT_EXECUTION_FAILED
+        ]
+        assert len(failed) == 1
+        assert failed[0].get("observability") is None
+
+    def test_timeout_event_has_no_observability(self):
+        bus = MagicMock()
+        executor = AgentExecutor(event_bus=bus)
+
+        def slow(task, context):
+            time.sleep(10)
+
+        agent = _FakeAgent(fn=slow, timeout=0.01)
+        outcome = executor.execute(make_request(agent, _task()))
+        assert outcome.status == "timed_out"
+        timed_out = [
+            c.args[1]
+            for c in bus.publish.call_args_list
+            if c.args[0] == AGENT_EXECUTION_TIMED_OUT
+        ]
+        assert len(timed_out) == 1
+        assert timed_out[0].get("observability") is None
