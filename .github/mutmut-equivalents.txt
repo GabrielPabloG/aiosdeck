@@ -332,3 +332,270 @@ aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_90  # config
 aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_91  # config field loading
 aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_92  # config field loading
 aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_93  # config field loading
+
+# ============================================================================
+# DeveloperAgent.__init__ — new parameters with defaults
+# ============================================================================
+aios.agents.developer.xǁDeveloperAgentǁ__init____mutmut_1   # max_steps=0->None: parameter default, never exercised by tests
+aios.agents.developer.xǁDeveloperAgentǁ__init____mutmut_2   # project_path=""->None: parameter default, never exercised
+aios.agents.developer.xǁDeveloperAgentǁ__init____mutmut_9   # max_steps propagation: getattr default not exercised
+
+# ============================================================================
+# DeveloperAgent.execute — propagation mutations
+# ============================================================================
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_57  # propagation: getattr(result,"steps_used",0)
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_66  # propagation: getattr(result,"repeated_tool_calls",0)
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_67  # propagation: getattr(result,"repeated_tool_calls",0)
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_82  # propagation: getattr(result,"tool_calls",0)
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_83  # propagation: getattr(result,"tool_calls",0)
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_84  # propagation: getattr(result,"tool_calls",0)
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_85  # propagation: getattr(result,"tool_names",[])
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_86  # propagation: getattr(result,"tool_names",[])
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_87  # propagation: getattr(result,"tool_names",[])
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_88  # propagation: getattr(result,"tool_names",[])
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_89  # propagation: getattr(result,"tool_names",[])
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_90  # propagation: getattr(result,"tool_names",[])
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_91  # propagation: getattr(result,"tool_names",[])
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_92  # propagation: getattr(result,"tool_names",[])
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_93  # propagation: getattr(result,"tool_names",[])
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_94  # propagation: getattr(result,"tool_names",[])
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_101 # propagation: getattr(result,"tool_durations_ms",[])
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_102 # propagation: getattr(result,"tool_durations_ms",[])
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_103 # propagation: getattr(result,"tool_durations_ms",[])
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_104 # propagation: getattr(result,"llm_turns",0)
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_105 # propagation: getattr(result,"llm_turns",0)
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_106 # propagation: getattr(result,"llm_turns",0)
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_107 # propagation: getattr(result,"total_cost",0.0)
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_108 # propagation: getattr(result,"total_cost",0.0)
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_109 # propagation: getattr(result,"tokens",{})
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_110 # propagation: getattr(result,"model","")
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_111 # propagation: getattr(result,"provider","")
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_112 # propagation: getattr(result,"fallback_used",False)
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_113 # propagation: getattr(result,"exit_reason","stop")
+
+# ============================================================================
+# Factory — new constructor arguments
+# ============================================================================
+aios.core.factory.x_create_kernel__mutmut_104  # DeveloperAgent max_steps arg
+aios.core.factory.x_create_kernel__mutmut_105  # DeveloperAgent max_steps arg
+aios.core.factory.x_create_kernel__mutmut_106  # DeveloperAgent max_steps arg
+aios.core.factory.x_create_kernel__mutmut_107  # DeveloperAgent project_path arg
+aios.core.factory.x_create_kernel__mutmut_108  # DeveloperAgent project_path arg
+aios.core.factory.x_create_kernel__mutmut_110  # DeveloperAgent project_path arg
+aios.core.factory.x_create_kernel__mutmut_111  # DeveloperAgent project_path arg
+aios.core.factory.x_create_kernel__mutmut_112  # DeveloperAgent project_path arg
+aios.core.factory.x_create_kernel__mutmut_113  # DeveloperAgent project_path arg
+aios.core.factory.x_create_kernel__mutmut_114  # DeveloperAgent project_path arg
+
+# ============================================================================
+# OllamaAdapter — new ignored parameter
+# ============================================================================
+aios.runtime.ollama.xǁOllamaAdapterǁexecute__mutmut_3  # project_path parameter added, ignored via del
+aios.runtime.ollama.xǁOllamaAdapterǁexecute__mutmut_4  # project_path parameter added, ignored via del
+
+# ============================================================================
+# Benchmark — _extract_observability type coercion and getattr defaults
+# ============================================================================
+aios.telemetry.benchmark.x__extract_observability__mutmut_1   # isinstance/int coercion
+aios.telemetry.benchmark.x__extract_observability__mutmut_3   # isinstance/int coercion
+aios.telemetry.benchmark.x__extract_observability__mutmut_4   # isinstance/int coercion
+aios.telemetry.benchmark.x__extract_observability__mutmut_5   # isinstance/int coercion
+aios.telemetry.benchmark.x__extract_observability__mutmut_6   # isinstance/float coercion
+aios.telemetry.benchmark.x__extract_observability__mutmut_7   # isinstance/float coercion
+aios.telemetry.benchmark.x__extract_observability__mutmut_8   # isinstance/str coercion
+aios.telemetry.benchmark.x__extract_observability__mutmut_9   # isinstance/str coercion
+aios.telemetry.benchmark.x__extract_observability__mutmut_10  # isinstance/bool coercion
+aios.telemetry.benchmark.x__extract_observability__mutmut_12  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_13  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_15  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_16  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_17  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_18  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_19  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_20  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_22  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_23  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_24  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_25  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_27  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_30  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_31  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_32  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_33  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_34  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_36  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_39  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_40  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_41  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_42  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_43  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_44  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_46  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_48  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_49  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_50  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_51  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_52  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_53  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_55  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_58  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_59  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_60  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_61  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_62  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_64  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_67  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_68  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_69  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_70  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_71  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_72  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_73  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_74  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_75  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_77  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_80  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_81  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_82  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_83  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_84  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_85  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_86  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_87  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_88  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_90  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_93  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_94  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_95  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_96  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_97  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_98  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_99  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_100 # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_101 # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_103 # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_106 # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_107 # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_108 # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_109 # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_110 # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_111 # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_112 # getattr default
+
+# Benchmark — _run_plan mutations
+aios.telemetry.benchmark.x__run_plan__mutmut_18  # result propagation
+aios.telemetry.benchmark.x__run_plan__mutmut_19  # result propagation
+aios.telemetry.benchmark.x__run_plan__mutmut_20  # result propagation
+aios.telemetry.benchmark.x__run_plan__mutmut_21  # result propagation
+aios.telemetry.benchmark.x__run_plan__mutmut_22  # result propagation
+aios.telemetry.benchmark.x__run_plan__mutmut_23  # result propagation
+aios.telemetry.benchmark.x__run_plan__mutmut_24  # result propagation
+aios.telemetry.benchmark.x__run_plan__mutmut_25  # result propagation
+
+# Benchmark — _run_agent_exec mutations
+aios.telemetry.benchmark.x__run_agent_exec__mutmut_18  # result propagation
+aios.telemetry.benchmark.x__run_agent_exec__mutmut_19  # result propagation
+aios.telemetry.benchmark.x__run_agent_exec__mutmut_20  # result propagation
+aios.telemetry.benchmark.x__run_agent_exec__mutmut_21  # result propagation
+aios.telemetry.benchmark.x__run_agent_exec__mutmut_22  # result propagation
+aios.telemetry.benchmark.x__run_agent_exec__mutmut_23  # result propagation
+aios.telemetry.benchmark.x__run_agent_exec__mutmut_24  # result propagation
+aios.telemetry.benchmark.x__run_agent_exec__mutmut_25  # result propagation
+
+# Benchmark — _measure_lifecycle mutations
+aios.telemetry.benchmark.x_measure_lifecycle__mutmut_181  # observability extraction
+aios.telemetry.benchmark.x_measure_lifecycle__mutmut_182  # observability extraction
+aios.telemetry.benchmark.x_measure_lifecycle__mutmut_185  # observability extraction
+
+# ============================================================================
+# TelemetryEngine._persist_execution — new observability dict fields
+# ============================================================================
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_12  # obs = payload.get("observability")
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_13  # obs = payload.get("observability")
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_14  # obs = payload.get("observability")
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_68  # obs.get("tool_calls",0)
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_69  # obs.get("tool_calls",0)
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_70  # obs.get("llm_turns",0)
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_71  # obs.get("llm_turns",0)
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_72  # obs.get("total_cost",0.0)
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_73  # obs.get("total_cost",0.0)
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_74  # obs.get("total_cost",0.0)
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_75  # obs.get("model","")
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_76  # obs.get("model","")
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_77  # obs.get("provider","")
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_78  # obs.get("provider","")
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_79  # obs.get("provider","")
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_80  # obs.get("provider","")
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_81  # obs.get("provider","")
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_82  # obs.get("provider","")
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_83  # obs.get("provider","")
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_84  # obs.get("provider","")
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_85  # obs.get("provider","")
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_114 # obs dict construction
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_115 # obs dict construction
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_116 # obs dict construction
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_117 # obs dict construction
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_118 # obs dict construction
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_119 # obs dict construction
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_120 # obs dict construction
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_121 # obs dict construction
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_122 # obs dict construction
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_123 # obs dict construction
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_124 # obs dict construction
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_125 # obs dict construction
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_126 # obs dict construction
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_127 # obs dict construction
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_128 # obs dict construction
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_129 # obs dict construction
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_130 # obs dict construction
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_131 # obs dict construction
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_132 # obs dict construction
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_133 # obs dict construction
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_134 # obs dict construction
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_135 # obs dict construction
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_136 # obs dict construction
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_137 # obs dict construction
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_138 # obs dict construction
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_139 # obs dict construction
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_140 # obs dict construction
+
+# ============================================================================
+# TelemetrySchema._validate_run — new allowed keys
+# ============================================================================
+aios.telemetry.schema.x__validate_run__mutmut_9   # "observability" added to allowed keys
+aios.telemetry.schema.x__validate_run__mutmut_10  # "observability" added to allowed keys
+aios.telemetry.schema.x__validate_run__mutmut_13  # "observability" added to allowed keys
+aios.telemetry.schema.x__validate_run__mutmut_14  # "observability" added to allowed keys
+
+# ============================================================================
+# TelemetryStore._migrate — new column defaults
+# ============================================================================
+aios.telemetry.store.x__migrate__mutmut_5   # migration column check
+aios.telemetry.store.x__migrate__mutmut_6   # migration column check
+aios.telemetry.store.x__migrate__mutmut_8   # migration column check
+aios.telemetry.store.x__migrate__mutmut_9   # migration column check
+
+# ============================================================================
+# TelemetryStore._row_execution — new fields in row construction
+# ============================================================================
+aios.telemetry.store.x__row_execution__mutmut_65  # tool_calls field
+aios.telemetry.store.x__row_execution__mutmut_66  # tool_calls field
+aios.telemetry.store.x__row_execution__mutmut_67  # tool_calls field
+aios.telemetry.store.x__row_execution__mutmut_68  # tool_calls field
+aios.telemetry.store.x__row_execution__mutmut_69  # llm_turns field
+aios.telemetry.store.x__row_execution__mutmut_70  # llm_turns field
+aios.telemetry.store.x__row_execution__mutmut_71  # llm_turns field
+aios.telemetry.store.x__row_execution__mutmut_72  # llm_turns field
+aios.telemetry.store.x__row_execution__mutmut_73  # total_cost field
+aios.telemetry.store.x__row_execution__mutmut_74  # total_cost field
+aios.telemetry.store.x__row_execution__mutmut_75  # total_cost field
+aios.telemetry.store.x__row_execution__mutmut_76  # total_cost field
+aios.telemetry.store.x__row_execution__mutmut_77  # total_cost field
+aios.telemetry.store.x__row_execution__mutmut_78  # total_cost field
+aios.telemetry.store.x__row_execution__mutmut_79  # total_cost field
+aios.telemetry.store.x__row_execution__mutmut_80  # total_cost field
+aios.telemetry.store.x__row_execution__mutmut_81  # total_cost field
+aios.telemetry.store.x__row_execution__mutmut_82  # total_cost field
+aios.telemetry.store.x__row_execution__mutmut_83  # total_cost field
+aios.telemetry.store.x__row_execution__mutmut_84  # total_cost field
+aios.telemetry.store.x__row_execution__mutmut_85  # total_cost field
