@@ -250,6 +250,21 @@ class AgentExecutor:
                 result.task_id = request.task.task_id
                 result.correlation_id = request.correlation_id or request.task.correlation_id
                 usage_dict = result.usage.to_dict() if result.usage else None
+                observability = {
+                    "tool_calls": getattr(result, "tool_calls", 0),
+                    "tool_names": getattr(result, "tool_names", []),
+                    "tool_durations_ms": getattr(result, "tool_durations_ms", []),
+                    "llm_turns": getattr(result, "llm_turns", 0),
+                    "total_cost": getattr(result, "total_cost", 0.0),
+                    "tokens": getattr(result, "tokens", {}),
+                    "model": getattr(result, "model", ""),
+                    "provider": getattr(result, "provider", ""),
+                    "fallback_used": getattr(result, "fallback_used", False),
+                    "steps_used": getattr(result, "steps_used", 0),
+                    "repeated_tool_calls": getattr(result, "repeated_tool_calls", 0),
+                    "turn_sequence": getattr(result, "turn_sequence", []),
+                    "exit_reason": getattr(result, "exit_reason", "stop"),
+                }
                 if result.success:
                     lifecycle.transition(STATE_SUCCEEDED)
                     self._publish_lifecycle(execution_id, request, STATE_RUNNING, STATE_SUCCEEDED)
@@ -261,6 +276,7 @@ class AgentExecutor:
                         duration,
                         attempt,
                         usage=usage_dict,
+                        observability=observability,
                     )
                     return ExecutionOutcome(
                         status=STATE_SUCCEEDED,
@@ -487,6 +503,7 @@ class AgentExecutor:
         attempt: int,
         error: AgentError | None = None,
         usage: dict | None = None,
+        observability: dict | None = None,
     ) -> None:
         if self._bus is None:
             return
@@ -500,6 +517,7 @@ class AgentExecutor:
             attempt=attempt,
             message=error.message if error else "",
             usage=usage,
+            observability=observability,
         )
         self._bus.publish(topic, event.to_dict(), correlation_id=identity["correlation_id"])
         if request.on_progress is not None:

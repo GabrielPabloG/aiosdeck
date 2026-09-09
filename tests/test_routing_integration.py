@@ -125,9 +125,20 @@ class FakeRuntimeAdapter:
         return False
 
     def execute(  # noqa: PLR0913
-        self, prompt, skills, capabilities=None, permissions=None, *, model="", variant=""
+        self,
+        prompt,
+        skills,
+        capabilities=None,
+        permissions=None,
+        *,
+        model="",
+        variant="",
+        max_steps=0,
+        project_path=None,
     ):
-        self.calls.append({"model": model, "variant": variant, "prompt": prompt})
+        self.calls.append(
+            {"model": model, "variant": variant, "prompt": prompt, "max_steps": max_steps}
+        )
         if self._fail_count > 0:
             self._fail_count -= 1
             raise RuntimeError("simulated failure")
@@ -148,7 +159,7 @@ class TestRuntimeEngineRoutingIntegration:
         adapter = FakeRuntimeAdapter()
         engine = RuntimeEngine(adapter=adapter, router=None)
         result = engine.execute("hello", [], agent="developer")
-        assert "ok" in result
+        assert "ok" in result.output
         assert adapter.calls[0]["model"] == ""
         assert adapter.calls[0]["variant"] == ""
 
@@ -169,7 +180,7 @@ class TestRuntimeEngineRoutingIntegration:
         router = RuleBasedRouter(config)
         engine = RuntimeEngine(adapter=adapter, router=router)
         result = engine.execute("plan this", [], agent="planner", complexity="high")
-        assert "ok" in result
+        assert "ok" in result.output
         assert adapter.calls[0]["model"] == "anthropic/claude-sonnet"
         assert adapter.calls[0]["variant"] == "high"
 
@@ -214,7 +225,7 @@ class TestRuntimeEngineRoutingIntegration:
         assert len(adapter.calls) == 2
         assert adapter.calls[0]["model"] == "anthropic/claude-sonnet"
         assert adapter.calls[1]["model"] == "ollama/llama3"
-        assert "ok" in result
+        assert "ok" in result.output
 
     def test_all_fallbacks_exhausted_raises(self):
         adapter = FakeRuntimeAdapter()
@@ -266,7 +277,7 @@ class TestRuntimeEngineRoutingIntegration:
         result = engine.execute("hello", [], agent="planner")
         assert len(adapter.calls) == 2
         assert adapter.calls[1]["model"] == "ollama/llama3"
-        assert "ok" in result
+        assert "ok" in result.output
 
     def test_fallback_records_timeout_in_telemetry(self):
         from unittest.mock import MagicMock
@@ -300,7 +311,7 @@ class TestRuntimeEngineRoutingIntegration:
         engine.set_event_bus(bus)
 
         result = engine.execute("hello", [], agent="developer")
-        assert "ok" in result
+        assert "ok" in result.output
         assert call_count == 2
 
         route_events = [

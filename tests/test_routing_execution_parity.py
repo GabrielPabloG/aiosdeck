@@ -77,7 +77,15 @@ def _capture_adapter(kernel):
     calls: list[dict] = []
 
     def fake_execute(  # noqa: PLR0913 - mirrors the adapter.execute contract
-        prompt, skills, capabilities=None, permissions=None, *, model="", variant=""
+        prompt,
+        skills,
+        capabilities=None,
+        permissions=None,
+        *,
+        model="",
+        variant="",
+        max_steps=0,
+        project_path=None,
     ):
         calls.append({"model": model, "variant": variant})
         return "ok"
@@ -125,7 +133,15 @@ class TestExecutionParity:
         calls: list[dict] = []
 
         def failing_first(  # noqa: PLR0913 - mirrors the adapter.execute contract
-            prompt, skills, capabilities=None, permissions=None, *, model="", variant=""
+            prompt,
+            skills,
+            capabilities=None,
+            permissions=None,
+            *,
+            model="",
+            variant="",
+            max_steps=0,
+            project_path=None,
         ):
             calls.append({"model": model})
             if len(calls) == 1:

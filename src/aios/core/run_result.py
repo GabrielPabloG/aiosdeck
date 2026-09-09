@@ -36,6 +36,19 @@ class RunResult:
     completed_count: int = 0
     started_at: str | None = None
     finished_at: str | None = None
+    tool_calls: int = 0
+    tool_names: tuple[str, ...] = ()
+    tool_durations_ms: tuple[float, ...] = ()
+    llm_turns: int = 0
+    total_cost: float = 0.0
+    tokens: dict[str, Any] = field(default_factory=dict)
+    model: str = ""
+    provider: str = ""
+    fallback_used: bool = False
+    steps_used: int = 0
+    repeated_tool_calls: int = 0
+    turn_sequence: tuple[str, ...] = ()
+    exit_reason: str = "stop"
 
     @classmethod
     def from_agent(cls, agent_result) -> RunResult:
@@ -45,6 +58,19 @@ class RunResult:
             success=agent_result.success,
             output=getattr(agent_result, "output", None),
             errors=tuple(agent_result.errors),
+            tool_calls=getattr(agent_result, "tool_calls", 0),
+            tool_names=tuple(getattr(agent_result, "tool_names", [])),
+            tool_durations_ms=tuple(getattr(agent_result, "tool_durations_ms", [])),
+            llm_turns=getattr(agent_result, "llm_turns", 0),
+            total_cost=getattr(agent_result, "total_cost", 0.0),
+            tokens=getattr(agent_result, "tokens", {}),
+            model=getattr(agent_result, "model", ""),
+            provider=getattr(agent_result, "provider", ""),
+            fallback_used=getattr(agent_result, "fallback_used", False),
+            steps_used=getattr(agent_result, "steps_used", 0),
+            repeated_tool_calls=getattr(agent_result, "repeated_tool_calls", 0),
+            turn_sequence=tuple(getattr(agent_result, "turn_sequence", [])),
+            exit_reason=getattr(agent_result, "exit_reason", "stop"),
             stages=(
                 StageSummary(
                     name="planner",

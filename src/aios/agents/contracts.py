@@ -237,6 +237,7 @@ class AgentExecutionEvent:
     attempt: int = 1
     message: str = ""
     usage: dict | None = None
+    observability: dict | None = None
 
     def to_dict(self) -> dict:
         return {
@@ -253,6 +254,7 @@ class AgentExecutionEvent:
             "attempt": self.attempt,
             "message": self.message,
             "usage": self.usage,
+            "observability": self.observability,
         }
 
 

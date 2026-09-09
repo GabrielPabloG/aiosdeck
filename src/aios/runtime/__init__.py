@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+from aios.agents.models import AgentResult
 from aios.routing.models import RouteInput
 from aios.runtime.diagnostics import RuntimeDiagnostic
 from aios.runtime.opencode import OpenCodeAdapter
@@ -93,7 +94,9 @@ class RuntimeEngine:
         complexity: str = "medium",
         context_size: int = 0,
         model: str = "",
-    ) -> str:
+        max_steps: int = 0,
+        project_path: str = "",
+    ) -> AgentResult:
         decision_model = ""
         decision_variant = ""
         decision_provider = ""
@@ -133,14 +136,22 @@ class RuntimeEngine:
         last_error: Exception | None = None
         for attempt in models_to_try:
             try:
-                result = self.adapter.execute(
+                raw = self.adapter.execute(
                     prompt,
                     skills,
                     capabilities,
                     permissions,
                     model=attempt["model"],
                     variant=attempt.get("variant", ""),
+                    max_steps=max_steps,
+                    project_path=project_path,
                 )
+                result = AgentResult(output=raw) if isinstance(raw, str) else raw
+                result.model = attempt["model"]
+                result.provider = attempt.get("provider", "")
+                is_fallback = attempt is not models_to_try[0]
+                if is_fallback:
+                    result.fallback_used = True
                 self._emit_route_event(
                     provider=attempt.get("provider", ""),
                     model=attempt["model"],
@@ -151,7 +162,7 @@ class RuntimeEngine:
                     agent=agent,
                     task_type=task_type,
                     complexity=complexity,
-                    fallback_used=(attempt is not models_to_try[0]),
+                    fallback_used=is_fallback,
                     fallback_reason=(
                         self._fallback_reason(last_error) if last_error is not None else ""
                     ),

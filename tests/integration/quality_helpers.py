@@ -14,6 +14,7 @@ from aios.agents.developer import DeveloperAgent
 from aios.agents.documentation import DocumentationAgent
 from aios.agents.executor import AgentExecutor
 from aios.agents.git import GitAgent
+from aios.agents.models import AgentResult
 from aios.agents.planner import PlannerAgent
 from aios.agents.reviewer import ReviewerAgent
 from aios.agents.tester import TesterAgent
@@ -119,14 +120,14 @@ def make_workflow(  # noqa: PLR0913 - test builder convenience
             quality_config.overrides = overrides
 
     planner_runtime = MagicMock()
-    planner_runtime.execute.return_value = json.dumps(VALID_PLAN)
+    planner_runtime.execute.return_value = AgentResult(output=json.dumps(VALID_PLAN))
     dev_runtime = MagicMock()
 
     def _dev_execute(*_args, **_kwargs):
         (repo / "src" / "health_endpoint.py").write_text(
             'def health():\n    return "ok"\n', encoding="utf-8"
         )
-        return "Implementation complete."
+        return AgentResult(output="Implementation complete.")
 
     dev_runtime.execute.side_effect = _dev_execute
 

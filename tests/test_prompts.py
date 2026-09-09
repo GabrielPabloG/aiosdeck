@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 
 from aios.agents import Task
 from aios.agents.developer import DeveloperAgent
+from aios.agents.models import AgentResult
 from aios.context.packet import ContextPacket, ProjectInfo, ToolsInfo
 from aios.memory.models import Convention, Decision, ProjectKnowledge
 from aios.prompts import PromptBuilder
@@ -65,7 +66,7 @@ def test_build_without_git():
 
 def test_developer_uses_builder():
     runtime = MagicMock()
-    runtime.execute.return_value = "output"
+    runtime.execute.return_value = AgentResult(output="output")
     builder = MagicMock(wraps=PromptBuilder())
 
     agent = DeveloperAgent(runtime, builder=builder)

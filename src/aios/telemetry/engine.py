@@ -411,6 +411,7 @@ class TelemetryEngine:
         payload = event.payload if hasattr(event, "payload") else event
         if not isinstance(payload, dict):
             return
+        obs = payload.get("observability") or {}
         record = {
             "execution_id": payload.get("execution_id", ""),
             "event_id": payload.get("event_id", str(hash(str(payload)))),
@@ -418,12 +419,15 @@ class TelemetryEngine:
             "task_id": payload.get("task_id", ""),
             "workflow_id": payload.get("workflow_id"),
             "agent": payload.get("agent", ""),
-            "model": payload.get("model"),
-            "provider": payload.get("provider"),
+            "model": payload.get("model") or obs.get("model"),
+            "provider": payload.get("provider") or obs.get("provider"),
             "runtime": payload.get("runtime"),
             "attempt": payload.get("attempt", 1),
             "status": payload.get("status", ""),
             "duration_ms": payload.get("duration_ms"),
+            "tool_calls": obs.get("tool_calls", 0),
+            "llm_turns": obs.get("llm_turns", 0),
+            "total_cost": obs.get("total_cost", 0.0),
             "timestamp": payload.get("timestamp", _now()),
         }
         self._writer.enqueue("executions", record)

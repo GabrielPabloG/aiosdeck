@@ -70,3 +70,16 @@ class AgentResult:
     task_id: str = ""
     correlation_id: str = ""
     usage: UsageRecord | None = None
+    tool_calls: int = 0
+    tool_names: list[str] = field(default_factory=list)
+    tool_durations_ms: list[float] = field(default_factory=list)
+    llm_turns: int = 0
+    total_cost: float = 0.0
+    tokens: dict[str, int] = field(default_factory=dict)
+    model: str = ""
+    provider: str = ""
+    fallback_used: bool = False
+    steps_used: int = 0
+    repeated_tool_calls: int = 0
+    turn_sequence: list[str] = field(default_factory=list)
+    exit_reason: str = "stop"

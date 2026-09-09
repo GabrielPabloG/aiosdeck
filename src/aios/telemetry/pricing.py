@@ -25,6 +25,15 @@ PRICING_V1: dict[tuple[str, str], dict] = {
     ("openrouter", "deepseek-v4-flash-latest"): {"input_per_1M": 0.08, "output_per_1M": 0.252},
     ("google", "gemini-2.5-flash"): {"input_per_1M": 0.15, "output_per_1M": 0.60},
     ("google", "gemini-2.5-pro"): {"input_per_1M": 1.25, "output_per_1M": 10.00},
+    ("opencode-go", "qwen3.8-flash"): {"input_per_1M": 0.15, "output_per_1M": 0.47},
+    ("opencode-go", "deepseek-v4-flash"): {"input_per_1M": 0.22, "output_per_1M": 0.66},
+    ("opencode-go", "deepseek-v4-flash-peak"): {"input_per_1M": 0.44, "output_per_1M": 1.32},
+    ("opencode-go", "longcat-2.0"): {"input_per_1M": 0.30, "output_per_1M": 1.20},
+    ("opencode-go", "mimo-v2.5"): {"input_per_1M": 0.14, "output_per_1M": 0.28},
+    ("opencode-go", "mimo-v2.5-pro"): {"input_per_1M": 0.435, "output_per_1M": 0.87},
+    ("opencode-go", "glm-5.3-flash"): {"input_per_1M": 0.15, "output_per_1M": 0.50},
+    ("opencode-go", "minimax-m3"): {"input_per_1M": 0.30, "output_per_1M": 1.20},
+    ("opencode-go", "omen-alpha"): {"input_per_1M": 0.20, "output_per_1M": 0.66},
 }
 
 

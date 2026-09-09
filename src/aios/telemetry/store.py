@@ -48,6 +48,9 @@ CREATE TABLE IF NOT EXISTS telemetry_executions (
     attempt INTEGER NOT NULL DEFAULT 1,
     status TEXT NOT NULL,
     duration_ms REAL,
+    tool_calls INTEGER DEFAULT 0,
+    llm_turns INTEGER DEFAULT 0,
+    total_cost REAL DEFAULT 0.0,
     timestamp TEXT NOT NULL DEFAULT '',
     project_id TEXT NOT NULL DEFAULT ''
 );
@@ -223,6 +226,22 @@ CREATE INDEX IF NOT EXISTS idx_tb_timestamp ON telemetry_backlog(timestamp);
 """
 
 
+_MIGRATION_COLUMNS_V1_1_2 = [
+    ("telemetry_executions", "tool_calls", "INTEGER DEFAULT 0"),
+    ("telemetry_executions", "llm_turns", "INTEGER DEFAULT 0"),
+    ("telemetry_executions", "total_cost", "REAL DEFAULT 0.0"),
+]
+
+
+def _migrate(conn) -> None:
+    """Idempotent migration: add columns that may be missing in older DBs."""
+    existing = {row[1] for row in conn.execute("PRAGMA table_info(telemetry_executions)")}
+    for _table, column, typedef in _MIGRATION_COLUMNS_V1_1_2:
+        if column not in existing:
+            conn.execute(f"ALTER TABLE telemetry_executions ADD COLUMN {column} {typedef}")
+            existing.add(column)
+
+
 def _row_execution(record: dict, project_id: str) -> tuple:
     return (
         record.get("execution_id", ""),
@@ -237,6 +256,9 @@ def _row_execution(record: dict, project_id: str) -> tuple:
         record.get("attempt", 1),
         record.get("status", ""),
         record.get("duration_ms"),
+        record.get("tool_calls", 0),
+        record.get("llm_turns", 0),
+        record.get("total_cost", 0.0),
         record.get("timestamp", _now()),
         project_id,
     )
@@ -392,8 +414,9 @@ _INSERTS: dict[str, tuple[str, Callable[[dict, str], tuple]]] = {
         """INSERT OR IGNORE INTO telemetry_executions
            (execution_id, event_id, correlation_id, task_id, workflow_id,
             agent, model, provider, runtime, attempt, status, duration_ms,
+            tool_calls, llm_turns, total_cost,
             timestamp, project_id)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         _row_execution,
     ),
     "usage": (
@@ -506,6 +529,7 @@ class TelemetryStore:
             self._conn.execute("PRAGMA journal_mode=WAL")
             self._conn.execute("PRAGMA foreign_keys = ON")
             self._conn.executescript(SCHEMA)
+            _migrate(self._conn)
             self._conn.commit()
         except sqlite3.Error as exc:
             self._conn = None
@@ -516,6 +540,7 @@ class TelemetryStore:
         try:
             self._conn = self._shared
             self._conn.executescript(SCHEMA)
+            _migrate(self._conn)
             self._conn.commit()
         except sqlite3.Error as exc:
             self._conn = None

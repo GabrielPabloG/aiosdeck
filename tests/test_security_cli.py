@@ -11,6 +11,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from aios.cli.commands import COMMANDS
+from aios.agents.models import AgentResult
 from aios.core import Kernel
 from aios.core.run_result import RunResult, StageSummary
 from aios.security.actions import (
@@ -215,15 +216,17 @@ class TestWorkflowStageEffective:
         )
         workflow._agents["git"].push = MagicMock()
         planner = workflow._agents["planner"]
-        planner._runtime.execute.return_value = json.dumps(
-            {
-                "goal": "g",
-                "subtasks": [
-                    {"id": "1", "description": "task", "type": "code", "priority": "high"}
-                ],
-                "risks": [],
-                "unknowns": [],
-            }
+        planner._runtime.execute.return_value = AgentResult(
+            output=json.dumps(
+                {
+                    "goal": "g",
+                    "subtasks": [
+                        {"id": "1", "description": "task", "type": "code", "priority": "high"}
+                    ],
+                    "risks": [],
+                    "unknowns": [],
+                }
+            )
         )
         dev = workflow._agents["developer"]._runtime
 
@@ -231,7 +234,7 @@ class TestWorkflowStageEffective:
             (repo / "src" / "health_endpoint.py").write_text(
                 'def health():\n    return "ok"\n', encoding="utf-8"
             )
-            return "Implementation complete."
+            return AgentResult(output="Implementation complete.")
 
         dev.execute.side_effect = _dev_execute
         ctx = ContextPacket()

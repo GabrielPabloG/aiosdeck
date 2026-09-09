@@ -1,11 +1,17 @@
 """OpenCode runtime adapter — always invoked through ai-jail."""
 
+from __future__ import annotations
+
 import json
 import logging
 import os
 import shutil
 import subprocess
+import tempfile
+from dataclasses import dataclass, field
+from pathlib import Path
 
+from aios.agents.models import AgentResult
 from aios.runtime.diagnostics import RuntimeDiagnostic
 from aios.security.actions import (
     FILESYSTEM_READ_ACTION,
@@ -35,6 +41,169 @@ _BASH_RULES: dict[str, str] = {
 }
 
 _WRITE_AGENT = "build"
+
+_TURN_KINDS = frozenset({"tool", "text", "reasoning", "unknown"})
+
+
+@dataclass
+class TurnEvent:
+    """One step within an OpenCode --auto execution."""
+
+    index: int
+    kind: str  # "tool" | "text" | "reasoning" | "unknown"
+    tool_name: str | None = None
+    duration_ms: float = 0.0
+    tokens_in: int = 0
+    tokens_out: int = 0
+    cost: float = 0.0
+
+
+@dataclass
+class AgentMetrics:
+    """Structured metrics extracted from OpenCode JSONL output."""
+
+    tool_calls: int = 0
+    tool_names: list[str] = field(default_factory=list)
+    tool_durations_ms: list[float] = field(default_factory=list)
+    llm_turns: int = 0
+    total_cost: float = 0.0
+    tokens: dict[str, int] = field(default_factory=dict)
+    turns: list[TurnEvent] = field(default_factory=list)
+    repeated_tool_calls: int = 0
+    exit_reason: str = "stop"
+
+
+def _parse_jsonl(output: str) -> tuple[str, AgentMetrics]:  # noqa: PLR0912, PLR0915
+    """Parse OpenCode ``--format json`` JSONL output into text and metrics.
+
+    Pure function — no side effects, easy to test. Returns the final text
+    output and an :class:`AgentMetrics` summary. Tolerant of unknown events
+    and malformed lines.
+    """
+    metrics = AgentMetrics()
+    text_parts: list[str] = []
+    tool_durations: dict[str, float] = {}
+    tool_counts: dict[str, int] = {}
+    turns: list[TurnEvent] = []
+
+    # Per-turn state tracking
+    current_turn_index = -1
+    current_turn_start = 0
+    current_turn_kind = "unknown"
+    current_turn_tool: str | None = None
+    current_turn_tokens_in = 0
+    current_turn_tokens_out = 0
+    current_turn_cost = 0.0
+    prev_tool_call: tuple[str, str] | None = None  # (tool_name, input_summary)
+
+    def _finalize_turn():
+        nonlocal current_turn_start, current_turn_kind, current_turn_tool
+        nonlocal current_turn_tokens_in, current_turn_tokens_out, current_turn_cost
+        if current_turn_index < 0:
+            return
+        duration = 0.0
+        if current_turn_start > 0:
+            # duration is computed from event timestamps, not here
+            pass
+        turns.append(
+            TurnEvent(
+                index=current_turn_index,
+                kind=current_turn_kind,
+                tool_name=current_turn_tool,
+                duration_ms=duration,
+                tokens_in=current_turn_tokens_in,
+                tokens_out=current_turn_tokens_out,
+                cost=current_turn_cost,
+            )
+        )
+        current_turn_kind = "unknown"
+        current_turn_tool = None
+        current_turn_tokens_in = 0
+        current_turn_tokens_out = 0
+        current_turn_cost = 0.0
+
+    for raw_line in output.splitlines():
+        line = raw_line.strip()
+        if not line or not line.startswith("{"):
+            continue
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+
+        event_type = event.get("type", "")
+        part = event.get("part", {})
+        event_ts = event.get("timestamp", 0)
+
+        if event_type == "step_start":
+            _finalize_turn()
+            current_turn_index += 1
+            current_turn_start = event_ts
+
+        elif event_type == "text":
+            text = part.get("text", "")
+            if text:
+                text_parts.append(text)
+            if current_turn_kind != "tool":
+                current_turn_kind = "text"
+
+        elif event_type == "reasoning":
+            if current_turn_kind == "unknown":
+                current_turn_kind = "reasoning"
+
+        elif event_type == "tool_use":
+            tool_name = part.get("tool", "")
+            state = part.get("state", {})
+            if state.get("status") == "completed":
+                tool_counts[tool_name] = tool_counts.get(tool_name, 0) + 1
+                current_turn_kind = "tool"
+                current_turn_tool = tool_name
+                timing = state.get("time", {})
+                start = timing.get("start", 0)
+                end = timing.get("end", 0)
+                if start and end:
+                    tool_durations[tool_name] = tool_durations.get(tool_name, 0.0) + (end - start)
+                    # Update turn duration from tool timing
+                    if current_turn_index >= 0 and turns:
+                        turns[-1].duration_ms += end - start
+                # Track repeated tool calls
+                input_data = state.get("input", {})
+                input_summary = json.dumps(input_data, sort_keys=True, default=str)[:200]
+                current_call = (tool_name, input_summary)
+                if prev_tool_call == current_call:
+                    metrics.repeated_tool_calls += 1
+                prev_tool_call = current_call
+
+        elif event_type == "step_finish":
+            tokens_part = part.get("tokens", {})
+            if tokens_part:
+                t_in = tokens_part.get("input", 0)
+                t_out = tokens_part.get("output", 0)
+                metrics.tokens = {
+                    "input": t_in,
+                    "output": t_out,
+                    "reasoning": tokens_part.get("reasoning", 0),
+                    "cache_read": tokens_part.get("cache", {}).get("read", 0),
+                    "cache_write": tokens_part.get("cache", {}).get("write", 0),
+                }
+                current_turn_tokens_in = t_in
+                current_turn_tokens_out = t_out
+            cost_val = part.get("cost", 0.0)
+            metrics.total_cost += cost_val
+            current_turn_cost = cost_val
+            reason = part.get("reason", "")
+            if reason and reason != "tool-calls":
+                metrics.exit_reason = reason
+
+    _finalize_turn()
+    metrics.tool_calls = sum(tool_counts.values())
+    metrics.tool_names = [name for name, _ in sorted(tool_counts.items(), key=lambda x: -x[1])]
+    metrics.tool_durations_ms = [tool_durations.get(name, 0.0) for name in metrics.tool_names]
+    metrics.llm_turns = len(turns)
+    metrics.turns = turns
+
+    text = "\n".join(text_parts)
+    return text, metrics
 
 
 class OpenCodeAdapter:
@@ -197,7 +366,7 @@ class OpenCodeAdapter:
             checks,
         )
 
-    def execute(  # noqa: PLR0913
+    def execute(  # noqa: PLR0913, PLR0912, PLR0915
         self,
         prompt: str,
         skills: list[str],
@@ -206,9 +375,11 @@ class OpenCodeAdapter:
         *,
         model: str = "",
         variant: str = "",
-    ) -> str:
+        max_steps: int = 0,
+        project_path: str = "",
+    ) -> AgentResult:
         args = self._resolved_command.split()
-        args.extend(["run", prompt])
+        args.extend(["run", prompt, "--format", "json"])
 
         if model:
             args.extend(["-m", model])
@@ -232,6 +403,24 @@ class OpenCodeAdapter:
             permissions_json = self._build_permissions(capabilities or [])
         env["OPENCODE_PERMISSION"] = permissions_json
 
+        tmp_config_dir = None
+        if max_steps > 0 and project_path:
+            try:
+                project_tmp = Path(project_path) / ".aios" / ".tmp"
+                project_tmp.mkdir(parents=True, exist_ok=True)
+                tmp_config_dir = tempfile.mkdtemp(dir=project_tmp, prefix="oc_")
+                oc_dir = Path(tmp_config_dir) / ".opencode"
+                oc_dir.mkdir(parents=True, exist_ok=True)
+                config_path = oc_dir / "opencode.json"
+                config_path.write_text(
+                    json.dumps({"agent": {"build": {"steps": max_steps}}}),
+                    encoding="utf-8",
+                )
+                args.extend(["--dir", tmp_config_dir])
+            except OSError:
+                logger.warning("Could not create temp config for max_steps=%d", max_steps)
+                tmp_config_dir = None
+
         try:
             kwargs: dict = {
                 "text": True,
@@ -245,6 +434,9 @@ class OpenCodeAdapter:
             raise RuntimeError("Runtime execution timed out after 600s") from exc
         except FileNotFoundError as exc:
             raise RuntimeError(f"Runtime command not found: {self._resolved_command}") from exc
+        finally:
+            if tmp_config_dir is not None:
+                shutil.rmtree(tmp_config_dir, ignore_errors=True)
 
         if result.returncode != 0:
             stderr = (
@@ -252,7 +444,29 @@ class OpenCodeAdapter:
             )
             raise RuntimeError(f"Runtime exited with code {result.returncode}: {stderr}")
 
-        return result.stdout.strip() if result.stdout else ""
+        stdout = result.stdout.strip() if result.stdout else ""
+        try:
+            text, metrics = _parse_jsonl(stdout)
+        except Exception:
+            logger.warning("JSONL parser failed; falling back to raw stdout")
+            text = stdout
+            metrics = AgentMetrics()
+
+        return AgentResult(
+            success=True,
+            output=text,
+            tool_calls=metrics.tool_calls,
+            tool_names=metrics.tool_names,
+            tool_durations_ms=metrics.tool_durations_ms,
+            llm_turns=metrics.llm_turns,
+            total_cost=metrics.total_cost,
+            tokens=metrics.tokens,
+            model=model,
+            steps_used=metrics.llm_turns,
+            repeated_tool_calls=metrics.repeated_tool_calls,
+            turn_sequence=[t.tool_name or t.kind for t in metrics.turns],
+            exit_reason=metrics.exit_reason,
+        )
 
     @staticmethod
     def _is_write_capable(

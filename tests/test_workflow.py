@@ -109,7 +109,7 @@ def _dev_runtime_writes(repo: Path, stub: str = "Implementation complete.") -> M
             'def health():\n    return "ok"\n',
             encoding="utf-8",
         )
-        return stub
+        return AgentResult(output=stub)
 
     runtime.execute.side_effect = execute
     return runtime
@@ -146,7 +146,7 @@ def test_workflow_full_pipeline_succeeds(tmp_path):
     context = _make_context(str(repo))
 
     planner_runtime = MagicMock()
-    planner_runtime.execute.return_value = json.dumps(VALID_PLAN)
+    planner_runtime.execute.return_value = AgentResult(output=json.dumps(VALID_PLAN))
     dev_runtime = _dev_runtime_writes(repo)
 
     workflow, scheduler, git = _make_workflow(tmp_path, repo, planner_runtime, dev_runtime)
@@ -198,7 +198,7 @@ def test_workflow_planner_failure_stops(tmp_path):
     context = _make_context(str(repo))
 
     planner_runtime = MagicMock()
-    planner_runtime.execute.return_value = "no valid json here"
+    planner_runtime.execute.return_value = AgentResult(output="no valid json here")
 
     workflow, scheduler, _ = _make_workflow(tmp_path, repo, planner_runtime=planner_runtime)
     try:
@@ -229,7 +229,7 @@ def test_workflow_developer_failure_stops(tmp_path):
     context = _make_context(str(repo))
 
     planner_runtime = MagicMock()
-    planner_runtime.execute.return_value = json.dumps(VALID_PLAN)
+    planner_runtime.execute.return_value = AgentResult(output=json.dumps(VALID_PLAN))
     dev_runtime = MagicMock()
     dev_runtime.execute.side_effect = RuntimeError("execution failed")
 
@@ -276,7 +276,7 @@ def test_workflow_tester_failure_stops(tmp_path):
     )
 
     planner_runtime = MagicMock()
-    planner_runtime.execute.return_value = json.dumps(VALID_PLAN)
+    planner_runtime.execute.return_value = AgentResult(output=json.dumps(VALID_PLAN))
     dev_runtime = _dev_runtime_writes(repo)
 
     workflow, scheduler, _ = _make_workflow(tmp_path, repo, planner_runtime, dev_runtime)
@@ -370,9 +370,9 @@ def _make_workflow_no_optionals(
 def test_workflow_optional_agents_skipped(tmp_path):
     """Without tester/documentation/git the pipeline skips their stages gracefully."""
     planner_runtime = MagicMock()
-    planner_runtime.execute.return_value = json.dumps(VALID_PLAN)
+    planner_runtime.execute.return_value = AgentResult(output=json.dumps(VALID_PLAN))
     dev_runtime = MagicMock()
-    dev_runtime.execute.return_value = "Implementation complete."
+    dev_runtime.execute.return_value = AgentResult(output="Implementation complete.")
 
     workflow, scheduler = _make_workflow_no_optionals(tmp_path, planner_runtime, dev_runtime)
     try:
@@ -402,9 +402,9 @@ def test_workflow_optional_agents_skipped(tmp_path):
 def test_workflow_on_stage_callback(tmp_path):
     """on_stage receives every stage as the pipeline progresses."""
     planner_runtime = MagicMock()
-    planner_runtime.execute.return_value = json.dumps(VALID_PLAN)
+    planner_runtime.execute.return_value = AgentResult(output=json.dumps(VALID_PLAN))
     dev_runtime = MagicMock()
-    dev_runtime.execute.return_value = "Implementation complete."
+    dev_runtime.execute.return_value = AgentResult(output="Implementation complete.")
 
     workflow, scheduler = _make_workflow_no_optionals(tmp_path, planner_runtime, dev_runtime)
     received: list = []
@@ -424,9 +424,9 @@ def test_workflow_on_stage_callback(tmp_path):
 def test_developer_stage_carries_subtask_total(tmp_path):
     """Developer stage details include subtask_total for progress bars."""
     planner_runtime = MagicMock()
-    planner_runtime.execute.return_value = json.dumps(VALID_PLAN)
+    planner_runtime.execute.return_value = AgentResult(output=json.dumps(VALID_PLAN))
     dev_runtime = MagicMock()
-    dev_runtime.execute.return_value = "Implementation complete."
+    dev_runtime.execute.return_value = AgentResult(output="Implementation complete.")
 
     workflow, scheduler = _make_workflow_no_optionals(tmp_path, planner_runtime, dev_runtime)
     try:
@@ -465,7 +465,7 @@ def test_workflow_research_front_gate_feeds_planner(tmp_path):
     context = _make_context(str(repo))
 
     planner_runtime = MagicMock()
-    planner_runtime.execute.return_value = json.dumps(VALID_PLAN)
+    planner_runtime.execute.return_value = AgentResult(output=json.dumps(VALID_PLAN))
     dev_runtime = _dev_runtime_writes(repo)
 
     workflow, scheduler, _ = _make_workflow(
@@ -538,7 +538,7 @@ def test_is_implementation_task_defaults_to_code_when_type_missing():
 def _dev_runtime_noop(return_value: str = "No changes required.") -> MagicMock:
     """A developer runtime that claims success but writes nothing to disk."""
     runtime = MagicMock()
-    runtime.execute.return_value = return_value
+    runtime.execute.return_value = AgentResult(output=return_value)
     return runtime
 
 
@@ -556,7 +556,7 @@ def test_workflow_noop_implementation_fails(tmp_path):
     (repo / "TODO.md").write_text("- [ ] fix me\n", encoding="utf-8")
 
     planner_runtime = MagicMock()
-    planner_runtime.execute.return_value = json.dumps(VALID_PLAN)
+    planner_runtime.execute.return_value = AgentResult(output=json.dumps(VALID_PLAN))
     dev_runtime = _dev_runtime_noop()
 
     workflow, scheduler, _ = _make_workflow(tmp_path, repo, planner_runtime, dev_runtime)
@@ -618,7 +618,7 @@ def test_workflow_pre_existing_dirty_tree_does_not_count_as_produced(tmp_path):
     (src / "existing.py").write_text("OLD\n", encoding="utf-8")
 
     planner_runtime = MagicMock()
-    planner_runtime.execute.return_value = json.dumps(VALID_PLAN)
+    planner_runtime.execute.return_value = AgentResult(output=json.dumps(VALID_PLAN))
     dev_runtime = _dev_runtime_noop()
 
     workflow, scheduler, _ = _make_workflow(tmp_path, repo, planner_runtime, dev_runtime)
@@ -644,7 +644,7 @@ def test_workflow_pre_existing_dirty_plus_new_relevant_file_succeeds(tmp_path):
     (src / "existing.py").write_text("OLD\n", encoding="utf-8")
 
     planner_runtime = MagicMock()
-    planner_runtime.execute.return_value = json.dumps(VALID_PLAN)
+    planner_runtime.execute.return_value = AgentResult(output=json.dumps(VALID_PLAN))
     dev_runtime = _dev_runtime_writes(repo)
 
     workflow, scheduler, _ = _make_workflow(tmp_path, repo, planner_runtime, dev_runtime)
@@ -667,22 +667,24 @@ def test_workflow_docs_task_without_code_change_succeeds(tmp_path):
     context = _make_context(str(repo))
 
     planner_runtime = MagicMock()
-    planner_runtime.execute.return_value = json.dumps(
-        {
-            "goal": "Update docs",
-            "subtasks": [
-                {
-                    "id": "1",
-                    "description": "Document the endpoint",
-                    "type": "documentation",
-                    "priority": "low",
-                    "dependencies": [],
-                    "estimated_complexity": "low",
-                }
-            ],
-            "risks": [],
-            "unknowns": [],
-        }
+    planner_runtime.execute.return_value = AgentResult(
+        output=json.dumps(
+            {
+                "goal": "Update docs",
+                "subtasks": [
+                    {
+                        "id": "1",
+                        "description": "Document the endpoint",
+                        "type": "documentation",
+                        "priority": "low",
+                        "dependencies": [],
+                        "estimated_complexity": "low",
+                    }
+                ],
+                "risks": [],
+                "unknowns": [],
+            }
+        )
     )
     dev_runtime = _dev_runtime_noop()
 
@@ -780,14 +782,14 @@ def test_workflow_noop_implementation_with_irrelevant_new_file(tmp_path):
     context = _make_context(str(repo))
 
     planner_runtime = MagicMock()
-    planner_runtime.execute.return_value = json.dumps(VALID_PLAN)
+    planner_runtime.execute.return_value = AgentResult(output=json.dumps(VALID_PLAN))
     dev_runtime = MagicMock()
 
     def _dev(*_a, **_k):
         # A new file at the repo root (a tracked directory) reports individually,
         # not collapsed into a directory entry, and is not under src/ or tests/.
         (repo / "notes.txt").write_text("scratch\n", encoding="utf-8")
-        return "docs only"
+        return AgentResult(output="docs only")
 
     dev_runtime.execute.side_effect = _dev
 
@@ -819,8 +821,8 @@ def test_workflow_noop_empty_subtasks(tmp_path):
     context = _make_context(str(repo))
 
     planner_runtime = MagicMock()
-    planner_runtime.execute.return_value = json.dumps(
-        {"goal": "g", "subtasks": [], "risks": [], "unknowns": []}
+    planner_runtime.execute.return_value = AgentResult(
+        output=json.dumps({"goal": "g", "subtasks": [], "risks": [], "unknowns": []})
     )
     dev_runtime = _dev_runtime_noop()
 
@@ -847,7 +849,7 @@ def test_workflow_developer_failure_empty_errors_uses_fallbacks(tmp_path):
     context = _make_context(str(repo))
 
     planner_runtime = MagicMock()
-    planner_runtime.execute.return_value = json.dumps(VALID_PLAN)
+    planner_runtime.execute.return_value = AgentResult(output=json.dumps(VALID_PLAN))
     dev_runtime = MagicMock()
 
     workflow, scheduler, _ = _make_workflow(tmp_path, repo, planner_runtime, dev_runtime)
@@ -889,7 +891,7 @@ def test_workflow_noop_blocks_last_card_with_reason(tmp_path):
         "unknowns": [],
     }
     planner_runtime = MagicMock()
-    planner_runtime.execute.return_value = json.dumps(plan)
+    planner_runtime.execute.return_value = AgentResult(output=json.dumps(plan))
     dev_runtime = _dev_runtime_noop()
 
     workflow, scheduler, _ = _make_workflow(tmp_path, repo, planner_runtime, dev_runtime)

@@ -43,6 +43,13 @@ class TestEstimateCost:
     def test_free_models_cost_zero(self, model_id, complexity, context_size):
         assert RuleBasedRouter._estimate_cost(model_id, complexity, context_size) == 0.0
 
+    def test_opencode_go_routing_cost(self):
+        cost = RuleBasedRouter._estimate_cost(
+            "opencode-go/opencode-go/qwen3.8-flash", "medium", 10000
+        )
+        assert cost > 0.0
+        assert cost == pytest.approx((0.15 * 4 * 10000 + 0.15 * 3 * 1000) / 1_000_000, rel=1e-9)
+
 
 class TestModelId:
     def test_keeps_provider_namespaced_slug_without_registration(self):

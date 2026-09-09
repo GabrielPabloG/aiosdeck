@@ -276,11 +276,13 @@ class TestPlanRunIntegration:
             "estimated_complexity": "low",
         }
         planner_runtime = MagicMock()
-        planner_runtime.execute.return_value = json.dumps(
-            {"goal": "add login", "subtasks": [subtask], "risks": [], "unknowns": []}
+        planner_runtime.execute.return_value = AgentResult(
+            output=json.dumps(
+                {"goal": "add login", "subtasks": [subtask], "risks": [], "unknowns": []}
+            )
         )
         dev_runtime = MagicMock()
-        dev_runtime.execute.return_value = "Executed: Task A"
+        dev_runtime.execute.return_value = AgentResult(output="Executed: Task A")
         executor = AgentExecutor()
 
         scheduler = KanbanEngine(project_path=tmp_path, db_path=str(tmp_path / "kanban.db"))

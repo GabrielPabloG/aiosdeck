@@ -63,13 +63,31 @@ class TestConfigLoaderRouting:
             else:
                 os.environ.pop("AIOS_ROUTING_ENABLED", None)
 
-    def test_env_routing_cost_cap(self):
+    def test_env_routing_cost_cap(self, monkeypatch, tmp_path):
+        monkeypatch.setattr(Path, "home", lambda: tmp_path)
         old = os.environ.get("AIOS_ROUTING_COST_CAP")
         try:
             os.environ["AIOS_ROUTING_COST_CAP"] = "10.5"
-            loader = ConfigLoader()
+            loader = ConfigLoader(project_path=tmp_path)
             config = loader.load()
             assert config.routing.cost_cap == 10.5
+        finally:
+            if old is not None:
+                os.environ["AIOS_ROUTING_COST_CAP"] = old
+            else:
+                os.environ.pop("AIOS_ROUTING_COST_CAP", None)
+
+    def test_manifest_cost_cap_overrides_env(self, monkeypatch, tmp_path):
+        monkeypatch.setattr(Path, "home", lambda: tmp_path)
+        aios_dir = tmp_path / ".aios"
+        aios_dir.mkdir()
+        (aios_dir / "project.yaml").write_text("routing:\n  cost_cap: 0.06\n")
+        old = os.environ.get("AIOS_ROUTING_COST_CAP")
+        try:
+            os.environ["AIOS_ROUTING_COST_CAP"] = "10.5"
+            loader = ConfigLoader(project_path=tmp_path)
+            config = loader.load()
+            assert config.routing.cost_cap == 0.06
         finally:
             if old is not None:
                 os.environ["AIOS_ROUTING_COST_CAP"] = old

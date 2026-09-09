@@ -15,6 +15,7 @@ import pytest
 from aios.agents.contracts import coerce_task
 from aios.agents.developer import DeveloperAgent
 from aios.agents.executor import AgentExecutor, make_request
+from aios.agents.models import AgentResult
 from aios.agents.planner import PlannerAgent
 from aios.agents.reviewer import ReviewerAgent
 from aios.agents.tester import TesterAgent
@@ -90,9 +91,9 @@ def test_pipeline_stops_at_failure(failure_point, tmp_path):  # noqa: PLR0915
     try:
         planner_runtime = MagicMock()
         if failure_point == "planner":
-            planner_runtime.execute.return_value = "no valid json here"
+            planner_runtime.execute.return_value = AgentResult(output="no valid json here")
         else:
-            planner_runtime.execute.return_value = json.dumps(VALID_PLAN)
+            planner_runtime.execute.return_value = AgentResult(output=json.dumps(VALID_PLAN))
         planner = PlannerAgent(planner_runtime)
 
         plan_result = planner.execute(Task(description="Add endpoint /health"), context)
@@ -115,7 +116,7 @@ def test_pipeline_stops_at_failure(failure_point, tmp_path):  # noqa: PLR0915
         if failure_point == "developer":
             dev_runtime.execute.side_effect = RuntimeError("execution failed")
         else:
-            dev_runtime.execute.return_value = "Implementation complete."
+            dev_runtime.execute.return_value = AgentResult(output="Implementation complete.")
         developer = DeveloperAgent(dev_runtime)
 
         dev_outcome = AgentExecutor().execute(

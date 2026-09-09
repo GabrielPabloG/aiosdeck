@@ -276,9 +276,11 @@ def measure_lifecycle(  # noqa: PLR0912, PLR0913, PLR0915
                 if warning is not None:
                     entry["warning"] = warning
             else:
-                runner(kernel)
+                run_result = runner(kernel)
                 model = _resolve_phase_model(kernel, phase)
                 entry = elapsed(wall, user, system)
+                if run_result is not None:
+                    entry["observability"] = _extract_observability(run_result)
             models[phase] = model
             result[phase] = entry
             notify((phase, "end", entry["wall_time_ms"]))
@@ -368,10 +370,12 @@ def _measure_skill_load(project_path) -> None:
     discovery.discover("benchmark task")
 
 
-def _run_plan(kernel) -> None:
+def _run_plan(kernel):
     context = kernel.get_context() if hasattr(kernel, "get_context") else None
     task = Task(description="benchmark task", task_type="plan")
-    _raise_if_failed(kernel.run(task, context, mode="plan"))
+    result = kernel.run(task, context, mode="plan")
+    _raise_if_failed(result)
+    return result
 
 
 def _resolve_phase_model(kernel, phase: str) -> str:
@@ -409,7 +413,7 @@ def _run_bare_probe(kernel, phase: str) -> tuple[str | None, str]:
         raise RuntimeError("runtime engine not available")
     route_input = _PHASE_ROUTING[phase]
     model = _resolve_phase_model(kernel, phase)
-    output = runtime.execute(
+    result = runtime.execute(
         BARE_PROMPT,
         [],
         [],
@@ -419,15 +423,62 @@ def _run_bare_probe(kernel, phase: str) -> tuple[str | None, str]:
         complexity=route_input.complexity,
         model=model,
     )
+    output = result.output
     if not output.strip().upper().startswith("OK"):
         return "bare probe reply is not 'OK' (tolerant check)", model
     return None, model
 
 
-def _run_agent_exec(kernel) -> None:
+def _extract_observability(run_result) -> dict:
+    """Extract observability fields from a RunResult, coercing types for JSON safety."""
+    obs = {}
+    int_fields = ("tool_calls", "llm_turns", "steps_used", "repeated_tool_calls")
+    float_fields = ("total_cost",)
+    str_fields = ("model", "provider", "exit_reason")
+    bool_fields = ("fallback_used",)
+
+    for field in int_fields:
+        val = getattr(run_result, field, 0)
+        if isinstance(val, int):
+            obs[field] = val
+    for field in float_fields:
+        val = getattr(run_result, field, 0.0)
+        if isinstance(val, (int, float)):
+            obs[field] = float(val)
+    for field in str_fields:
+        val = getattr(run_result, field, "")
+        if isinstance(val, str):
+            obs[field] = val
+    for field in bool_fields:
+        val = getattr(run_result, field, False)
+        if isinstance(val, bool):
+            obs[field] = val
+
+    tool_names = getattr(run_result, "tool_names", ())
+    if isinstance(tool_names, (list, tuple)):
+        obs["tool_names"] = [str(n) for n in tool_names if isinstance(n, str)]
+
+    tool_durations = getattr(run_result, "tool_durations_ms", ())
+    if isinstance(tool_durations, (list, tuple)):
+        obs["tool_durations_ms"] = [float(d) for d in tool_durations if isinstance(d, (int, float))]
+
+    turn_sequence = getattr(run_result, "turn_sequence", ())
+    if isinstance(turn_sequence, (list, tuple)):
+        obs["turn_sequence"] = [str(s) for s in turn_sequence]
+
+    tokens = getattr(run_result, "tokens", {})
+    if isinstance(tokens, dict):
+        obs["tokens"] = {k: int(v) for k, v in tokens.items() if isinstance(v, (int, float))}
+
+    return obs
+
+
+def _run_agent_exec(kernel):
     context = kernel.get_context() if hasattr(kernel, "get_context") else None
     task = Task(description="benchmark task", task_type="code")
-    _raise_if_failed(kernel.run_agent("developer", task, context))
+    result = kernel.run_agent("developer", task, context)
+    _raise_if_failed(result)
+    return result
 
 
 def _raise_if_failed(result) -> None:

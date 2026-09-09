@@ -25,18 +25,22 @@ class DeveloperAgent(BaseAgent):
     required_capabilities = ["filesystem_read", "filesystem_write", "shell"]
     required_skills = ["project-dna", "coding-style"]
 
-    def __init__(
+    def __init__(  # noqa: PLR0913, PLR0917
         self,
         runtime,
         builder: PromptBuilder | None = None,
         skills=None,
         assembler=None,
+        max_steps: int = 0,
+        project_path: str = "",
     ) -> None:
         super().__init__()
         self._runtime = runtime
         self._builder = builder or PromptBuilder()
         self._skills = skills
         self._assembler = assembler
+        self._max_steps = max_steps
+        self._project_path = project_path
 
     def execute(self, task, context) -> AgentResult:
         agent_task = coerce_task(task)
@@ -59,7 +63,7 @@ class DeveloperAgent(BaseAgent):
         )
         intent = getattr(context, "intent", None)
         effective = effective_permissions(intent, self.capabilities) if intent else None
-        output = self._runtime.execute(
+        result = self._runtime.execute(
             prompt,
             self.required_skills,
             self.required_capabilities,
@@ -68,12 +72,27 @@ class DeveloperAgent(BaseAgent):
             task_type=agent_task.task_type,
             complexity=agent_task.params.get("complexity", "medium"),
             context_size=len(prompt.split()),
+            max_steps=self._max_steps,
+            project_path=self._project_path,
         )
         return AgentResult(
             success=True,
-            output=output,
+            output=result.output,
             status=STATE_SUCCEEDED,
             agent=self.name,
             task_id=agent_task.task_id,
             correlation_id=agent_task.correlation_id,
+            tool_calls=result.tool_calls,
+            tool_names=result.tool_names,
+            tool_durations_ms=result.tool_durations_ms,
+            llm_turns=result.llm_turns,
+            total_cost=result.total_cost,
+            tokens=result.tokens,
+            model=result.model,
+            provider=result.provider,
+            fallback_used=result.fallback_used,
+            steps_used=result.steps_used,
+            repeated_tool_calls=result.repeated_tool_calls,
+            turn_sequence=result.turn_sequence,
+            exit_reason=result.exit_reason,
         )

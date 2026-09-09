@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from aios.agents import AgentResult
 from aios.agents.planner import PlannerAgent
 from aios.context.packet import ContextPacket, GitInfo, ProjectInfo, ToolsInfo
 from aios.core.task import Task
@@ -22,7 +23,7 @@ def _make_context(language: str = "python") -> ContextPacket:
 
 def _make_runtime(output: str) -> MagicMock:
     runtime = MagicMock()
-    runtime.execute.return_value = output
+    runtime.execute.return_value = AgentResult(output=output)
     return runtime
 
 
@@ -111,8 +112,12 @@ def test_planner_passes_ask_user_capability_to_runtime():
 def test_planner_self_healing_json():
     runtime = MagicMock()
     runtime.execute.side_effect = [
-        "Here is the plan: {'goal':'test','subtasks':[broken],'risks':[],'unknowns':[]}",
-        '{"goal":"test","subtasks":[{"id":"1","type":"code","description":"build","priority":"high","dependencies":[],"estimated_complexity":"low"}],"risks":[],"unknowns":[]}',
+        AgentResult(
+            output="Here is the plan: {'goal':'test','subtasks':[broken],'risks':[],'unknowns':[]}"
+        ),
+        AgentResult(
+            output='{"goal":"test","subtasks":[{"id":"1","type":"code","description":"build","priority":"high","dependencies":[],"estimated_complexity":"low"}],"risks":[],"unknowns":[]}'
+        ),
     ]
     agent = PlannerAgent(runtime)
     result = agent.execute(Task(description="do something"), _make_context())
@@ -127,8 +132,10 @@ def test_planner_self_healing_json():
 def test_planner_tool_call_loop():
     runtime = MagicMock()
     runtime.execute.side_effect = [
-        "I need to clarify. Let me ask the user: ask_user('Which platform?')",
-        '{"goal":"test","subtasks":[{"id":"1","type":"code","description":"build","priority":"high","dependencies":[],"estimated_complexity":"low"}],"risks":[],"unknowns":[]}',
+        AgentResult(output="I need to clarify. Let me ask the user: ask_user('Which platform?')"),
+        AgentResult(
+            output='{"goal":"test","subtasks":[{"id":"1","type":"code","description":"build","priority":"high","dependencies":[],"estimated_complexity":"low"}],"risks":[],"unknowns":[]}'
+        ),
     ]
     agent = PlannerAgent(runtime)
 

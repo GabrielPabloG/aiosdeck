@@ -18,6 +18,7 @@ from tests.integration.quality_helpers import (
     skipped,
 )
 
+from aios.agents.models import AgentResult
 from aios.quality.contracts import Severity
 
 
@@ -252,7 +253,7 @@ def test_gate_loop_closes_on_early_workflow_return(tmp_path):
         created_loops.append(loop)
         return loop
 
-    workflow._agents["planner"]._runtime.execute.return_value = "invalid json"
+    workflow._agents["planner"]._runtime.execute.return_value = AgentResult(output="invalid json")
     engine_module.asyncio.new_event_loop = track_loop
     try:
         result = run_workflow(workflow, repo)

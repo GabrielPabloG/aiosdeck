@@ -99,7 +99,7 @@ def test_execute_with_question_handles_none_stdout():
 
         result = adapter.execute("test", skills=[], capabilities=["question"])
 
-        assert result == ""
+        assert result.output == ""
 
 
 def test_execute_with_question_handles_none_stderr_on_error():
@@ -592,6 +592,8 @@ def test_execute_runs_provider_model_variant_and_auto():
         "opencode",
         "run",
         "hello",
+        "--format",
+        "json",
         "-m",
         "ollama/llama3.2",
         "--variant",
@@ -683,10 +685,14 @@ def test_execute_returns_stdout_stripped():
     adapter = _runnable_adapter()
     with patch("aios.runtime.opencode.subprocess.run") as mock_run:
         mock_run.return_value.returncode = 0
-        mock_run.return_value.stdout = "  done output  "
+        mock_run.return_value.stdout = (
+            '{"type":"step_start","timestamp":1000,"part":{"id":"p1","type":"step-start"}}\n'
+            '{"type":"text","timestamp":1001,"part":{"type":"text","text":"  done output  "}}\n'
+            '{"type":"step_finish","timestamp":1002,"part":{"id":"p2","reason":"stop","type":"step-finish"}}\n'
+        )
         mock_run.return_value.stderr = ""
         result = adapter.execute("test", skills=[], capabilities=[])
-    assert result == "done output"
+    assert result.output == "  done output  "
 
 
 # ---------------------------------------------------------------------------
@@ -1029,3 +1035,162 @@ def test_diagnose_model_rstrip_uses_slash_only():
         mock_run.return_value.stderr = ""
         diag = adapter.diagnose(provider="openai", model="openaiX")
     assert diag.code == "ok"
+
+
+# ---------------------------------------------------------------------------
+# Gate 3: Temp config lifecycle, cleanup, error handling
+# ---------------------------------------------------------------------------
+
+
+class TestTempConfigLifecycle:
+    """Verify that max_steps temp config is created, used, and cleaned up."""
+
+    def test_max_steps_creates_temp_config(self, tmp_path):
+        adapter = _runnable_adapter()
+        with (
+            patch("aios.runtime.opencode.subprocess.run") as mock_run,
+            patch("aios.runtime.opencode.shutil.rmtree"),
+        ):
+            _successful_run(mock_run)
+            adapter.execute(
+                "prompt",
+                [],
+                _DEVELOPER_CAPABILITIES,
+                permissions=_DEVELOPER_EFFECTIVE,
+                model="test/model",
+                max_steps=10,
+                project_path=str(tmp_path),
+            )
+            # Temp dir was created inside .aios/.tmp/
+            tmp_dir = tmp_path / ".aios" / ".tmp"
+            assert tmp_dir.exists()
+            # opencode.json exists with correct content
+            config_files = list(tmp_dir.rglob("opencode.json"))
+            assert len(config_files) == 1
+            config = json.loads(config_files[0].read_text())
+            assert config == {"agent": {"build": {"steps": 10}}}
+            # --dir was passed to command
+            args = mock_run.call_args[0][0]
+            assert "--dir" in args
+
+    def test_no_temp_config_when_max_steps_zero(self, tmp_path):
+        adapter = _runnable_adapter()
+        with patch("aios.runtime.opencode.subprocess.run") as mock_run:
+            _successful_run(mock_run)
+            adapter.execute(
+                "prompt",
+                [],
+                _DEVELOPER_CAPABILITIES,
+                permissions=_DEVELOPER_EFFECTIVE,
+                model="m",
+                max_steps=0,
+                project_path=str(tmp_path),
+            )
+            tmp_dir = tmp_path / ".aios" / ".tmp"
+            assert not tmp_dir.exists()
+
+    def test_temp_dir_cleaned_after_success(self, tmp_path):
+        adapter = _runnable_adapter()
+        with patch("aios.runtime.opencode.subprocess.run") as mock_run:
+            _successful_run(mock_run)
+            adapter.execute(
+                "prompt",
+                [],
+                _DEVELOPER_CAPABILITIES,
+                permissions=_DEVELOPER_EFFECTIVE,
+                model="m",
+                max_steps=10,
+                project_path=str(tmp_path),
+            )
+            # Temp dir should be cleaned up (no oc_ directories remain)
+            tmp_dir = tmp_path / ".aios" / ".tmp"
+            oc_dirs = list(tmp_dir.glob("oc_*")) if tmp_dir.exists() else []
+            assert len(oc_dirs) == 0
+
+    def test_temp_dir_cleaned_after_subprocess_error(self, tmp_path):
+        adapter = _runnable_adapter()
+        with patch("aios.runtime.opencode.subprocess.run") as mock_run:
+            mock_run.return_value.returncode = 1
+            mock_run.return_value.stdout = ""
+            mock_run.return_value.stderr = "fail"
+            try:
+                adapter.execute(
+                    "prompt",
+                    [],
+                    _DEVELOPER_CAPABILITIES,
+                    permissions=_DEVELOPER_EFFECTIVE,
+                    model="m",
+                    max_steps=10,
+                    project_path=str(tmp_path),
+                )
+            except RuntimeError:
+                pass
+            tmp_dir = tmp_path / ".aios" / ".tmp"
+            oc_dirs = list(tmp_dir.glob("oc_*")) if tmp_dir.exists() else []
+            assert len(oc_dirs) == 0
+
+    def test_oserror_in_temp_config_logs_warning(self, caplog):
+        adapter = _runnable_adapter()
+        valid_jsonl = (
+            '{"type":"step_start","timestamp":1000,'
+            '"part":{"id":"p1","messageID":"m1","sessionID":"s1",'
+            '"type":"step-start"}}\n'
+            '{"type":"text","timestamp":1001,'
+            '"part":{"id":"p2","messageID":"m1","sessionID":"s1",'
+            '"type":"text","text":"done"}}\n'
+            '{"type":"step_finish","timestamp":1002,'
+            '"part":{"id":"p3","reason":"stop","messageID":"m1",'
+            '"sessionID":"s1","type":"step-finish",'
+            '"tokens":{},"cost":0.0}}'
+        )
+        with (
+            patch("aios.runtime.opencode.subprocess.run") as mock_run,
+            patch("aios.runtime.opencode.Path") as mock_path_cls,
+        ):
+            mock_tmp_dir = (
+                mock_path_cls.return_value.__truediv__.return_value.__truediv__.return_value
+            )
+            mock_tmp_dir.mkdir.side_effect = OSError("Permission denied")
+            mock_run.return_value.returncode = 0
+            mock_run.return_value.stdout = valid_jsonl
+            mock_run.return_value.stderr = ""
+            with caplog.at_level(logging.WARNING):
+                result = adapter.execute(
+                    "prompt",
+                    [],
+                    _DEVELOPER_CAPABILITIES,
+                    permissions=_DEVELOPER_EFFECTIVE,
+                    model="m",
+                    max_steps=10,
+                    project_path="/p",
+                )
+            assert "Could not create temp config" in caplog.text
+            assert result.output == "done"  # execution continued
+
+
+class TestJsonlFallback:
+    """Verify JSONL parser error fallback behavior."""
+
+    def test_jsonl_parse_error_returns_raw_output(self, caplog):
+        adapter = _runnable_adapter()
+        with (
+            patch("aios.runtime.opencode.subprocess.run") as mock_run,
+            patch("aios.runtime.opencode._parse_jsonl", side_effect=ValueError("bad json")),
+        ):
+            mock_run.return_value.returncode = 0
+            mock_run.return_value.stdout = "raw output here"
+            mock_run.return_value.stderr = ""
+            with caplog.at_level(logging.WARNING):
+                result = adapter.execute(
+                    "prompt",
+                    [],
+                    None,
+                    permissions=None,
+                    model="m",
+                )
+            assert result.output == "raw output here"
+            assert result.tool_calls == 0
+            assert result.llm_turns == 0
+            assert result.total_cost == 0.0
+            assert result.tokens == {}
+            assert "JSONL parser failed" in caplog.text

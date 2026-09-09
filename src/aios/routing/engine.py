@@ -18,6 +18,15 @@ _MODEL_PRICING: dict[str, float] = {
     "openrouter/qwen/qwen3-coder": 0.22,
     "openrouter/openai/gpt-5-mini": 0.30,
     "openrouter/anthropic/claude-sonnet-4-5": 3.0,
+    "opencode-go/opencode-go/qwen3.8-flash": 0.15,
+    "opencode-go/opencode-go/deepseek-v4-flash": 0.22,
+    "opencode-go/opencode-go/deepseek-v4-flash-peak": 0.44,
+    "opencode-go/opencode-go/longcat-2.0": 0.30,
+    "opencode-go/opencode-go/mimo-v2.5": 0.14,
+    "opencode-go/opencode-go/mimo-v2.5-pro": 0.435,
+    "opencode-go/opencode-go/glm-5.3-flash": 0.15,
+    "opencode-go/opencode-go/minimax-m3": 0.30,
+    "opencode-go/opencode-go/omen-alpha": 0.20,
 }
 
 _COMPLEXITY_VARIANT: dict[str, str] = {

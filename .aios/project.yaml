@@ -10,30 +10,65 @@ routing:
   enabled: true
   default_provider: "opencode-go"
   default_model: "opencode-go/qwen3.8-flash"
+  cost_cap: 0.06
+  context_limits:
+    planner: 200000
+    developer: 128000
+    reviewer: 256000
+    documentation: 1000000
   rules:
     - agent: "planner"
       provider: "opencode-go"
       model: "opencode-go/qwen3.8-flash"
-      complexity: "high"  
+      complexity: "high"
 
     - agent: "developer"
       provider: "opencode-go"
-      model: "opencode-go/qwen3.8-flash"
+      model: "opencode-go/deepseek-v4-flash"
       complexity: "low"
 
+    - agent: "developer"
+      provider: "opencode-go"
+      model: "opencode-go/deepseek-v4-flash"
+      complexity: "medium"
+
     - agent: "reviewer"
+      provider: "opencode-go"
+      model: "opencode-go/longcat-2.0"
+      complexity: "medium"
+
+    - agent: "documentation"
+      provider: "opencode-go"
+      model: "opencode-go/mimo-v2.5"
+      complexity: "low"
+
+    - agent: "tester"
+      provider: "opencode-go"
+      model: "opencode-go/deepseek-v4-flash"
+      complexity: "medium"
+
+    - agent: "research"
       provider: "opencode-go"
       model: "opencode-go/qwen3.8-flash"
       complexity: "medium"
 
   fallback_providers:
+    - provider: "opencode-go"
+      model: "opencode-go/deepseek-v4-flash"
 
-    - provider: "google"
-      model: "gemini-3.7-flash"
+    - provider: "opencode-go"
+      model: "opencode-go/longcat-2.0"
 
-    - provider: "ollama"
-      model: "qwen-opencode"
+    - provider: "opencode-go"
+      model: "opencode-go/qwen3.8-flash"
+
+    - provider: "opencode-go"
+      model: "opencode-go/mimo-v2.5"
 
 skills:
   - project-dna
   - coding-style
+
+agents:
+  developer:
+    max_steps: 0

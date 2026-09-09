@@ -133,9 +133,9 @@ def test_workflow_restricted_intent_blocks_developer(tmp_path):
     context.intent = IntentPolicy(name="restricted", actions=frozenset({ASK_USER_ACTION}))
 
     planner_runtime = MagicMock()
-    planner_runtime.execute.return_value = json.dumps(VALID_PLAN)
+    planner_runtime.execute.return_value = AgentResult(output=json.dumps(VALID_PLAN))
     dev_runtime = MagicMock()
-    dev_runtime.execute.return_value = "Implementation complete."
+    dev_runtime.execute.return_value = AgentResult(output="Implementation complete.")
 
     workflow = _make_workflow(tmp_path, repo, planner_runtime, dev_runtime)
     result = workflow.execute(Task(description="Add endpoint /health"), context)
@@ -149,14 +149,14 @@ def test_workflow_default_intent_passes_and_sets_context(tmp_path):
     repo = _setup_project(tmp_path)
     context = _make_context(str(repo))
     planner_runtime = MagicMock()
-    planner_runtime.execute.return_value = json.dumps(VALID_PLAN)
+    planner_runtime.execute.return_value = AgentResult(output=json.dumps(VALID_PLAN))
     dev_runtime = MagicMock()
 
     def _dev_execute(*_args, **_kwargs):
         (repo / "src" / "health_endpoint.py").write_text(
             'def health():\n    return "ok"\n', encoding="utf-8"
         )
-        return "Implementation complete."
+        return AgentResult(output="Implementation complete.")
 
     dev_runtime.execute.side_effect = _dev_execute
 

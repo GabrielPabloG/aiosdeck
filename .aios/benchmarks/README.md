@@ -98,6 +98,34 @@ cross-environment e não valem como sinal de regressão. v1.1.1 é a nova
 referência. O par full↔bare no mesmo commit (`32d7176`) quantifica o overhead
 de orquestração: `plan` 14.9 s (full) vs 5.2 s (bare).
 
+### Registro multi-agent opencode-go (não-oficial)
+
+- **Arquivo**: `.aios/benchmarks/v1.1.1-router-multiagent.json` (commands,
+  modo `full`; `repeat: 5`, `warmup: 1`) — mesma versão sob o routing
+  multi-agente com pricing opencode-go (planner→qwen3.8-flash,
+  developer→deepseek-v4-flash, reviewer→longcat-2.0, documentation→mimo-v2.5,
+  tester→deepseek-v4-flash, research→qwen3.8-flash; `cost_cap: 0.06`).
+  Snapshot das fases em `history/v1.1.1-router-multiagent-phases.json`
+  (`--skip-agents`: ambiente sem jail aninhado — fases Core apenas).
+  Snapshot do registro de commands anterior em
+  `history/v1.1.1-router-multiagent-3ad2955.json`.
+- **Não** participa das métricas oficiais de referência; a baseline é
+  `v1.1.1.json`.
+
+p50 (ms) — commands, modo `full` (branch `feat/router-multi-agent-opencode-go-pricing`, `64b1916`):
+
+| Target    | v1.1.1   | multiagent | Δ       |
+| --------- | -------- | ---------- | ------- |
+| dashboard | 101.40   | 71.37      | -29.6%  |
+| doctor    | 1960.43  | 75.88      | -96.1%  |
+| skills    | 100.91   | 68.85      | -31.8%  |
+| memory    | 96.54    | 67.59      | -30.0%  |
+| plan*     | 14946.75 | 1105.88    | -92.6%  |
+| backlog*  | 98.38    | 67.01      | -31.9%  |
+
+`aios benchmark compare v1.1.1.json v1.1.1-router-multiagent.json` → exit 0
+(sem regressões Core, ambiente compatível).
+
 ### Registro de stress de hardware (não-oficial)
 
 - **Arquivo**: `.aios/benchmarks/v1.1.1-qwen-local.json` — mesma versão

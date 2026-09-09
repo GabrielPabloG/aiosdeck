@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Documentation
+
+- **Multi-agent opencode-go benchmark record** — non-official
+  `v1.1.1-router-multiagent.json` captured on the
+  `feat/router-multi-agent-opencode-go-pricing` branch (routing with
+  per-agent opencode-go models and `cost_cap: 0.06`). `aios benchmark
+  compare` against the active `v1.1.1.json` baseline exits 0 (no Core
+  regressions): plan p50 14.9 s → 1.1 s under the new router.
+
 ## [1.1.1] — 2026-09-03
 
 ### Added
