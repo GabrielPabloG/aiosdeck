@@ -152,7 +152,7 @@ class TestSkillsStats:
         cmd_skills_stats([], Path("/tmp"), factory)
 
         captured = capsys.readouterr()
-        assert "No skill usage" in captured.out
+        assert "No skill usage records found." in captured.out
 
     def test_stats_json_output(self, capsys):
         data = [
@@ -205,4 +205,155 @@ class TestSkillsStats:
         factory = _kernel_factory(kernel)
         cmd_skills_stats([], Path("/tmp"), factory)
         captured = capsys.readouterr()
-        assert "not available" in captured.out
+        assert "Telemetry engine not available." in captured.out
+
+    def test_stats_table_headers(self, capsys):
+        data = [
+            {
+                "skill_name": "test-skill",
+                "total_records": 5,
+                "total_considered": 5,
+                "total_selected": 3,
+                "total_used": 2,
+                "avg_relevance": 0.75,
+                "total_tokens": 500,
+            }
+        ]
+        telemetry = MagicMock()
+        telemetry.query_skill_stats.return_value = data
+        kernel = _make_kernel(telemetry=telemetry)
+        factory = _kernel_factory(kernel)
+
+        cmd_skills_stats([], Path("/tmp"), factory)
+
+        captured = capsys.readouterr()
+        assert "Skill Stats" in captured.out
+        assert "Skill" in captured.out
+        assert "Used" in captured.out
+        assert "Selected" in captured.out
+        assert "Considered" in captured.out
+        assert "AvgScore" in captured.out
+        assert "Tokens" in captured.out
+        assert "1 skill(s)" in captured.out
+
+    def test_stats_with_date_from_to(self, capsys):
+        data = [
+            {
+                "skill_name": "s",
+                "total_records": 1,
+                "total_considered": 1,
+                "total_selected": 1,
+                "total_used": 1,
+                "avg_relevance": 0.5,
+                "total_tokens": 10,
+            }
+        ]
+        telemetry = MagicMock()
+        telemetry.query_skill_stats.return_value = data
+        kernel = _make_kernel(telemetry=telemetry)
+        factory = _kernel_factory(kernel)
+
+        cmd_skills_stats(["--from", "2026-01-01", "--to", "2026-12-31"], Path("/tmp"), factory)
+
+        telemetry.query_skill_stats.assert_called_once_with(
+            skill=None, date_from="2026-01-01", date_to="2026-12-31"
+        )
+
+    def test_stats_with_today_flag(self, capsys):
+        telemetry = MagicMock()
+        telemetry.query_skill_stats.return_value = []
+        kernel = _make_kernel(telemetry=telemetry)
+        factory = _kernel_factory(kernel)
+
+        cmd_skills_stats(["--today"], Path("/tmp"), factory)
+
+        call_kwargs = telemetry.query_skill_stats.call_args[1]
+        assert call_kwargs["date_from"] is not None
+        assert call_kwargs["date_from"].endswith("T00:00:00")
+
+
+class TestSkillsDiscoverNonJson:
+    def test_discover_non_json_with_matches(self, tmp_path, capsys):
+        _write_skill(tmp_path, "my-skill", "react")
+        kernel = _make_kernel()
+        kernel.get_context.return_value = None
+        factory = _kernel_factory(kernel)
+
+        try:
+            cmd_skills_discover(["build a react dashboard"], tmp_path, factory)
+        except SystemExit:
+            pass
+
+        captured = capsys.readouterr()
+        assert "Skill Discovery" in captured.out
+        assert "Intent:" in captured.out
+        assert "Agent:" in captured.out
+        assert "Candidates:" in captured.out
+        assert "my-skill" in captured.out
+
+    def test_discover_with_agent_flag(self, tmp_path, capsys):
+        _write_skill(tmp_path, "my-skill", "react")
+        kernel = _make_kernel()
+        kernel.get_context.return_value = None
+        factory = _kernel_factory(kernel)
+
+        try:
+            cmd_skills_discover(
+                ["build react", "--agent", "developer", "--top", "1"],
+                tmp_path,
+                factory,
+            )
+        except SystemExit:
+            pass
+
+        captured = capsys.readouterr()
+        assert "developer" in captured.out
+
+
+class TestSkillsInspectExactStrings:
+    def test_inspect_exact_field_labels(self, tmp_path, capsys):
+        _write_skill(tmp_path, "my-skill", "python")
+        kernel = _make_kernel()
+        kernel.get_context.return_value = None
+        factory = _kernel_factory(kernel)
+
+        try:
+            cmd_skills_inspect(["my-skill"], tmp_path, factory)
+        except SystemExit:
+            pass
+
+        captured = capsys.readouterr()
+        assert "Skill: my-skill" in captured.out
+        assert "Description" in captured.out
+        assert "Status" in captured.out
+        assert "Priority" in captured.out
+        assert "Version" in captured.out
+        assert "Triggers" in captured.out
+        assert "Indexed" in captured.out
+
+    def test_inspect_json_has_all_fields(self, tmp_path, capsys):
+        _write_skill(tmp_path, "my-skill", "python")
+        kernel = _make_kernel()
+        kernel.get_context.return_value = None
+        factory = _kernel_factory(kernel)
+
+        try:
+            cmd_skills_inspect(["my-skill", "--json"], tmp_path, factory)
+        except SystemExit:
+            pass
+
+        captured = capsys.readouterr()
+        output = json.loads(captured.out)
+        assert "name" in output
+        assert "description" in output
+        assert "triggers" in output
+        assert "scope" in output
+        assert "dependencies" in output
+        assert "priority" in output
+        assert "version" in output
+        assert "owner" in output
+        assert "updated_at" in output
+        assert "status" in output
+        assert "schema_version" in output
+        assert "indexed" in output
+        assert "chunks_count" in output

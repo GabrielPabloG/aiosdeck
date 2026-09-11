@@ -288,7 +288,7 @@ class TestCmdRoute:
             cmd_route([], Path.cwd(), lambda p: None)
         assert exc.value.code == 1
         captured = capsys.readouterr()
-        assert "Usage: aios route" in captured.err
+        assert "Usage: aios route <subcommand>" in captured.err
         assert "explain" in captured.out
         assert "stats" in captured.out
 
@@ -298,3 +298,147 @@ class TestCmdRoute:
         assert exc.value.code == 1
         captured = capsys.readouterr()
         assert "Unknown subcommand: bogus" in captured.err
+
+    def test_stats_no_telemetry_exits(self, capsys):
+        with pytest.raises(SystemExit) as exc:
+            cmd_route_stats([], Path.cwd(), lambda p: type("K", (), {"start": lambda s: None, "get_engine": lambda s, n: None})())
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert "Telemetry engine not available." in captured.err
+
+    def test_stats_empty_text_output(self, capsys):
+        def fake_kernel(_path):
+            class FakeTelemetry:
+                def query_routing_stats(self, **kwargs):
+                    return []
+                def query_routing_records(self, **kwargs):
+                    return []
+                def query_route_accuracy(self, **kwargs):
+                    return []
+            class FakeKernel:
+                def start(self):
+                    pass
+                def get_engine(self, name):
+                    if name == "telemetry":
+                        return FakeTelemetry()
+                    return None
+            return FakeKernel()
+
+        cmd_route_stats([], Path.cwd(), fake_kernel)
+        captured = capsys.readouterr()
+        assert "No routing stats found." in captured.out
+
+    def test_stats_records_json_output(self, capsys):
+        def fake_kernel(_path):
+            class FakeTelemetry:
+                def query_routing_stats(self, **kwargs):
+                    return []
+                def query_routing_records(self, **kwargs):
+                    return [{"agent": "p", "model": "m", "timestamp": "2025-01-01T00:00:00", "estimated_cost": 0.1, "reason": "r", "fallback_used": False}]
+                def query_route_accuracy(self, **kwargs):
+                    return []
+            class FakeKernel:
+                def start(self):
+                    pass
+                def get_engine(self, name):
+                    if name == "telemetry":
+                        return FakeTelemetry()
+                    return None
+            return FakeKernel()
+
+        cmd_route_stats(["--records", "--json"], Path.cwd(), fake_kernel)
+        captured = capsys.readouterr()
+        data = json.loads(captured.out)
+        assert len(data) == 1
+        assert data[0]["agent"] == "p"
+
+    def test_stats_records_empty(self, capsys):
+        def fake_kernel(_path):
+            class FakeTelemetry:
+                def query_routing_stats(self, **kwargs):
+                    return []
+                def query_routing_records(self, **kwargs):
+                    return []
+                def query_route_accuracy(self, **kwargs):
+                    return []
+            class FakeKernel:
+                def start(self):
+                    pass
+                def get_engine(self, name):
+                    if name == "telemetry":
+                        return FakeTelemetry()
+                    return None
+            return FakeKernel()
+
+        cmd_route_stats(["--records"], Path.cwd(), fake_kernel)
+        captured = capsys.readouterr()
+        assert "No routing records found." in captured.out
+
+    def test_stats_accuracy_json_output(self, capsys):
+        def fake_kernel(_path):
+            class FakeTelemetry:
+                def query_routing_stats(self, **kwargs):
+                    return []
+                def query_routing_records(self, **kwargs):
+                    return []
+                def query_route_accuracy(self, **kwargs):
+                    return [{"agent": "p", "model": "m", "estimated_cost": 0.1, "actual_cost": 0.12, "delta": 0.02}]
+            class FakeKernel:
+                def start(self):
+                    pass
+                def get_engine(self, name):
+                    if name == "telemetry":
+                        return FakeTelemetry()
+                    return None
+            return FakeKernel()
+
+        cmd_route_stats(["--accuracy", "--json"], Path.cwd(), fake_kernel)
+        captured = capsys.readouterr()
+        data = json.loads(captured.out)
+        assert len(data) == 1
+        assert data[0]["delta"] == 0.02
+
+    def test_stats_accuracy_empty(self, capsys):
+        def fake_kernel(_path):
+            class FakeTelemetry:
+                def query_routing_stats(self, **kwargs):
+                    return []
+                def query_routing_records(self, **kwargs):
+                    return []
+                def query_route_accuracy(self, **kwargs):
+                    return []
+            class FakeKernel:
+                def start(self):
+                    pass
+                def get_engine(self, name):
+                    if name == "telemetry":
+                        return FakeTelemetry()
+                    return None
+            return FakeKernel()
+
+        cmd_route_stats(["--accuracy"], Path.cwd(), fake_kernel)
+        captured = capsys.readouterr()
+        assert "No route accuracy data available." in captured.out
+
+    def test_explain_no_config_exits(self, capsys):
+        def fake_kernel(_path):
+            class FakeKernel:
+                def start(self):
+                    pass
+                def get_engine(self, name):
+                    return None
+            return FakeKernel()
+
+        with pytest.raises(SystemExit) as exc:
+            cmd_route_explain(["--agent", "planner"], Path.cwd(), fake_kernel)
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert "Routing config not available." in captured.err
+
+    def test_parse_explain_args_context_size(self):
+        args = _parse_explain_args(["--context-size", "8000"])
+        assert args["context_size"] == 8000
+
+    def test_parse_explain_args_unknown_flag(self, capsys):
+        with pytest.raises(SystemExit):
+            _parse_explain_args(["--bogus"])

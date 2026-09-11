@@ -1,5 +1,6 @@
 import json
 import subprocess
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from aios.cli.commands.exec_cmds import (
@@ -463,3 +464,222 @@ def test_plan_planning_uses_indeterminate_bar(tmp_path):
         cmd_plan(["plan test task"], tmp_path, lambda _: mock_kernel)
 
         assert mock_bar_cls.called
+
+
+# ---------------------------------------------------------------------------
+# Doctor command — direct function tests with exact string assertions
+# ---------------------------------------------------------------------------
+
+
+def test_doctor_direct_json_output(capsys):
+    from aios.cli.commands.core import cmd_doctor
+
+    kernel = MagicMock()
+    kernel.status.return_value = {
+        "project": "/test",
+        "engines": {"telemetry": "ready"},
+        "errors": [],
+    }
+    kernel.get_context.return_value = None
+    factory = lambda _: kernel
+
+    cmd_doctor(["--json"], Path("/tmp"), factory)
+    out = capsys.readouterr().out
+    data = json.loads(out)
+    assert data["project"] == "/test"
+    assert "engines" in data
+    assert data["engines"]["telemetry"] == "ready"
+
+
+def test_doctor_direct_with_context(capsys):
+    from aios.cli.commands.core import cmd_doctor
+
+    kernel = MagicMock()
+    ctx = MagicMock()
+    ctx.project.language = "python"
+    ctx.tools.linter = "ruff"
+    ctx.tools.formatter = "ruff"
+    ctx.tools.test_runner = "pytest"
+    ctx.git.branch = "main"
+    ctx.git.status = "clean"
+    ctx.runtime.opencode = True
+    ctx.runtime.ai_jail = False
+    kernel.get_context.return_value = ctx
+    kernel.status.return_value = {
+        "project": "/test",
+        "engines": {},
+        "errors": [],
+    }
+    factory = lambda _: kernel
+
+    cmd_doctor([], Path("/tmp"), factory)
+
+
+def test_doctor_direct_with_diagnostics(capsys):
+    from aios.cli.commands.core import cmd_doctor
+
+    kernel = MagicMock()
+    kernel.get_context.return_value = None
+    kernel.status.return_value = {
+        "project": "/test",
+        "engines": {},
+        "errors": ["something broke"],
+        "runtime_diagnostics": {
+            "status": "ready",
+            "code": "ok",
+            "provider": "openai",
+            "model": "gpt-4o",
+            "source": "config",
+            "suggestions": ["try restarting"],
+        },
+    }
+    factory = lambda _: kernel
+
+    cmd_doctor([], Path("/tmp"), factory)
+
+
+def test_doctor_direct_no_diagnostics(capsys):
+    from aios.cli.commands.core import cmd_doctor
+
+    kernel = MagicMock()
+    kernel.get_context.return_value = None
+    kernel.status.return_value = {
+        "project": "/test",
+        "engines": {},
+        "errors": [],
+    }
+    factory = lambda _: kernel
+
+    cmd_doctor([], Path("/tmp"), factory)
+
+
+# ---------------------------------------------------------------------------
+# Init command — direct function tests
+# ---------------------------------------------------------------------------
+
+
+def test_init_creates_project_yaml(tmp_path):
+    from aios.cli.commands.core import cmd_init
+
+    kernel = MagicMock()
+    factory = lambda _: kernel
+
+    cmd_init([], tmp_path, factory)
+
+    yaml_path = tmp_path / ".aios" / "project.yaml"
+    assert yaml_path.exists()
+    content = yaml_path.read_text()
+    assert "runtime: opencode" in content
+    assert "sandbox: ai-jail" in content
+    assert "project-dna" in content
+    assert "coding-style" in content
+
+
+def test_init_idempotent(tmp_path):
+    from aios.cli.commands.core import cmd_init
+
+    kernel = MagicMock()
+    factory = lambda _: kernel
+
+    cmd_init([], tmp_path, factory)
+    first_content = (tmp_path / ".aios" / "project.yaml").read_text()
+    cmd_init([], tmp_path, factory)
+    second_content = (tmp_path / ".aios" / "project.yaml").read_text()
+    assert first_content == second_content
+
+
+def test_init_adds_gitignore_rule(tmp_path):
+    from aios.cli.commands.core import cmd_init
+
+    kernel = MagicMock()
+    factory = lambda _: kernel
+
+    cmd_init([], tmp_path, factory)
+    gitignore = (tmp_path / ".gitignore").read_text()
+    assert ".aios/memory.db" in gitignore
+
+
+def test_init_skips_existing_gitignore_rule(tmp_path):
+    from aios.cli.commands.core import cmd_init
+
+    (tmp_path / ".gitignore").write_text(".aios/memory.db\n")
+    kernel = MagicMock()
+    factory = lambda _: kernel
+
+    cmd_init([], tmp_path, factory)
+    content = (tmp_path / ".gitignore").read_text()
+    assert content.count(".aios/memory.db") == 1
+
+
+# ---------------------------------------------------------------------------
+# Completion command — direct function tests
+# ---------------------------------------------------------------------------
+
+
+def test_completion_bash_direct(capsys):
+    from aios.cli.commands.core import cmd_completion
+
+    kernel = MagicMock()
+    factory = lambda _: kernel
+
+    cmd_completion(["--bash"], Path("/tmp"), factory)
+    out = capsys.readouterr().out
+    assert "complete -F _aios_completion aios aiosdeck ad" in out
+    assert "_aios_completion()" in out
+
+
+def test_completion_zsh_direct(capsys):
+    from aios.cli.commands.core import cmd_completion
+
+    kernel = MagicMock()
+    factory = lambda _: kernel
+
+    cmd_completion(["--zsh"], Path("/tmp"), factory)
+    out = capsys.readouterr().out
+    assert "#compdef aios aiosdeck ad" in out
+
+
+def test_completion_no_flag_exits(capsys):
+    from aios.cli.commands.core import cmd_completion
+
+    kernel = MagicMock()
+    factory = lambda _: kernel
+
+    try:
+        cmd_completion([], Path("/tmp"), factory)
+    except SystemExit as e:
+        assert e.code == 1
+    err = capsys.readouterr().err
+    assert "Usage: aios completion --bash | --zsh" in err
+
+
+# ---------------------------------------------------------------------------
+# Help command — exact string assertions
+# ---------------------------------------------------------------------------
+
+
+def test_help_exact_strings(capsys):
+    from aios.cli.commands.core import cmd_help
+
+    kernel = MagicMock()
+    factory = lambda _: kernel
+
+    cmd_help([], Path("/tmp"), factory)
+    out = capsys.readouterr().out
+    assert "AiosDeck" in out
+    assert "The AI Operating System for Developers" in out
+
+
+# ---------------------------------------------------------------------------
+# Exit command
+# ---------------------------------------------------------------------------
+
+
+def test_exit_calls_kernel_shutdown():
+    from aios.cli.commands.core import cmd_exit
+
+    kernel = MagicMock()
+    factory = lambda _: kernel
+
+    cmd_exit([], Path("/tmp"), factory)
+    kernel.shutdown.assert_called_once()

@@ -41,7 +41,24 @@ def test_cmd_backlog_run_no_source(capsys):
         cmd_backlog_run([], Path("/tmp"), lambda p: _MockKernel())
     assert exc.value.code == 1
     captured = capsys.readouterr()
-    assert "Usage:" in captured.out
+    assert "Usage: aios backlog run --source=board:NAME | --source=file:PATH" in captured.out
+    assert "--branch" in captured.out
+    assert "--continue" in captured.out
+    assert "--from N" in captured.out
+
+
+def test_cmd_backlog_run_no_tasks(capsys):
+    from aios.backlog.cli import cmd_backlog_run
+
+    kernel = _MockKernel()
+    scheduler = type("S", (), {"list_boards": lambda s: [], "get_board": lambda s, name: None})()
+    kernel._engines["scheduler"] = scheduler
+
+    with pytest.raises(SystemExit) as exc:
+        cmd_backlog_run(["--source=board:test"], Path("/tmp"), lambda p: kernel)
+    assert exc.value.code == 0
+    captured = capsys.readouterr()
+    assert "No tasks found in source." in captured.out
 
 
 class _RecordKernel:

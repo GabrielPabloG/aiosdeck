@@ -949,3 +949,159 @@ class TestDateFilters:
         assert len(store.query_backlog_stats(date_from="2026-01-02T00:00:00Z")) == 0
         assert len(store.query_backlog_stats(date_to="2026-01-02T00:00:00Z")) == 1
         store.close()
+
+
+class TestAggregateUsage:
+    def test_aggregate_all_sections(self, tmp_path):
+        store = _open_store(tmp_path)
+        store.insert_usage(
+            {
+                "agent": "planner",
+                "model": "gpt-4o",
+                "input_tokens": 100,
+                "output_tokens": 50,
+                "total_tokens": 150,
+                "timestamp": "2026-01-01T00:00:00Z",
+            }
+        )
+        store.insert_usage(
+            {
+                "agent": "developer",
+                "model": "claude",
+                "input_tokens": 200,
+                "output_tokens": 80,
+                "total_tokens": 280,
+                "timestamp": "2026-01-01T00:00:00Z",
+            }
+        )
+        store.insert_cost(
+            {
+                "agent": "planner",
+                "model": "gpt-4o",
+                "total_cost": 0.0123,
+                "timestamp": "2026-01-01T00:00:00Z",
+            }
+        )
+        store.insert_execution(
+            {
+                "execution_id": "e1",
+                "agent": "planner",
+                "status": "succeeded",
+                "timestamp": "2026-01-01T00:00:00Z",
+            }
+        )
+
+        result = store.aggregate_usage()
+        assert result["totals"]["input_tokens"] == 300
+        assert result["totals"]["output_tokens"] == 130
+        assert result["totals"]["total_tokens"] == 430
+        assert result["totals"]["total_cost"] == 0.0123
+        assert result["totals"]["currency"] == "USD"
+        assert "planner" in result["by_agent"]
+        assert "developer" in result["by_agent"]
+        assert result["by_agent"]["planner"]["input_tokens"] == 100
+        assert result["by_agent"]["developer"]["input_tokens"] == 200
+        assert "gpt-4o" in result["by_model"]
+        assert "claude" in result["by_model"]
+        assert result["by_model"]["gpt-4o"]["input_tokens"] == 100
+        assert result["by_model"]["claude"]["input_tokens"] == 200
+        assert len(result["records"]) == 2
+        assert len(result["cost_records"]) == 1
+        assert len(result["executions"]) == 1
+        assert result["total_records"] == 2
+        assert result["total_executions"] == 1
+        store.close()
+
+    def test_aggregate_empty_store(self, tmp_path):
+        store = _open_store(tmp_path)
+        result = store.aggregate_usage()
+        assert result["totals"]["input_tokens"] == 0
+        assert result["totals"]["output_tokens"] == 0
+        assert result["totals"]["total_tokens"] == 0
+        assert result["totals"]["total_cost"] == 0
+        assert result["totals"]["currency"] == "USD"
+        assert result["by_agent"] == {}
+        assert result["by_model"] == {}
+        assert result["records"] == []
+        assert result["cost_records"] == []
+        assert result["executions"] == []
+        assert result["total_records"] == 0
+        assert result["total_executions"] == 0
+        store.close()
+
+    def test_aggregate_with_null_tokens(self, tmp_path):
+        store = _open_store(tmp_path)
+        store.insert_usage(
+            {
+                "agent": "planner",
+                "model": "gpt-4o",
+                "input_tokens": None,
+                "output_tokens": None,
+                "total_tokens": None,
+                "timestamp": "2026-01-01T00:00:00Z",
+            }
+        )
+        result = store.aggregate_usage()
+        assert result["totals"]["input_tokens"] == 0
+        assert result["totals"]["output_tokens"] == 0
+        assert result["totals"]["total_tokens"] == 0
+        store.close()
+
+    def test_aggregate_unknown_agent_model(self, tmp_path):
+        store = _open_store(tmp_path)
+        store.insert_usage(
+            {
+                "agent": "",
+                "model": "",
+                "input_tokens": 10,
+                "output_tokens": 5,
+                "total_tokens": 15,
+                "timestamp": "2026-01-01T00:00:00Z",
+            }
+        )
+        result = store.aggregate_usage()
+        assert "unknown" in result["by_agent"]
+        assert "unknown" in result["by_model"]
+        store.close()
+
+    def test_aggregate_filters_by_agent(self, tmp_path):
+        store = _open_store(tmp_path)
+        store.insert_usage(
+            {
+                "agent": "planner",
+                "model": "gpt-4o",
+                "input_tokens": 100,
+                "output_tokens": 50,
+                "total_tokens": 150,
+                "timestamp": "2026-01-01T00:00:00Z",
+            }
+        )
+        store.insert_usage(
+            {
+                "agent": "developer",
+                "model": "gpt-4o",
+                "input_tokens": 200,
+                "output_tokens": 80,
+                "total_tokens": 280,
+                "timestamp": "2026-01-01T00:00:00Z",
+            }
+        )
+        result = store.aggregate_usage(agent="planner")
+        assert result["totals"]["input_tokens"] == 100
+        assert len(result["records"]) == 1
+        assert result["total_records"] == 1
+        store.close()
+
+    def test_aggregate_cost_rounding(self, tmp_path):
+        store = _open_store(tmp_path)
+        store.insert_cost(
+            {
+                "agent": "planner",
+                "model": "gpt-4o",
+                "total_cost": 0.123456789,
+                "timestamp": "2026-01-01T00:00:00Z",
+            }
+        )
+        result = store.aggregate_usage()
+        assert result["totals"]["total_cost"] == 0.1235
+        store.close()

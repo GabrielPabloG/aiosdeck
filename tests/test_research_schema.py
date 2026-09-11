@@ -98,3 +98,123 @@ def test_json_round_trip():
     restored = research_result_from_dict(original.to_dict())
     assert restored.to_dict() == original.to_dict()
     assert isinstance(research_result_to_json(original), str)
+
+
+def test_from_dict_all_fields_non_default():
+    data = {
+        "task": {
+            "question": "How to auth?",
+            "scope": "api",
+            "constraints": {"budget": 100},
+            "context_packet": {"lang": "python"},
+        },
+        "status": "partial",
+        "summary_short": "Found 2 sources.",
+        "sources": [
+            {
+                "id": "s1",
+                "title": "Doc",
+                "url": "https://example.com",
+                "type": "api",
+                "retrieved_at": "2026-01-01T00:00:00Z",
+                "trust_score": 0.9,
+                "snippet": "Use X",
+                "tags": ["auth"],
+            }
+        ],
+        "findings": [
+            {
+                "id": "F1",
+                "claim": "Use X",
+                "evidence_source_ids": ["s1"],
+                "confidence": 0.85,
+                "applies_to": "backend",
+                "tags": ["security"],
+            }
+        ],
+        "confidence_overall": 0.78,
+        "recommendations": [
+            {
+                "action": "Do Y",
+                "rationale": "Because Z",
+                "risk": "high",
+                "priority": "critical",
+                "source_ids": ["s1"],
+            }
+        ],
+        "memory_candidates": [
+            {
+                "kind": "convention",
+                "content": "Use X",
+                "reason": "Best practice",
+                "confidence": 0.9,
+                "tags": ["auth"],
+            }
+        ],
+        "error": "timeout on source 2",
+    }
+    result = research_result_from_dict(data)
+    assert result.task.question == "How to auth?"
+    assert result.task.scope == "api"
+    assert result.task.constraints == {"budget": 100}
+    assert result.task.context_packet == {"lang": "python"}
+    assert result.status == "partial"
+    assert result.summary_short == "Found 2 sources."
+    assert len(result.sources) == 1
+    assert result.sources[0].type == "api"
+    assert result.sources[0].trust_score == 0.9
+    assert result.sources[0].tags == ["auth"]
+    assert result.findings[0].confidence == 0.85
+    assert result.findings[0].applies_to == "backend"
+    assert result.findings[0].tags == ["security"]
+    assert result.confidence_overall == 0.78
+    assert result.recommendations[0].risk == "high"
+    assert result.recommendations[0].priority == "critical"
+    assert result.recommendations[0].source_ids == ["s1"]
+    assert result.memory_candidates[0].kind == "convention"
+    assert result.memory_candidates[0].reason == "Best practice"
+    assert result.memory_candidates[0].confidence == 0.9
+    assert result.memory_candidates[0].tags == ["auth"]
+    assert result.error == "timeout on source 2"
+
+
+def test_from_dict_defaults_for_missing_optional_fields():
+    data = {
+        "task": {"question": "test"},
+        "status": "ok",
+        "summary_short": "Done",
+        "sources": [{"id": "s1", "url": "https://x.com"}],
+        "findings": [{"id": "F1", "evidence_source_ids": ["s1"]}],
+        "confidence_overall": 0.5,
+    }
+    result = research_result_from_dict(data)
+    assert result.task.scope == "mixed"
+    assert result.task.constraints == {}
+    assert result.task.context_packet == {}
+    assert result.sources[0].title == ""
+    assert result.sources[0].type == "doc"
+    assert result.sources[0].retrieved_at == ""
+    assert result.sources[0].trust_score == 0.5
+    assert result.sources[0].snippet == ""
+    assert result.sources[0].tags == []
+    assert result.findings[0].claim == ""
+    assert result.findings[0].confidence == 0.5
+    assert result.findings[0].applies_to == ""
+    assert result.findings[0].tags == []
+    assert result.recommendations == []
+    assert result.memory_candidates == []
+    assert result.error == ""
+
+
+def test_from_dict_empty_sources_findings():
+    data = {
+        "task": {"question": "empty"},
+        "status": "ok",
+        "summary_short": "Nothing found.",
+        "confidence_overall": 0.0,
+    }
+    result = research_result_from_dict(data)
+    assert result.sources == []
+    assert result.findings == []
+    assert result.recommendations == []
+    assert result.memory_candidates == []

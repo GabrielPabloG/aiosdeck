@@ -264,3 +264,78 @@ def test_cmd_usage_unavailable_engine(tmp_path, capsys):
     kernel = Kernel(project_path=str(tmp_path))
     with patch.object(kernel, "start", lambda: None):
         cmd_usage([], Path(tmp_path), lambda p: kernel)
+
+
+def test_render_table_multiple_agents_models(capsys):
+    data = {
+        "totals": {
+            "input_tokens": 300,
+            "output_tokens": 150,
+            "total_tokens": 450,
+            "total_cost": 0.05,
+            "currency": "USD",
+        },
+        "by_agent": {
+            "planner": {"input_tokens": 100, "output_tokens": 50, "total_tokens": 150, "count": 1},
+            "developer": {"input_tokens": 200, "output_tokens": 100, "total_tokens": 300, "count": 2},
+        },
+        "by_model": {
+            "gpt-4o": {"input_tokens": 200, "output_tokens": 100, "total_tokens": 300, "count": 2},
+            "claude": {"input_tokens": 100, "output_tokens": 50, "total_tokens": 150, "count": 1},
+        },
+        "records": [
+            {"execution_id": "e1", "input_tokens": 100, "output_tokens": 50, "agent": "planner", "model": "gpt-4o"},
+            {"execution_id": "e2", "input_tokens": 200, "output_tokens": 100, "agent": "developer", "model": "claude"},
+        ],
+        "cost_records": [
+            {"execution_id": "e1", "status": "priced", "total_cost": 0.02},
+            {"execution_id": "e2", "status": "priced", "total_cost": 0.03},
+        ],
+    }
+    _render_table(data)
+    captured = capsys.readouterr()
+    assert "Total input tokens" in captured.out
+    assert "300" in captured.out
+    assert "planner" in captured.out.lower()
+    assert "developer" in captured.out.lower()
+    assert "gpt-4o" in captured.out.lower()
+    assert "claude" in captured.out.lower()
+    assert "2 usage record" in captured.out
+
+
+def test_render_table_priced(capsys):
+    data = {
+        "totals": {
+            "input_tokens": 100,
+            "output_tokens": 50,
+            "total_tokens": 150,
+            "total_cost": 0.0042,
+            "currency": "USD",
+        },
+        "by_agent": {},
+        "by_model": {},
+        "records": [{"execution_id": "e1", "input_tokens": 100, "output_tokens": 50, "agent": "p", "model": "m"}],
+        "cost_records": [{"execution_id": "e1", "status": "priced", "total_cost": 0.0042}],
+    }
+    _render_table(data)
+    captured = capsys.readouterr()
+    assert "Priced" in captured.out
+
+
+def test_render_table_billed_model(capsys):
+    data = {
+        "totals": {
+            "input_tokens": 100,
+            "output_tokens": 50,
+            "total_tokens": 150,
+            "total_cost": 0.01,
+            "currency": "USD",
+        },
+        "by_agent": {},
+        "by_model": {},
+        "records": [{"execution_id": "e1", "input_tokens": 100, "output_tokens": 50, "agent": "p", "model": "m"}],
+        "cost_records": [{"execution_id": "e1", "status": "billed", "model": "gpt-4o", "total_cost": 0.01}],
+    }
+    _render_table(data)
+    captured = capsys.readouterr()
+    assert "billed" in captured.out.lower() or "usage record" in captured.out.lower()
