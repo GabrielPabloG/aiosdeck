@@ -271,6 +271,28 @@ class TestSkillsStats:
         assert call_kwargs["date_from"] is not None
         assert call_kwargs["date_from"].endswith("T00:00:00")
 
+    def test_stats_zero_relevance_uses_dash_and_ignores_agent_filter(self, capsys):
+        telemetry = MagicMock()
+        telemetry.query_skill_stats.return_value = [
+            {
+                "skill_name": "zero",
+                "total_records": 1,
+                "total_considered": 1,
+                "total_selected": 0,
+                "total_used": 0,
+                "avg_relevance": 0,
+                "total_tokens": 0,
+            }
+        ]
+        kernel = _make_kernel(telemetry=telemetry)
+
+        cmd_skills_stats(["--agent", "developer"], Path("/tmp"), _kernel_factory(kernel))
+
+        assert "—" in capsys.readouterr().out
+        telemetry.query_skill_stats.assert_called_once_with(
+            skill=None, date_from=None, date_to=None
+        )
+
 
 class TestSkillsDiscoverNonJson:
     def test_discover_non_json_with_matches(self, tmp_path, capsys):

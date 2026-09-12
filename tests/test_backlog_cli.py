@@ -1,6 +1,7 @@
 """Tests for backlog CLI commands."""
 
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -111,6 +112,66 @@ def test_cmd_backlog_run_branch_flag_true(tmp_path):
 
 def test_cmd_backlog_run_branch_flag_false(tmp_path):
     _assert_create_branch(tmp_path, "--no-branch", False)
+
+
+def test_cmd_backlog_run_forwards_continue_and_from(monkeypatch, tmp_path, capsys):
+    from aios.backlog import cli
+
+    kernel = _RecordKernel()
+    todo = tmp_path / "TODO.md"
+    _write_todo(todo, ["- [ ] feat(cli): add flag"])
+    captured = {}
+
+    class FakeRunner:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def run(self, tasks, **kwargs):
+            captured["tasks"] = tasks
+            captured.update(kwargs)
+            return [SimpleNamespace(status="succeeded")]
+
+    monkeypatch.setattr(cli, "BacklogRunner", FakeRunner)
+    cli.cmd_backlog_run(
+        [f"--source=file:{todo.name}", "--continue", "--from", "3", "--branch"],
+        tmp_path,
+        lambda _path: kernel,
+    )
+
+    assert len(captured["tasks"]) == 1
+    assert captured["stop_on_error"] is False
+    assert captured["from_index"] == 3
+    assert captured["create_branch"] is True
+    assert "Running 1 task(s)" in capsys.readouterr().out
+
+
+def test_cmd_backlog_run_reports_failed_tasks(monkeypatch, tmp_path, capsys):
+    from aios.backlog import cli
+
+    kernel = _RecordKernel()
+    todo = tmp_path / "TODO.md"
+    _write_todo(todo, ["- [ ] feat(cli): add flag"])
+
+    class FakeRunner:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def run(self, tasks, **kwargs):
+            return [
+                SimpleNamespace(
+                    status="failed",
+                    task=SimpleNamespace(title="add flag"),
+                    error="runner failed",
+                ),
+                SimpleNamespace(status="skipped"),
+            ]
+
+    monkeypatch.setattr(cli, "BacklogRunner", FakeRunner)
+    with pytest.raises(SystemExit) as exc:
+        cli.cmd_backlog_run([f"--source=file:{todo.name}"], tmp_path, lambda _path: kernel)
+
+    assert exc.value.code == 1
+    assert "Done: 0 succeeded, 1 failed, 1 skipped" in capsys.readouterr().out
 
 
 def test_cmd_backlog_stats_no_records(capsys):

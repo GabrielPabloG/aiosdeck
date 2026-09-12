@@ -709,3 +709,109 @@ def test_exit_calls_kernel_shutdown():
 
     cmd_exit([], Path("/tmp"), factory)
     kernel.shutdown.assert_called_once()
+
+
+def test_doctor_json_includes_context_fields(capsys):
+    from aios.cli.commands.core import cmd_doctor
+
+    kernel = MagicMock()
+    context = MagicMock()
+    context.project.language = "python"
+    context.tools.linter = "ruff"
+    context.tools.formatter = "ruff"
+    context.tools.test_runner = "pytest"
+    context.git.branch = "main"
+    context.git.status = "clean"
+    context.runtime.opencode = True
+    context.runtime.ai_jail = False
+    kernel.get_context.return_value = context
+    kernel.status.return_value = {"project": "/repo", "engines": {}, "errors": []}
+
+    def factory(_path):
+        return kernel
+
+    cmd_doctor(["--json"], Path("/tmp"), factory)
+    data = json.loads(capsys.readouterr().out)
+    assert data["context"] == {
+        "language": "python",
+        "linter": "ruff",
+        "formatter": "ruff",
+        "test_runner": "pytest",
+        "git_branch": "main",
+        "git_status": "clean",
+        "opencode": True,
+        "ai_jail": False,
+    }
+    kernel.start.assert_called_once_with()
+    kernel.diagnose_runtime.assert_called_once_with()
+
+
+def test_doctor_logs_diagnostics_suggestions_and_warnings(caplog):
+    from aios.cli.commands.core import cmd_doctor
+
+    kernel = MagicMock()
+    kernel.get_context.return_value = None
+    kernel.status.return_value = {
+        "project": "/repo",
+        "engines": {},
+        "runtime_diagnostics": {
+            "status": "degraded",
+            "code": "runtime_error",
+            "provider": "",
+            "model": "",
+            "source": "config",
+            "suggestions": ["check runtime", "retry"],
+        },
+        "errors": ["runtime unavailable"],
+    }
+
+    def factory(_path):
+        return kernel
+
+    with caplog.at_level("INFO", logger="aios"):
+        cmd_doctor([], Path("/tmp"), factory)
+
+    output = "\n".join(record.getMessage() for record in caplog.records)
+    assert "Runtime Diagnostics" in output
+    assert "Status" in output
+    assert "runtime_error" in output
+    assert "not configured" in output
+    assert "Suggestion" in output
+    assert "check runtime" in output
+    assert "retry" in output
+    assert "Warnings:" in output
+    assert "runtime unavailable" in output
+
+
+def test_help_lists_every_public_command_and_alias_section(capsys):
+    from aios.cli.commands import _print_help
+
+    _print_help()
+    output = capsys.readouterr().out
+    expected = (
+        "Usage:",
+        "aios doctor",
+        "aios memory",
+        "aios plan",
+        "aios review",
+        "aios research",
+        "aios usage",
+        "aios benchmark",
+        "aios quality",
+        "aios policy",
+        "aios security",
+        "aios knowledge",
+        "aios skills",
+        "aios learning",
+        "aios ocean",
+        "aios route",
+        "aios backlog",
+        "aios help",
+        "aios completion",
+        "Commands:",
+        "Aliases:",
+        "start, status",
+        "Project: https://github.com/GabrielPabloG/aiosdeck",
+    )
+    for text in expected:
+        assert text in output

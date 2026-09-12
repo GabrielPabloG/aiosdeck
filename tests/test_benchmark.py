@@ -130,6 +130,53 @@ class TestBenchmarkProfile:
 
         assert os.environ.get("AIOS_PROFILE") is None
 
+    def test_measure_lifecycle_records_phase_errors_and_shutdown_error(self):
+        kernel = _stub_kernel()
+        kernel.get_context.side_effect = RuntimeError("context failed")
+        kernel.shutdown.side_effect = RuntimeError("flush failed")
+
+        result = measure_lifecycle(
+            ".",
+            lambda _path: kernel,
+            skip_agents=True,
+        )
+
+        assert result["context_load"]["error"] == "context failed"
+        assert result["plan"] == {
+            "skipped": True,
+            "reason": "requires agent runtime (--skip-agents)",
+        }
+        assert result["agent_exec"] == {
+            "skipped": True,
+            "reason": "requires agent runtime (--skip-agents)",
+        }
+        assert result["telemetry_flush"]["error"] == "flush failed"
+
+    def test_measure_lifecycle_notifies_slow_phases(self):
+        kernel = _stub_kernel()
+        events = []
+
+        result = measure_lifecycle(
+            ".",
+            lambda _path: kernel,
+            skip_agents=True,
+            on_phase=events.append,
+        )
+
+        assert result["telemetry_flush"]
+        assert events[0] == ("telemetry_flush", "start")
+        assert events[1][0:2] == ("telemetry_flush", "end")
+        assert len(events[1]) == 3
+
+    def test_measure_lifecycle_restores_existing_profile(self, monkeypatch):
+        kernel = _stub_kernel()
+        kernel.timings = {"kernel_start_total_ms": 1.0}
+        monkeypatch.setenv("AIOS_PROFILE", "existing")
+
+        measure_lifecycle(".", lambda _path: kernel, skip_agents=True, profile=True)
+
+        assert __import__("os").environ["AIOS_PROFILE"] == "existing"
+
 
 class TestPercentile:
     def test_single_value(self):

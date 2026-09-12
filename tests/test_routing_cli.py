@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -280,6 +281,95 @@ class TestRouteStats:
         args = _parse_stats_args(["--accuracy", "--json"])
         assert args["accuracy"] is True
         assert args["json"] is True
+
+    def test_stats_forwards_all_filters_and_limit(self, capsys):
+        telemetry = MagicMock()
+        telemetry.query_routing_stats.return_value = [
+            {
+                "agent": "planner",
+                "model": "gpt-4o",
+                "routes": 2,
+                "fallbacks": 1,
+                "avg_estimated_cost": 0.01,
+                "avg_context_size": 500,
+            }
+        ]
+        kernel = MagicMock()
+        kernel.get_engine.return_value = telemetry
+
+        cmd_route_stats(
+            [
+                "--agent",
+                "planner",
+                "--model",
+                "gpt-4o",
+                "--date-from",
+                "2026-01-01",
+                "--date-to",
+                "2026-01-31",
+                "--limit",
+                "7",
+                "--json",
+            ],
+            Path.cwd(),
+            lambda _path: kernel,
+        )
+
+        assert json.loads(capsys.readouterr().out)[0]["routes"] == 2
+        telemetry.query_routing_stats.assert_called_once_with(
+            agent="planner",
+            model="gpt-4o",
+            date_from="2026-01-01",
+            date_to="2026-01-31",
+            limit=7,
+        )
+
+    def test_records_fallback_and_json_branch(self, capsys):
+        telemetry = MagicMock()
+        telemetry.query_routing_records.return_value = [
+            {
+                "agent": "planner",
+                "model": "gpt-4o",
+                "reason": "fallback",
+                "estimated_cost": 0.15,
+                "fallback_used": True,
+                "timestamp": "2026-01-01T12:00:00Z",
+            }
+        ]
+        kernel = MagicMock()
+        kernel.get_engine.return_value = telemetry
+
+        cmd_route_stats(["--records", "--json"], Path.cwd(), lambda _path: kernel)
+
+        output = json.loads(capsys.readouterr().out)
+        assert output[0]["fallback_used"] is True
+        telemetry.query_routing_records.assert_called_once_with(
+            agent=None,
+            model=None,
+            date_from=None,
+            date_to=None,
+            limit=100,
+        )
+
+    def test_accuracy_formats_negative_delta(self, capsys):
+        telemetry = MagicMock()
+        telemetry.query_route_accuracy.return_value = [
+            {
+                "agent": "planner",
+                "model": "gpt-4o",
+                "estimated_cost": 0.2,
+                "actual_cost": 0.1,
+                "delta": -0.1,
+            }
+        ]
+        kernel = MagicMock()
+        kernel.get_engine.return_value = telemetry
+
+        cmd_route_stats(["--accuracy"], Path.cwd(), lambda _path: kernel)
+
+        output = capsys.readouterr().out
+        assert "-$0.100000" in output
+        telemetry.query_route_accuracy.assert_called_once_with(limit=100)
 
 
 class TestCmdRoute:

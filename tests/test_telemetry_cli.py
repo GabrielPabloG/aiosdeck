@@ -374,3 +374,30 @@ def test_render_table_billed_model(capsys):
     _render_table(data)
     captured = capsys.readouterr()
     assert "billed" in captured.out.lower() or "usage record" in captured.out.lower()
+
+
+def test_render_table_defaults_and_sorted_groups(capsys):
+    _render_table(
+        {
+            "totals": {},
+            "by_agent": {
+                "z-agent": {"input_tokens": 1, "output_tokens": 2},
+                "a-agent": {"input_tokens": 3, "output_tokens": 4},
+            },
+            "by_model": {
+                "z-model": {"input_tokens": 1, "output_tokens": 2},
+                "a-model": {"input_tokens": 3, "output_tokens": 4},
+            },
+            "cost_records": [
+                {"status": "priced", "total_cost": 0.01},
+                {"status": "unpriced"},
+            ],
+        }
+    )
+    output = capsys.readouterr().out
+    assert "Total input tokens 0" in output
+    assert "Total cost     $0.0000 USD" in output
+    assert output.index("a-agent") < output.index("z-agent")
+    assert output.index("a-model") < output.index("z-model")
+    assert "Priced: 1 records, $0.0100" in output
+    assert "Unpriced: 1 records" in output

@@ -224,6 +224,34 @@ def test_workflow_planner_failure_stops(tmp_path):
         scheduler.shutdown()
 
 
+def test_workflow_git_branch_failure_returns_failed_result(tmp_path, monkeypatch):
+    repo = _setup_project(tmp_path)
+    context = _make_context(str(repo))
+    planner_runtime = MagicMock()
+    planner_runtime.execute.return_value = AgentResult(output=json.dumps(VALID_PLAN))
+    workflow, scheduler, _ = _make_workflow(tmp_path, repo, planner_runtime=planner_runtime)
+
+    def fail_branch(agent, task, context=None):
+        if task.task_type == "code" and task.description == "Add endpoint /health":
+            return AgentResult(output=json.dumps(VALID_PLAN))
+        if task.task_type == "create_branch":
+            return AgentResult(success=False, errors=["branch denied"])
+        return AgentResult(success=True)
+
+    monkeypatch.setattr(workflow, "_run_agent", fail_branch)
+    try:
+        result = workflow.execute(Task(description="Add endpoint /health"), context)
+
+        assert result.success is False
+        assert result.branch is None
+        assert [stage.name for stage in result.stages] == ["planner", "git"]
+        assert result.stages[-1].success is False
+        assert "Git: failed to create branch" in result.errors[0]
+        assert "branch denied" in result.errors[0]
+    finally:
+        scheduler.shutdown()
+
+
 def test_workflow_developer_failure_stops(tmp_path):
     repo = _setup_project(tmp_path)
     context = _make_context(str(repo))

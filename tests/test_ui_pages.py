@@ -87,6 +87,16 @@ class TestRenderOverview:
         result = render_page("overview", data, ctx)
         assert "no engines" in result
 
+    def test_overview_partial_engine_health_is_rendered(self, ctx):
+        data = {
+            "status": {
+                "engines": {"telemetry": "ready", "knowledge": "down"},
+                "errors": [],
+            }
+        }
+        result = render_page("overview", data, ctx)
+        assert "1/2 ready" in result
+
     def test_overview_with_errors(self, ctx):
         data = {"status": {"engines": {"t": "ready"}, "errors": ["something broke"]}}
         result = render_page("overview", data, ctx)
@@ -170,6 +180,19 @@ class TestRenderUsage:
     def test_usage_empty(self, ctx):
         result = _render_usage({}, ctx)
         assert "Usage" in result
+
+    def test_usage_limits_cost_rows_to_ten(self, ctx):
+        costs = [{"agent": f"agent-{i}", "model": "model", "cost": i / 1000} for i in range(12)]
+        result = _render_usage({"cost_records": costs}, ctx)
+        assert "agent-0" in result
+        assert "agent-9" in result
+        assert "agent-10" not in result
+        assert "agent-11" not in result
+
+    def test_usage_cost_defaults_are_rendered(self, ctx):
+        result = _render_usage({"cost_records": [{}]}, ctx)
+        assert "Costs" in result
+        assert "$0.0000" in result
 
 
 class TestRenderQuality:

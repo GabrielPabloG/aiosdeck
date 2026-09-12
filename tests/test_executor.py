@@ -288,6 +288,51 @@ def test_validation_error():
     assert outcome.error.code == VALIDATION_ERROR
 
 
+def test_validation_error_joins_all_errors_and_publishes_failure_payload():
+    bus = MagicMock()
+    executor = AgentExecutor(event_bus=bus)
+    outcome = executor.execute(
+        make_request(_FakeAgent(), AgentTask(description="", task_id="", task_type=""))
+    )
+
+    assert outcome.status == STATE_FAILED
+    assert outcome.error is not None
+    assert "; " in outcome.error.message
+    failed = [
+        call.args[1]
+        for call in bus.publish.call_args_list
+        if call.args[0] == AGENT_EXECUTION_FAILED
+    ]
+    assert failed[-1]["status"] == STATE_FAILED
+    assert failed[-1]["error_code"] == VALIDATION_ERROR
+    assert failed[-1]["attempt"] == 1
+    assert failed[-1]["duration_ms"] == 0.0
+
+
+def test_failed_agent_preserves_error_code_and_joined_errors():
+    bus = MagicMock()
+    agent = _FakeAgent(
+        fn=lambda task, context: AgentResult(
+            success=False,
+            errors=["first error", "second error"],
+            error_code="custom_failure",
+        )
+    )
+    outcome = AgentExecutor(event_bus=bus).execute(make_request(agent, _task()))
+
+    assert outcome.status == STATE_FAILED
+    assert outcome.error is not None
+    assert outcome.error.code == "custom_failure"
+    assert outcome.error.message == "first error; second error"
+    failed = [
+        call.args[1]
+        for call in bus.publish.call_args_list
+        if call.args[0] == AGENT_EXECUTION_FAILED
+    ]
+    assert failed[-1]["error_code"] == "custom_failure"
+    assert failed[-1]["status"] == STATE_FAILED
+
+
 def test_permission_denied():
     class DenyEnforcer:
         def validate(self, agent):
