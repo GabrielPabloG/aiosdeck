@@ -481,7 +481,9 @@ def test_doctor_direct_json_output(capsys):
         "errors": [],
     }
     kernel.get_context.return_value = None
-    factory = lambda _: kernel
+
+    def factory(_path):
+        return kernel
 
     cmd_doctor(["--json"], Path("/tmp"), factory)
     out = capsys.readouterr().out
@@ -510,7 +512,9 @@ def test_doctor_direct_with_context(capsys):
         "engines": {},
         "errors": [],
     }
-    factory = lambda _: kernel
+
+    def factory(_path):
+        return kernel
 
     cmd_doctor([], Path("/tmp"), factory)
 
@@ -533,7 +537,9 @@ def test_doctor_direct_with_diagnostics(capsys):
             "suggestions": ["try restarting"],
         },
     }
-    factory = lambda _: kernel
+
+    def factory(_path):
+        return kernel
 
     cmd_doctor([], Path("/tmp"), factory)
 
@@ -548,7 +554,9 @@ def test_doctor_direct_no_diagnostics(capsys):
         "engines": {},
         "errors": [],
     }
-    factory = lambda _: kernel
+
+    def factory(_path):
+        return kernel
 
     cmd_doctor([], Path("/tmp"), factory)
 
@@ -562,7 +570,9 @@ def test_init_creates_project_yaml(tmp_path):
     from aios.cli.commands.core import cmd_init
 
     kernel = MagicMock()
-    factory = lambda _: kernel
+
+    def factory(_path):
+        return kernel
 
     cmd_init([], tmp_path, factory)
 
@@ -579,7 +589,9 @@ def test_init_idempotent(tmp_path):
     from aios.cli.commands.core import cmd_init
 
     kernel = MagicMock()
-    factory = lambda _: kernel
+
+    def factory(_path):
+        return kernel
 
     cmd_init([], tmp_path, factory)
     first_content = (tmp_path / ".aios" / "project.yaml").read_text()
@@ -592,7 +604,9 @@ def test_init_adds_gitignore_rule(tmp_path):
     from aios.cli.commands.core import cmd_init
 
     kernel = MagicMock()
-    factory = lambda _: kernel
+
+    def factory(_path):
+        return kernel
 
     cmd_init([], tmp_path, factory)
     gitignore = (tmp_path / ".gitignore").read_text()
@@ -604,7 +618,9 @@ def test_init_skips_existing_gitignore_rule(tmp_path):
 
     (tmp_path / ".gitignore").write_text(".aios/memory.db\n")
     kernel = MagicMock()
-    factory = lambda _: kernel
+
+    def factory(_path):
+        return kernel
 
     cmd_init([], tmp_path, factory)
     content = (tmp_path / ".gitignore").read_text()
@@ -620,7 +636,9 @@ def test_completion_bash_direct(capsys):
     from aios.cli.commands.core import cmd_completion
 
     kernel = MagicMock()
-    factory = lambda _: kernel
+
+    def factory(_path):
+        return kernel
 
     cmd_completion(["--bash"], Path("/tmp"), factory)
     out = capsys.readouterr().out
@@ -632,7 +650,9 @@ def test_completion_zsh_direct(capsys):
     from aios.cli.commands.core import cmd_completion
 
     kernel = MagicMock()
-    factory = lambda _: kernel
+
+    def factory(_path):
+        return kernel
 
     cmd_completion(["--zsh"], Path("/tmp"), factory)
     out = capsys.readouterr().out
@@ -643,7 +663,9 @@ def test_completion_no_flag_exits(capsys):
     from aios.cli.commands.core import cmd_completion
 
     kernel = MagicMock()
-    factory = lambda _: kernel
+
+    def factory(_path):
+        return kernel
 
     try:
         cmd_completion([], Path("/tmp"), factory)
@@ -662,7 +684,9 @@ def test_help_exact_strings(capsys):
     from aios.cli.commands.core import cmd_help
 
     kernel = MagicMock()
-    factory = lambda _: kernel
+
+    def factory(_path):
+        return kernel
 
     cmd_help([], Path("/tmp"), factory)
     out = capsys.readouterr().out
@@ -679,7 +703,9 @@ def test_exit_calls_kernel_shutdown():
     from aios.cli.commands.core import cmd_exit
 
     kernel = MagicMock()
-    factory = lambda _: kernel
+
+    def factory(_path):
+        return kernel
 
     cmd_exit([], Path("/tmp"), factory)
     kernel.shutdown.assert_called_once()

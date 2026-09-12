@@ -265,7 +265,7 @@ def test_security_event(tmp_path):
     assert rows[0]["decision"] == "allow"
     assert rows[0]["agent"] == "planner"
     assert rows[0]["action"] == "file.write"
-    assert rows[0]["allowed"] == True
+    assert rows[0]["allowed"]
 
     engine.shutdown()
 

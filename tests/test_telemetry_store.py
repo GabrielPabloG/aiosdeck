@@ -951,7 +951,7 @@ class TestDateFilters:
         store.close()
 
 
-class TestAggregateUsage:
+class TestAggregateUsageAdvanced:
     def test_aggregate_all_sections(self, tmp_path):
         store = _open_store(tmp_path)
         store.insert_usage(
