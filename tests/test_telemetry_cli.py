@@ -277,15 +277,32 @@ def test_render_table_multiple_agents_models(capsys):
         },
         "by_agent": {
             "planner": {"input_tokens": 100, "output_tokens": 50, "total_tokens": 150, "count": 1},
-            "developer": {"input_tokens": 200, "output_tokens": 100, "total_tokens": 300, "count": 2},
+            "developer": {
+                "input_tokens": 200,
+                "output_tokens": 100,
+                "total_tokens": 300,
+                "count": 2,
+            },
         },
         "by_model": {
             "gpt-4o": {"input_tokens": 200, "output_tokens": 100, "total_tokens": 300, "count": 2},
             "claude": {"input_tokens": 100, "output_tokens": 50, "total_tokens": 150, "count": 1},
         },
         "records": [
-            {"execution_id": "e1", "input_tokens": 100, "output_tokens": 50, "agent": "planner", "model": "gpt-4o"},
-            {"execution_id": "e2", "input_tokens": 200, "output_tokens": 100, "agent": "developer", "model": "claude"},
+            {
+                "execution_id": "e1",
+                "input_tokens": 100,
+                "output_tokens": 50,
+                "agent": "planner",
+                "model": "gpt-4o",
+            },
+            {
+                "execution_id": "e2",
+                "input_tokens": 200,
+                "output_tokens": 100,
+                "agent": "developer",
+                "model": "claude",
+            },
         ],
         "cost_records": [
             {"execution_id": "e1", "status": "priced", "total_cost": 0.02},
@@ -314,7 +331,15 @@ def test_render_table_priced(capsys):
         },
         "by_agent": {},
         "by_model": {},
-        "records": [{"execution_id": "e1", "input_tokens": 100, "output_tokens": 50, "agent": "p", "model": "m"}],
+        "records": [
+            {
+                "execution_id": "e1",
+                "input_tokens": 100,
+                "output_tokens": 50,
+                "agent": "p",
+                "model": "m",
+            }
+        ],
         "cost_records": [{"execution_id": "e1", "status": "priced", "total_cost": 0.0042}],
     }
     _render_table(data)
@@ -333,8 +358,18 @@ def test_render_table_billed_model(capsys):
         },
         "by_agent": {},
         "by_model": {},
-        "records": [{"execution_id": "e1", "input_tokens": 100, "output_tokens": 50, "agent": "p", "model": "m"}],
-        "cost_records": [{"execution_id": "e1", "status": "billed", "model": "gpt-4o", "total_cost": 0.01}],
+        "records": [
+            {
+                "execution_id": "e1",
+                "input_tokens": 100,
+                "output_tokens": 50,
+                "agent": "p",
+                "model": "m",
+            }
+        ],
+        "cost_records": [
+            {"execution_id": "e1", "status": "billed", "model": "gpt-4o", "total_cost": 0.01}
+        ],
     }
     _render_table(data)
     captured = capsys.readouterr()

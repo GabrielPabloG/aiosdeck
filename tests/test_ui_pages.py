@@ -74,7 +74,10 @@ class TestRenderOverview:
         assert "Sandbox" in result
 
     def test_overview_runtime_down(self, ctx):
-        data = {"status": {"engines": {}, "errors": []}, "runtime": {"healthy": False, "has_sandbox": False}}
+        data = {
+            "status": {"engines": {}, "errors": []},
+            "runtime": {"healthy": False, "has_sandbox": False},
+        }
         result = render_page("overview", data, ctx)
         assert "Runtime Down" in result
         assert "No Sandbox" in result

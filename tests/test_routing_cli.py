@@ -301,7 +301,13 @@ class TestCmdRoute:
 
     def test_stats_no_telemetry_exits(self, capsys):
         with pytest.raises(SystemExit) as exc:
-            cmd_route_stats([], Path.cwd(), lambda p: type("K", (), {"start": lambda s: None, "get_engine": lambda s, n: None})())
+            cmd_route_stats(
+                [],
+                Path.cwd(),
+                lambda p: type(
+                    "K", (), {"start": lambda s: None, "get_engine": lambda s, n: None}
+                )(),
+            )
         assert exc.value.code == 1
         captured = capsys.readouterr()
         assert "Telemetry engine not available." in captured.err
@@ -311,17 +317,22 @@ class TestCmdRoute:
             class FakeTelemetry:
                 def query_routing_stats(self, **kwargs):
                     return []
+
                 def query_routing_records(self, **kwargs):
                     return []
+
                 def query_route_accuracy(self, **kwargs):
                     return []
+
             class FakeKernel:
                 def start(self):
                     pass
+
                 def get_engine(self, name):
                     if name == "telemetry":
                         return FakeTelemetry()
                     return None
+
             return FakeKernel()
 
         cmd_route_stats([], Path.cwd(), fake_kernel)
@@ -333,17 +344,31 @@ class TestCmdRoute:
             class FakeTelemetry:
                 def query_routing_stats(self, **kwargs):
                     return []
+
                 def query_routing_records(self, **kwargs):
-                    return [{"agent": "p", "model": "m", "timestamp": "2025-01-01T00:00:00", "estimated_cost": 0.1, "reason": "r", "fallback_used": False}]
+                    return [
+                        {
+                            "agent": "p",
+                            "model": "m",
+                            "timestamp": "2025-01-01T00:00:00",
+                            "estimated_cost": 0.1,
+                            "reason": "r",
+                            "fallback_used": False,
+                        }
+                    ]
+
                 def query_route_accuracy(self, **kwargs):
                     return []
+
             class FakeKernel:
                 def start(self):
                     pass
+
                 def get_engine(self, name):
                     if name == "telemetry":
                         return FakeTelemetry()
                     return None
+
             return FakeKernel()
 
         cmd_route_stats(["--records", "--json"], Path.cwd(), fake_kernel)
@@ -357,17 +382,22 @@ class TestCmdRoute:
             class FakeTelemetry:
                 def query_routing_stats(self, **kwargs):
                     return []
+
                 def query_routing_records(self, **kwargs):
                     return []
+
                 def query_route_accuracy(self, **kwargs):
                     return []
+
             class FakeKernel:
                 def start(self):
                     pass
+
                 def get_engine(self, name):
                     if name == "telemetry":
                         return FakeTelemetry()
                     return None
+
             return FakeKernel()
 
         cmd_route_stats(["--records"], Path.cwd(), fake_kernel)
@@ -379,17 +409,30 @@ class TestCmdRoute:
             class FakeTelemetry:
                 def query_routing_stats(self, **kwargs):
                     return []
+
                 def query_routing_records(self, **kwargs):
                     return []
+
                 def query_route_accuracy(self, **kwargs):
-                    return [{"agent": "p", "model": "m", "estimated_cost": 0.1, "actual_cost": 0.12, "delta": 0.02}]
+                    return [
+                        {
+                            "agent": "p",
+                            "model": "m",
+                            "estimated_cost": 0.1,
+                            "actual_cost": 0.12,
+                            "delta": 0.02,
+                        }
+                    ]
+
             class FakeKernel:
                 def start(self):
                     pass
+
                 def get_engine(self, name):
                     if name == "telemetry":
                         return FakeTelemetry()
                     return None
+
             return FakeKernel()
 
         cmd_route_stats(["--accuracy", "--json"], Path.cwd(), fake_kernel)
@@ -403,17 +446,22 @@ class TestCmdRoute:
             class FakeTelemetry:
                 def query_routing_stats(self, **kwargs):
                     return []
+
                 def query_routing_records(self, **kwargs):
                     return []
+
                 def query_route_accuracy(self, **kwargs):
                     return []
+
             class FakeKernel:
                 def start(self):
                     pass
+
                 def get_engine(self, name):
                     if name == "telemetry":
                         return FakeTelemetry()
                     return None
+
             return FakeKernel()
 
         cmd_route_stats(["--accuracy"], Path.cwd(), fake_kernel)
@@ -425,8 +473,10 @@ class TestCmdRoute:
             class FakeKernel:
                 def start(self):
                     pass
+
                 def get_engine(self, name):
                     return None
+
             return FakeKernel()
 
         with pytest.raises(SystemExit) as exc:
