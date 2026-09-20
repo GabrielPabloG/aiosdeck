@@ -8,7 +8,7 @@
 #   --run-id ID        Specific run id (default: latest failed nightly)
 #   --branch BRANCH    Filter runs by branch (default: main)
 #   --workflow FILE    Workflow file name (default: nightly.yml)
-#   --out DIR          Output dir (default: /tmp/opencode/nightly)
+#   --out DIR          Output dir (default: .nightly-artifacts)
 #   --with-report      Also download nightly-mutation-report (large)
 #   --list             List recent nightly runs and exit
 #   -h, --help         Show this help
@@ -18,7 +18,7 @@ set -euo pipefail
 
 WORKFLOW="nightly.yml"
 BRANCH="main"
-OUT="/tmp/opencode/nightly"
+OUT=".nightly-artifacts"
 RUN_ID=""
 WITH_REPORT=0
 LIST_ONLY=0
