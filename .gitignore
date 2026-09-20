@@ -30,7 +30,8 @@ mutants/
 mutation-report/
 TODO.md
 .baseline-test-durations.txt
-scripts/
+scripts/*
+!scripts/fetch_nightly_artifacts.sh
 .aios/benchmarks/tmp/
 .aios/benchmarks/*.tmp
 .benchmarks/
