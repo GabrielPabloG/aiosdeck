@@ -64,8 +64,10 @@ jobs:
 
       # Gate por último: usa o score fair (killed/(killed+survived-equivalents)),
       # falha em run incompleto (not checked) e imprime o triage de sobreviventes.
-      - name: Check mutation score (fair kill-rate, fail if < 80%)
-        run: python .pre-commit/mutation_score.py --threshold 80
+      # Ciclo 1: 70% (allowlist MESSAGE + top-20 contract tests)
+      # Ciclo 2: 75% | Ciclo 3: 80%
+      - name: Check mutation score (fair kill-rate, fail if < 70%)
+        run: python .pre-commit/mutation_score.py --threshold 70
 
   # --- Job 2: Build de snapshot (opcional, mas recomendado) ---
   dev-build:

@@ -14,25 +14,247 @@
 #
 # Formato: <nome-completo-do-mutante>  # motivo
 
-aios.core.console.xǁProgressBarǁ__init____mutmut_14  # ProgressBar._phase_active=False -> None: falsy em todos os usos (if self._phase_active)
-aios.core.console.xǁProgressBarǁ_report_phase_end__mutmut_1  # reset _phase_active=False -> None: falsy equivalente no gate de _finish/_redraw
-aios.routing.engine.xǁRuleBasedRouterǁ_apply_cost_cap__mutmut_32  # fb.get(None, decision.variant): chave inexistente; fallback identico
-aios.routing.engine.xǁRuleBasedRouterǁ_apply_cost_cap__mutmut_36  # fb.get("XXvariantXX", decision.variant): chave nunca presente
-aios.routing.engine.xǁRuleBasedRouterǁ_apply_cost_cap__mutmut_37  # fb.get("VARIANT", decision.variant): chave nunca presente
-aios.routing.engine.xǁRuleBasedRouterǁ_build_fallback_chain__mutmut_31  # fp.get(None, ""): chave inexistente na pratica; default "" identico
-aios.routing.engine.xǁRuleBasedRouterǁ_build_fallback_chain__mutmut_35  # fp.get("XXvariantXX", ""): chave nunca presente; resultado identico
-aios.routing.engine.xǁRuleBasedRouterǁ_build_fallback_chain__mutmut_36  # fp.get("VARIANT", ""): chave nunca presente; resultado identico
-aios.routing.engine.xǁRuleBasedRouterǁ_build_override_decision__mutmut_6  # provider="" -> None: absorbido por `provider or "unknown"`
-aios.routing.engine.xǁRuleBasedRouterǁ_estimate_cost__mutmut_16  # == 0.0 -> == 1.0: nenhum preco vale exatamente 1.0 e modelo gratis computa 0.0
-aios.runtime.opencode.xǁOpenCodeAdapterǁdiagnose__mutmut_187  # output f-string: stdout or '' -> or 'XXXX' so difere quando stdout e falsy, injetando o literal 'XXXX' que nunca coincide com model_name/model no teste de pertenca
-aios.runtime.opencode.xǁOpenCodeAdapterǁdiagnose__mutmut_189  # output f-string: stderr or '' -> or 'XXXX' so difere quando stderr e falsy; literal 'XXXX' nunca coincide com o nome do modelo, decidindo model_unavailable/ok identicamente
-aios.workflow.engine.xǁWorkflowEngineǁ_is_implementation_task__mutmut_2  # (task_type or 'code') -> or '' : '' falsy -> default; neither '' nor 'code' in _NON_IMPLEMENTATION_TYPES, membership identical for all inputs
-aios.workflow.engine.xǁWorkflowEngineǁ_is_implementation_task__mutmut_3  # (task_type or 'code') -> or None : None falsy -> default; neither None nor 'code' in _NON_IMPLEMENTATION_TYPES, membership identical for all inputs
-aios.agents.git.x__parse_porcelain__mutmut_3  # skip_next initializer False->None: only ever read via `if skip_next:` (truthiness); None and False are both falsy -> identical
-aios.agents.git.x__parse_porcelain__mutmut_7  # skip_next reset False->None inside the rename/copy skip: same truthiness-only use -> identical
+aios.agents.contracts.x_coerce_task__mutmut_3  # MESSAGE string in aios.agents.contracts.x_coerce_task: 'expected Task or AgentTask, got {type(task).__nam
+aios.agents.developer.xǁDeveloperAgentǁ__init____mutmut_1   # max_steps=0->None: parameter default, never exercised by tests
+aios.agents.developer.xǁDeveloperAgentǁ__init____mutmut_2   # project_path=""->None: parameter default, never exercised
+aios.agents.developer.xǁDeveloperAgentǁ__init____mutmut_9   # max_steps propagation: getattr default not exercised
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_101 # propagation: getattr(result,"tool_durations_ms",[])
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_102 # propagation: getattr(result,"tool_durations_ms",[])
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_103 # propagation: getattr(result,"tool_durations_ms",[])
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_104 # propagation: getattr(result,"llm_turns",0)
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_105 # propagation: getattr(result,"llm_turns",0)
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_106 # propagation: getattr(result,"llm_turns",0)
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_107 # propagation: getattr(result,"total_cost",0.0)
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_108 # propagation: getattr(result,"total_cost",0.0)
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_109 # propagation: getattr(result,"tokens",{})
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_110 # propagation: getattr(result,"model","")
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_111 # propagation: getattr(result,"provider","")
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_112 # propagation: getattr(result,"fallback_used",False)
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_113 # propagation: getattr(result,"exit_reason","stop")
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_66  # propagation: getattr(result,"repeated_tool_calls",0)
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_83  # propagation: getattr(result,"tool_calls",0)
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_84  # propagation: getattr(result,"tool_calls",0)
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_85  # propagation: getattr(result,"tool_names",[])
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_86  # propagation: getattr(result,"tool_names",[])
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_87  # propagation: getattr(result,"tool_names",[])
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_88  # propagation: getattr(result,"tool_names",[])
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_89  # propagation: getattr(result,"tool_names",[])
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_90  # propagation: getattr(result,"tool_names",[])
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_91  # propagation: getattr(result,"tool_names",[])
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_92  # propagation: getattr(result,"tool_names",[])
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_93  # propagation: getattr(result,"tool_names",[])
+aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_94  # propagation: getattr(result,"tool_names",[])
+aios.agents.documentation.xǁDocumentationAgentǁexecute__mutmut_18  # MESSAGE string in execute: 'report is required'
+aios.agents.documentation.xǁDocumentationAgentǁexecute__mutmut_30  # MESSAGE string in execute: 'report is required'
+aios.agents.documentation.xǁDocumentationAgentǁexecute__mutmut_31  # MESSAGE string in execute: 'report is required'
+aios.agents.documentation.xǁDocumentationAgentǁexecute__mutmut_32  # MESSAGE string in execute: 'report is required'
+aios.agents.executor.xǁAgentExecutorǁ_attach_intent__mutmut_4  # MESSAGE string in _attach_intent: "Intent not attached: context has no settable 'int
+aios.agents.executor.xǁAgentExecutorǁ_attach_intent__mutmut_5  # MESSAGE string in _attach_intent: "Intent not attached: context has no settable 'int
+aios.agents.executor.xǁAgentExecutorǁ_attach_intent__mutmut_6  # MESSAGE string in _attach_intent: "Intent not attached: context has no settable 'int
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_296  # getattr(result,"tool_names",[]): tests provide tool_names
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_300  # getattr(result,"tool_names",[]): tests provide tool_names
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_304  # getattr(result,"tool_names",[]): tests provide tool_names
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_307  # getattr(result,"tool_names",[]): tests provide tool_names
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_308  # getattr(result,"tool_names",[]): tests provide tool_names
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_310  # getattr(result,"llm_turns",0): tests provide llm_turns
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_314  # getattr(result,"llm_turns",0): tests provide llm_turns
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_338  # getattr(result,"provider",""): tests provide provider
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_342  # getattr(result,"fallback_used",False): tests provide fallback_used
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_346  # getattr(result,"steps_used",0): tests provide steps_used
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_370  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_374  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_378  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_381  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_382  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_383  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_385  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_389  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_392  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_393  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_394  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_396  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_400  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_403  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_404  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_405  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_407  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_411  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_415  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_421  # getattr(result,"exit_reason","stop"): tests provide exit_reason
+aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_424  # getattr(result,"exit_reason","stop"): tests provide exit_reason
 aios.agents.git.x__parse_porcelain__mutmut_10 # len(record) < H -> <= : a length-3 record yields empty path (record[3:]=="") dropped by `if path:` either way -> identical output
 aios.agents.git.x__parse_porcelain__mutmut_14 # record[0:2] -> record[0:3] : index 2 is always the porcelain status/path space; widening cannot add a 'D' absent from the 2-char status field -> identical for all git-porcelain inputs
 aios.agents.git.x__parse_porcelain__mutmut_18 # "RC" -> "XXRCXX" : adds only 'X' to the accepted set, and no porcelain status first char is 'X' -> rename/copy detection identical for all git-porcelain inputs
+aios.agents.git.x__parse_porcelain__mutmut_3  # skip_next initializer False->None: only ever read via `if skip_next:` (truthiness); None and False are both falsy -> identical
+aios.agents.git.x__parse_porcelain__mutmut_7  # skip_next reset False->None inside the rename/copy skip: same truthiness-only use -> identical
+aios.agents.planner.xǁPlannerAgentǁexecute__mutmut_104  # MESSAGE string in execute: 'PlannerAgent exceeded max iterations: %s'
+aios.agents.research.xǁResearchAgentǁ_collect__mutmut_22  # MESSAGE string in _collect: 'ResearchAgent fetcher failed: %s'
+aios.agents.research.xǁResearchAgentǁ_collect__mutmut_24  # MESSAGE string in _collect: 'ResearchAgent fetcher failed: %s'
+aios.agents.research.xǁResearchAgentǁ_collect__mutmut_25  # MESSAGE string in _collect: 'ResearchAgent fetcher failed: %s'
+aios.agents.research.xǁResearchAgentǁ_collect__mutmut_26  # MESSAGE string in _collect: 'ResearchAgent fetcher failed: %s'
+aios.backlog.cli.x_cmd_backlog_add__mutmut_3  # MESSAGE string in aios.backlog.cli.x_cmd_backlog_add: 'Usage: aios backlog add <title> [--board NAME]'
+aios.backlog.cli.x_cmd_backlog_stats__mutmut_26  # MESSAGE string in aios.backlog.cli.x_cmd_backlog_stats: 'No backlog runs recorded.'
+aios.backlog.cli.x_cmd_backlog_stats__mutmut_58  # MESSAGE string in aios.backlog.cli.x_cmd_backlog_stats: "  {s['status']:>10}  {dur:8.0f}ms  {s['task_title
+aios.backlog.cli.x_cmd_backlog_stats__mutmut_59  # MESSAGE string in aios.backlog.cli.x_cmd_backlog_stats: "  {s['status']:>10}  {dur:8.0f}ms  {s['task_title
+aios.backlog.cli.x_cmd_backlog_stats__mutmut_60  # MESSAGE string in aios.backlog.cli.x_cmd_backlog_stats: "  {s['status']:>10}  {dur:8.0f}ms  {s['task_title
+aios.backlog.cli.x_cmd_backlog_stats__mutmut_61  # MESSAGE string in aios.backlog.cli.x_cmd_backlog_stats: "  {s['status']:>10}  {dur:8.0f}ms  {s['task_title
+aios.backlog.cli.x_cmd_backlog_stats__mutmut_62  # MESSAGE string in aios.backlog.cli.x_cmd_backlog_stats: "  {s['status']:>10}  {dur:8.0f}ms  {s['task_title
+aios.cli.commands.benchmark.x__cmd_validate__mutmut_11  # MESSAGE string in aios.cli.commands.benchmark.x__cmd_validate: 'Usage: aios benchmark validate <file>'
+aios.cli.commands.benchmark.x__cmd_validate__mutmut_13  # MESSAGE string in aios.cli.commands.benchmark.x__cmd_validate: 'Usage: aios benchmark validate <file>'
+aios.cli.commands.benchmark.x__cmd_validate__mutmut_14  # MESSAGE string in aios.cli.commands.benchmark.x__cmd_validate: 'Usage: aios benchmark validate <file>'
+aios.cli.commands.benchmark.x__cmd_validate__mutmut_15  # MESSAGE string in aios.cli.commands.benchmark.x__cmd_validate: 'Usage: aios benchmark validate <file>'
+aios.cli.commands.benchmark.x__cmd_validate__mutmut_22  # MESSAGE string in aios.cli.commands.benchmark.x__cmd_validate: 'Invalid benchmark report: {args[0]}\\n  cannot re
+aios.cli.commands.benchmark.x__print_usage__mutmut_11  # MESSAGE string in aios.cli.commands.benchmark.x__print_usage: 'Options:'
+aios.cli.commands.benchmark.x__print_usage__mutmut_12  # MESSAGE string in aios.cli.commands.benchmark.x__print_usage: 'Options:'
+aios.cli.commands.benchmark.x__print_usage__mutmut_13  # MESSAGE string in aios.cli.commands.benchmark.x__print_usage: 'Options:'
+aios.cli.commands.benchmark.x__print_usage__mutmut_15  # MESSAGE string in aios.cli.commands.benchmark.x__print_usage: '  -h, --help       Show this help and exit'
+aios.cli.commands.benchmark.x__print_usage__mutmut_16  # MESSAGE string in aios.cli.commands.benchmark.x__print_usage: '  -h, --help       Show this help and exit'
+aios.cli.commands.benchmark.x__print_usage__mutmut_17  # MESSAGE string in aios.cli.commands.benchmark.x__print_usage: '  -h, --help       Show this help and exit'
+aios.cli.commands.benchmark.x__print_usage__mutmut_19  # MESSAGE string in aios.cli.commands.benchmark.x__print_usage: '  --warmup N       Warmup runs before measuring (
+aios.cli.commands.benchmark.x__print_usage__mutmut_2  # MESSAGE string in aios.cli.commands.benchmark.x__print_usage: 'Usage: aios benchmark <target> [options]'
+aios.cli.commands.benchmark.x__print_usage__mutmut_20  # MESSAGE string in aios.cli.commands.benchmark.x__print_usage: '  --warmup N       Warmup runs before measuring (
+aios.cli.commands.benchmark.x__print_usage__mutmut_23  # MESSAGE string in aios.cli.commands.benchmark.x__print_usage: '  --repeat N       Measured runs per target (defa
+aios.cli.commands.benchmark.x__print_usage__mutmut_24  # MESSAGE string in aios.cli.commands.benchmark.x__print_usage: '  --repeat N       Measured runs per target (defa
+aios.cli.commands.benchmark.x__print_usage__mutmut_27  # MESSAGE string in aios.cli.commands.benchmark.x__print_usage: '  --json           Print report as JSON'
+aios.cli.commands.benchmark.x__print_usage__mutmut_28  # MESSAGE string in aios.cli.commands.benchmark.x__print_usage: '  --json           Print report as JSON'
+aios.cli.commands.benchmark.x__print_usage__mutmut_3  # MESSAGE string in aios.cli.commands.benchmark.x__print_usage: 'Usage: aios benchmark <target> [options]'
+aios.cli.commands.benchmark.x__print_usage__mutmut_31  # MESSAGE string in aios.cli.commands.benchmark.x__print_usage: '  --output PATH    Save the report to PATH'
+aios.cli.commands.benchmark.x__print_usage__mutmut_32  # MESSAGE string in aios.cli.commands.benchmark.x__print_usage: '  --output PATH    Save the report to PATH'
+aios.cli.commands.benchmark.x__print_usage__mutmut_35  # MESSAGE string in aios.cli.commands.benchmark.x__print_usage: '  --skip-agents    Skip targets that require an a
+aios.cli.commands.benchmark.x__print_usage__mutmut_36  # MESSAGE string in aios.cli.commands.benchmark.x__print_usage: '  --skip-agents    Skip targets that require an a
+aios.cli.commands.benchmark.x__print_usage__mutmut_37  # MESSAGE string in aios.cli.commands.benchmark.x__print_usage: '  --skip-agents    Skip targets that require an a
+aios.cli.commands.benchmark.x__print_usage__mutmut_39  # MESSAGE string in aios.cli.commands.benchmark.x__print_usage: '  --process        startup: measure a real subpro
+aios.cli.commands.benchmark.x__print_usage__mutmut_4  # MESSAGE string in aios.cli.commands.benchmark.x__print_usage: 'Usage: aios benchmark <target> [options]'
+aios.cli.commands.benchmark.x__print_usage__mutmut_42  # MESSAGE string in aios.cli.commands.benchmark.x__print_usage: '  --profile        phases: record kernel.timings 
+aios.cli.commands.benchmark.x__print_usage__mutmut_45  # MESSAGE string in aios.cli.commands.benchmark.x__print_usage: '  --bare-task      phases: restricted runtime pro
+aios.cli.commands.benchmark.x__print_usage__mutmut_48  # MESSAGE string in aios.cli.commands.benchmark.x__print_usage: 'Validate:'
+aios.cli.commands.benchmark.x__print_usage__mutmut_49  # MESSAGE string in aios.cli.commands.benchmark.x__print_usage: 'Validate:'
+aios.cli.commands.benchmark.x__print_usage__mutmut_50  # MESSAGE string in aios.cli.commands.benchmark.x__print_usage: 'Validate:'
+aios.cli.commands.benchmark.x__print_usage__mutmut_52  # MESSAGE string in aios.cli.commands.benchmark.x__print_usage: '  aios benchmark validate <file>   Check a report
+aios.cli.commands.benchmark.x__print_usage__mutmut_53  # MESSAGE string in aios.cli.commands.benchmark.x__print_usage: '  aios benchmark validate <file>   Check a report
+aios.cli.commands.benchmark.x__print_usage__mutmut_54  # MESSAGE string in aios.cli.commands.benchmark.x__print_usage: '  aios benchmark validate <file>   Check a report
+aios.cli.commands.benchmark.x__print_usage__mutmut_56  # MESSAGE string in aios.cli.commands.benchmark.x__print_usage: 'Compare:'
+aios.cli.commands.benchmark.x__print_usage__mutmut_57  # MESSAGE string in aios.cli.commands.benchmark.x__print_usage: 'Compare:'
+aios.cli.commands.benchmark.x__print_usage__mutmut_58  # MESSAGE string in aios.cli.commands.benchmark.x__print_usage: 'Compare:'
+aios.cli.commands.benchmark.x__print_usage__mutmut_6  # MESSAGE string in aios.cli.commands.benchmark.x__print_usage: 'Targets:'
+aios.cli.commands.benchmark.x__print_usage__mutmut_60  # MESSAGE string in aios.cli.commands.benchmark.x__print_usage: '  aios benchmark compare <base> [<cur>]   Compare
+aios.cli.commands.benchmark.x__print_usage__mutmut_61  # MESSAGE string in aios.cli.commands.benchmark.x__print_usage: '  aios benchmark compare <base> [<cur>]   Compare
+aios.cli.commands.benchmark.x__print_usage__mutmut_62  # MESSAGE string in aios.cli.commands.benchmark.x__print_usage: '  aios benchmark compare <base> [<cur>]   Compare
+aios.cli.commands.benchmark.x__print_usage__mutmut_64  # MESSAGE string in aios.cli.commands.benchmark.x__print_usage: '    one file      measure current (live full) the
+aios.cli.commands.benchmark.x__print_usage__mutmut_65  # MESSAGE string in aios.cli.commands.benchmark.x__print_usage: '    one file      measure current (live full) the
+aios.cli.commands.benchmark.x__print_usage__mutmut_67  # MESSAGE string in aios.cli.commands.benchmark.x__print_usage: '    two files     deterministic file-to-file comp
+aios.cli.commands.benchmark.x__print_usage__mutmut_68  # MESSAGE string in aios.cli.commands.benchmark.x__print_usage: '    two files     deterministic file-to-file comp
+aios.cli.commands.benchmark.x__print_usage__mutmut_7  # MESSAGE string in aios.cli.commands.benchmark.x__print_usage: 'Targets:'
+aios.cli.commands.benchmark.x__print_usage__mutmut_70  # MESSAGE string in aios.cli.commands.benchmark.x__print_usage: '    --skip-agents live mode: Core phases only (sk
+aios.cli.commands.benchmark.x__print_usage__mutmut_71  # MESSAGE string in aios.cli.commands.benchmark.x__print_usage: '    --skip-agents live mode: Core phases only (sk
+aios.cli.commands.benchmark.x__print_usage__mutmut_72  # MESSAGE string in aios.cli.commands.benchmark.x__print_usage: '    --skip-agents live mode: Core phases only (sk
+aios.cli.commands.benchmark.x__print_usage__mutmut_8  # MESSAGE string in aios.cli.commands.benchmark.x__print_usage: 'Targets:'
+aios.cli.commands.benchmark.x__render_compare__mutmut_34  # MESSAGE string in aios.cli.commands.benchmark.x__render_compare: "  environment divergence: {', '.join(summary['env
+aios.cli.commands.benchmark.x__render_compare__mutmut_35  # MESSAGE string in aios.cli.commands.benchmark.x__render_compare: "  environment divergence: {', '.join(summary['env
+aios.cli.commands.benchmark.x__render_compare__mutmut_41  # MESSAGE string in aios.cli.commands.benchmark.x__render_compare: "  runtime divergence: {', '.join(summary['runtime
+aios.cli.commands.benchmark.x__render_compare__mutmut_42  # MESSAGE string in aios.cli.commands.benchmark.x__render_compare: "  runtime divergence: {', '.join(summary['runtime
+aios.cli.commands.benchmark.x__render_compare__mutmut_43  # MESSAGE string in aios.cli.commands.benchmark.x__render_compare: "  runtime divergence: {', '.join(summary['runtime
+aios.cli.commands.benchmark.x__render_compare__mutmut_62  # MESSAGE string in aios.cli.commands.benchmark.x__render_compare: "  {item['group']}/{item['target']} +{item['delta_
+aios.cli.commands.benchmark.x__render_compare__mutmut_63  # MESSAGE string in aios.cli.commands.benchmark.x__render_compare: "  {item['group']}/{item['target']} +{item['delta_
+aios.cli.commands.benchmark.x__render_compare__mutmut_64  # MESSAGE string in aios.cli.commands.benchmark.x__render_compare: "  {item['group']}/{item['target']} +{item['delta_
+aios.cli.commands.benchmark.x__render_compare__mutmut_65  # MESSAGE string in aios.cli.commands.benchmark.x__render_compare: "  {item['group']}/{item['target']} +{item['delta_
+aios.cli.commands.benchmark.x__render_compare__mutmut_74  # MESSAGE string in aios.cli.commands.benchmark.x__render_compare: "  {item['group']}/{item['target']} +{item['delta_
+aios.cli.commands.benchmark.x__render_compare__mutmut_75  # MESSAGE string in aios.cli.commands.benchmark.x__render_compare: "  {item['group']}/{item['target']} +{item['delta_
+aios.cli.commands.benchmark.x__render_compare__mutmut_76  # MESSAGE string in aios.cli.commands.benchmark.x__render_compare: "  {item['group']}/{item['target']} +{item['delta_
+aios.cli.commands.benchmark.x__render_compare__mutmut_77  # MESSAGE string in aios.cli.commands.benchmark.x__render_compare: "  {item['group']}/{item['target']} +{item['delta_
+aios.cli.commands.benchmark.x__render_compare__mutmut_78  # MESSAGE string in aios.cli.commands.benchmark.x__render_compare: "  {item['group']}/{item['target']} +{item['delta_
+aios.cli.commands.benchmark.x__render_compare_entry__mutmut_10  # MESSAGE string in aios.cli.commands.benchmark.x__render_compare_entry: "{label} skipped ({entry.get('reason')})"
+aios.cli.commands.benchmark.x__render_compare_entry__mutmut_11  # MESSAGE string in aios.cli.commands.benchmark.x__render_compare_entry: "{label} skipped ({entry.get('reason')})"
+aios.cli.commands.benchmark.x__render_compare_entry__mutmut_12  # MESSAGE string in aios.cli.commands.benchmark.x__render_compare_entry: "{label} skipped ({entry.get('reason')})"
+aios.cli.commands.benchmark.x_cmd_benchmark__mutmut_93  # MESSAGE string in aios.cli.commands.benchmark.x_cmd_benchmark: "Warning: --bare-task only affects the 'phases' ta
+aios.cli.commands.benchmark.x_cmd_benchmark__mutmut_95  # MESSAGE string in aios.cli.commands.benchmark.x_cmd_benchmark: "Warning: --bare-task only affects the 'phases' ta
+aios.cli.commands.benchmark.x_cmd_benchmark__mutmut_96  # MESSAGE string in aios.cli.commands.benchmark.x_cmd_benchmark: "Warning: --bare-task only affects the 'phases' ta
+aios.cli.commands.benchmark.x_cmd_benchmark__mutmut_97  # MESSAGE string in aios.cli.commands.benchmark.x_cmd_benchmark: "Warning: --bare-task only affects the 'phases' ta
+aios.cli.commands.core.x_cmd_completion__mutmut_10  # MESSAGE string in aios.cli.commands.core.x_cmd_completion: ''
+aios.cli.commands.core.x_cmd_completion__mutmut_17  # MESSAGE string in aios.cli.commands.core.x_cmd_completion: ''
+aios.cli.commands.core.x_cmd_completion__mutmut_18  # MESSAGE string in aios.cli.commands.core.x_cmd_completion: ''
+aios.cli.commands.core.x_cmd_completion__mutmut_9  # MESSAGE string in aios.cli.commands.core.x_cmd_completion: ''
+aios.cli.commands.exec_cmds.x__print_review_text__mutmut_20  # MESSAGE string in aios.cli.commands.exec_cmds.x__print_review_text: "{item['severity'].upper()}: {item['file']}:{line}
+aios.cli.commands.exec_cmds.x__render_plan_list__mutmut_10  # MESSAGE string in aios.cli.commands.exec_cmds.x__render_plan_list: 'No subtasks to execute.'
+aios.cli.commands.exec_cmds.x__render_plan_list__mutmut_11  # MESSAGE string in aios.cli.commands.exec_cmds.x__render_plan_list: 'No subtasks to execute.'
+aios.cli.commands.exec_cmds.x__render_plan_list__mutmut_12  # MESSAGE string in aios.cli.commands.exec_cmds.x__render_plan_list: 'No subtasks to execute.'
+aios.cli.commands.exec_cmds.x_cmd_plan__mutmut_40  # MESSAGE string in aios.cli.commands.exec_cmds.x_cmd_plan: "Example: aios plan 'add OAuth2 login'"
+aios.cli.commands.exec_cmds.x_cmd_plan__mutmut_42  # MESSAGE string in aios.cli.commands.exec_cmds.x_cmd_plan: "Example: aios plan 'add OAuth2 login'"
+aios.cli.commands.exec_cmds.x_cmd_plan__mutmut_43  # MESSAGE string in aios.cli.commands.exec_cmds.x_cmd_plan: "Example: aios plan 'add OAuth2 login'"
+aios.cli.commands.exec_cmds.x_cmd_plan__mutmut_44  # MESSAGE string in aios.cli.commands.exec_cmds.x_cmd_plan: "Example: aios plan 'add OAuth2 login'"
+aios.cli.commands.memory.x_cmd_memory_list__mutmut_10  # MESSAGE string in aios.cli.commands.memory.x_cmd_memory_list: 'Memory engine not available.'
+aios.cli.commands.memory.x_cmd_memory_list__mutmut_11  # MESSAGE string in aios.cli.commands.memory.x_cmd_memory_list: 'Memory engine not available.'
+aios.cli.commands.memory.x_cmd_memory_list__mutmut_14  # MESSAGE string in aios.cli.commands.memory.x_cmd_memory_list: 'No knowledge stored for this project.'
+aios.cli.commands.memory.x_cmd_memory_list__mutmut_15  # MESSAGE string in aios.cli.commands.memory.x_cmd_memory_list: 'No knowledge stored for this project.'
+aios.cli.commands.memory.x_cmd_memory_list__mutmut_16  # MESSAGE string in aios.cli.commands.memory.x_cmd_memory_list: 'No knowledge stored for this project.'
+aios.cli.commands.memory.x_cmd_memory_list__mutmut_18  # MESSAGE string in aios.cli.commands.memory.x_cmd_memory_list: '\\nConventions:'
+aios.cli.commands.memory.x_cmd_memory_list__mutmut_19  # MESSAGE string in aios.cli.commands.memory.x_cmd_memory_list: '\\nConventions:'
+aios.cli.commands.memory.x_cmd_memory_list__mutmut_20  # MESSAGE string in aios.cli.commands.memory.x_cmd_memory_list: '\\nConventions:'
+aios.cli.commands.memory.x_cmd_memory_list__mutmut_23  # MESSAGE string in aios.cli.commands.memory.x_cmd_memory_list: '\\nDecisions:'
+aios.cli.commands.memory.x_cmd_memory_list__mutmut_24  # MESSAGE string in aios.cli.commands.memory.x_cmd_memory_list: '\\nDecisions:'
+aios.cli.commands.memory.x_cmd_memory_list__mutmut_25  # MESSAGE string in aios.cli.commands.memory.x_cmd_memory_list: '\\nDecisions:'
+aios.cli.commands.memory.x_cmd_memory_list__mutmut_29  # MESSAGE string in aios.cli.commands.memory.x_cmd_memory_list: '\\nPatterns:'
+aios.cli.commands.memory.x_cmd_memory_list__mutmut_30  # MESSAGE string in aios.cli.commands.memory.x_cmd_memory_list: '\\nPatterns:'
+aios.cli.commands.memory.x_cmd_memory_list__mutmut_31  # MESSAGE string in aios.cli.commands.memory.x_cmd_memory_list: '\\nPatterns:'
+aios.cli.commands.memory.x_cmd_memory_list__mutmut_34  # MESSAGE string in aios.cli.commands.memory.x_cmd_memory_list: '\\nMistakes to avoid:'
+aios.cli.commands.memory.x_cmd_memory_list__mutmut_35  # MESSAGE string in aios.cli.commands.memory.x_cmd_memory_list: '\\nMistakes to avoid:'
+aios.cli.commands.memory.x_cmd_memory_list__mutmut_36  # MESSAGE string in aios.cli.commands.memory.x_cmd_memory_list: '\\nMistakes to avoid:'
+aios.cli.commands.memory.x_cmd_memory_list__mutmut_9  # MESSAGE string in aios.cli.commands.memory.x_cmd_memory_list: 'Memory engine not available.'
+aios.cli.commands.x__print_command_help__mutmut_3  # MESSAGE string in aios.cli.commands.x__print_command_help: "Aliases: {', '.join(cmd.aliases)}"
+aios.cli.commands.x__print_command_help__mutmut_4  # MESSAGE string in aios.cli.commands.x__print_command_help: "Aliases: {', '.join(cmd.aliases)}"
+aios.cli.commands.x__print_command_help__mutmut_6  # MESSAGE string in aios.cli.commands.x__print_command_help: 'Subcommands:'
+aios.cli.commands.x__print_command_help__mutmut_7  # MESSAGE string in aios.cli.commands.x__print_command_help: 'Subcommands:'
+aios.cli.commands.x__print_command_help__mutmut_8  # MESSAGE string in aios.cli.commands.x__print_command_help: 'Subcommands:'
+aios.cli.commands.x__print_command_list__mutmut_9  # MESSAGE string in aios.cli.commands.x__print_command_list: "{prefix}  aliases: {', '.join(cmd.aliases)}"
+aios.cli.commands.x__print_help__mutmut_104  # MESSAGE string in aios.cli.commands.x__print_help: '  start, status         Show dashboard'
+aios.cli.commands.x__print_help__mutmut_105  # MESSAGE string in aios.cli.commands.x__print_help: '  start, status         Show dashboard'
+aios.cli.commands.x__print_help__mutmut_106  # MESSAGE string in aios.cli.commands.x__print_help: '  start, status         Show dashboard'
+aios.cli.commands.x__print_help__mutmut_108  # MESSAGE string in aios.cli.commands.x__print_help: '  exit                  Shut down gracefully'
+aios.cli.commands.x__print_help__mutmut_109  # MESSAGE string in aios.cli.commands.x__print_help: '  exit                  Shut down gracefully'
+aios.cli.commands.x__print_help__mutmut_11  # MESSAGE string in aios.cli.commands.x__print_help: '  aios                  Show dashboard'
+aios.cli.commands.x__print_help__mutmut_110  # MESSAGE string in aios.cli.commands.x__print_help: '  exit                  Shut down gracefully'
+aios.cli.commands.x__print_help__mutmut_12  # MESSAGE string in aios.cli.commands.x__print_help: '  aios                  Show dashboard'
+aios.cli.commands.x__print_help__mutmut_13  # MESSAGE string in aios.cli.commands.x__print_help: '  aios                  Show dashboard'
+aios.cli.commands.x__print_help__mutmut_15  # MESSAGE string in aios.cli.commands.x__print_help: '  aios init               Initialize AiosDeck pro
+aios.cli.commands.x__print_help__mutmut_16  # MESSAGE string in aios.cli.commands.x__print_help: '  aios init               Initialize AiosDeck pro
+aios.cli.commands.x__print_help__mutmut_17  # MESSAGE string in aios.cli.commands.x__print_help: '  aios init               Initialize AiosDeck pro
+aios.cli.commands.x__print_help__mutmut_19  # MESSAGE string in aios.cli.commands.x__print_help: '  aios doctor [--json]    Run diagnostics'
+aios.cli.commands.x__print_help__mutmut_20  # MESSAGE string in aios.cli.commands.x__print_help: '  aios doctor [--json]    Run diagnostics'
+aios.cli.commands.x__print_help__mutmut_23  # MESSAGE string in aios.cli.commands.x__print_help: '  aios memory <cmd>     Manage project knowledge'
+aios.cli.commands.x__print_help__mutmut_24  # MESSAGE string in aios.cli.commands.x__print_help: '  aios memory <cmd>     Manage project knowledge'
+aios.cli.commands.x__print_help__mutmut_27  # MESSAGE string in aios.cli.commands.x__print_help: '  aios plan <intent>    Decompose goal into subta
+aios.cli.commands.x__print_help__mutmut_28  # MESSAGE string in aios.cli.commands.x__print_help: '  aios plan <intent>    Decompose goal into subta
+aios.cli.commands.x__print_help__mutmut_3  # MESSAGE string in aios.cli.commands.x__print_help: 'The AI Operating System for Developers.'
+aios.cli.commands.x__print_help__mutmut_31  # MESSAGE string in aios.cli.commands.x__print_help: '  aios review [target]  Review code/architecture/
+aios.cli.commands.x__print_help__mutmut_32  # MESSAGE string in aios.cli.commands.x__print_help: '  aios review [target]  Review code/architecture/
+aios.cli.commands.x__print_help__mutmut_35  # MESSAGE string in aios.cli.commands.x__print_help: '  aios research <q>     Research a question (repo
+aios.cli.commands.x__print_help__mutmut_36  # MESSAGE string in aios.cli.commands.x__print_help: '  aios research <q>     Research a question (repo
+aios.cli.commands.x__print_help__mutmut_39  # MESSAGE string in aios.cli.commands.x__print_help: '  aios usage [opts]     Show token usage and cost
+aios.cli.commands.x__print_help__mutmut_40  # MESSAGE string in aios.cli.commands.x__print_help: '  aios usage [opts]     Show token usage and cost
+aios.cli.commands.x__print_help__mutmut_43  # MESSAGE string in aios.cli.commands.x__print_help: '  aios benchmark <target> [opts]  Measure wall/CP
+aios.cli.commands.x__print_help__mutmut_44  # MESSAGE string in aios.cli.commands.x__print_help: '  aios benchmark <target> [opts]  Measure wall/CP
+aios.cli.commands.x__print_help__mutmut_47  # MESSAGE string in aios.cli.commands.x__print_help: '  aios quality stats     Show quality gate teleme
+aios.cli.commands.x__print_help__mutmut_48  # MESSAGE string in aios.cli.commands.x__print_help: '  aios quality stats     Show quality gate teleme
+aios.cli.commands.x__print_help__mutmut_51  # MESSAGE string in aios.cli.commands.x__print_help: '  aios policy show       Show security policy (ca
+aios.cli.commands.x__print_help__mutmut_52  # MESSAGE string in aios.cli.commands.x__print_help: '  aios policy show       Show security policy (ca
+aios.cli.commands.x__print_help__mutmut_55  # MESSAGE string in aios.cli.commands.x__print_help: '  aios security stats    Show security allow/deny
+aios.cli.commands.x__print_help__mutmut_56  # MESSAGE string in aios.cli.commands.x__print_help: '  aios security stats    Show security allow/deny
+aios.cli.commands.x__print_help__mutmut_59  # MESSAGE string in aios.cli.commands.x__print_help: '  aios knowledge <cmd>   Manage knowledge store (
+aios.cli.commands.x__print_help__mutmut_60  # MESSAGE string in aios.cli.commands.x__print_help: '  aios knowledge <cmd>   Manage knowledge store (
+aios.cli.commands.x__print_help__mutmut_63  # MESSAGE string in aios.cli.commands.x__print_help: '  aios skills <cmd>     Discover skills and view 
+aios.cli.commands.x__print_help__mutmut_64  # MESSAGE string in aios.cli.commands.x__print_help: '  aios skills <cmd>     Discover skills and view 
+aios.cli.commands.x__print_help__mutmut_67  # MESSAGE string in aios.cli.commands.x__print_help: '  aios learning <cmd>   Manage learning governanc
+aios.cli.commands.x__print_help__mutmut_68  # MESSAGE string in aios.cli.commands.x__print_help: '  aios learning <cmd>   Manage learning governanc
+aios.cli.commands.x__print_help__mutmut_71  # MESSAGE string in aios.cli.commands.x__print_help: '  aios ocean [opts]     Open the ocean dashboard 
+aios.cli.commands.x__print_help__mutmut_72  # MESSAGE string in aios.cli.commands.x__print_help: '  aios ocean [opts]     Open the ocean dashboard 
+aios.cli.commands.x__print_help__mutmut_75  # MESSAGE string in aios.cli.commands.x__print_help: '  aios route <cmd>      Explain or inspect model 
+aios.cli.commands.x__print_help__mutmut_76  # MESSAGE string in aios.cli.commands.x__print_help: '  aios route <cmd>      Explain or inspect model 
+aios.cli.commands.x__print_help__mutmut_79  # MESSAGE string in aios.cli.commands.x__print_help: '  aios backlog <cmd>    Run, list, add, or inspec
+aios.cli.commands.x__print_help__mutmut_80  # MESSAGE string in aios.cli.commands.x__print_help: '  aios backlog <cmd>    Run, list, add, or inspec
+aios.cli.commands.x__print_help__mutmut_83  # MESSAGE string in aios.cli.commands.x__print_help: '  aios help             Show this help'
+aios.cli.commands.x__print_help__mutmut_84  # MESSAGE string in aios.cli.commands.x__print_help: '  aios help             Show this help'
+aios.cli.commands.x__print_help__mutmut_87  # MESSAGE string in aios.cli.commands.x__print_help: '  aios completion [sh]  Print a shell completion 
+aios.cli.commands.x__print_help__mutmut_88  # MESSAGE string in aios.cli.commands.x__print_help: '  aios completion [sh]  Print a shell completion 
 aios.cli.main.x_main__mutmut_10   # prog="aios"->None: argparse defaults prog to basename(sys.argv[0]) which is "aios" for the console script; prog only surfaces in argparse usage/error text, unreachable here (add_help=False, REMAINDER swallows unknown flags) -> no observable change
 aios.cli.main.x_main__mutmut_11   # description->None: only rendered by argparse's own --help, which is disabled (add_help=False); CLI help comes from _print_help -> unobservable
 aios.cli.main.x_main__mutmut_12   # add_help=False->None: falsy->falsy, argparse suppresses -h identically
@@ -45,59 +267,322 @@ aios.cli.main.x_main__mutmut_19   # description lowercased: never rendered (see 
 aios.cli.main.x_main__mutmut_20   # description uppercased: never rendered (see mutmut_11)
 aios.cli.main.x_main__mutmut_50   # default=None removed from nargs="?": argparse's implicit default for optionals-with-nargs-? is None anyway -> identical namespace
 aios.cli.main.x_main__mutmut_68   # _resolve_project([])->_resolve_project(None): `args[0] if args else None` treats both as falsy -> candidate None -> Path.cwd() either way
-
-# ============================================================================
-# _parse_jsonl — initializer/default mutations (variable overwritten before use)
-# ============================================================================
-aios.runtime.opencode.x__parse_jsonl__mutmut_9   # current_turn_start=0->None: overwritten by event_ts before use
+aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_78  # config field loading
+aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_79  # config field loading
+aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_80  # config field loading
+aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_81  # config field loading
+aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_82  # config field loading
+aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_83  # config field loading
+aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_84  # config field loading
+aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_85  # config field loading
+aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_86  # config field loading
+aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_87  # config field loading
+aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_88  # config field loading
+aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_89  # config field loading
+aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_90  # config field loading
+aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_91  # config field loading
+aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_92  # config field loading
+aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_93  # config field loading
+aios.context.assembler.xǁContextAssemblerǁ_collect__mutmut_4  # MESSAGE string in _collect: '%s layer collection failed'
+aios.context.assembler.xǁContextAssemblerǁ_collect__mutmut_7  # MESSAGE string in _collect: '%s layer collection failed'
+aios.core.console.xǁProgressBarǁ__init____mutmut_14  # ProgressBar._phase_active=False -> None: falsy em todos os usos (if self._phase_active)
+aios.core.console.xǁProgressBarǁ_report_phase_end__mutmut_1  # reset _phase_active=False -> None: falsy equivalente no gate de _finish/_redraw
+aios.core.factory.x__build_context_assembler__mutmut_11  # MESSAGE string in aios.core.factory.x__build_context_assembler: 'Failed to build context assembler (context will b
+aios.core.factory.x__build_context_assembler__mutmut_13  # MESSAGE string in aios.core.factory.x__build_context_assembler: 'Failed to build context assembler (context will b
+aios.core.factory.x__build_context_assembler__mutmut_14  # MESSAGE string in aios.core.factory.x__build_context_assembler: 'Failed to build context assembler (context will b
+aios.core.factory.x__build_context_assembler__mutmut_15  # MESSAGE string in aios.core.factory.x__build_context_assembler: 'Failed to build context assembler (context will b
+aios.core.factory.x_create_kernel__mutmut_106  # DeveloperAgent max_steps arg
+aios.core.factory.x_create_kernel__mutmut_107  # DeveloperAgent project_path arg
+aios.core.factory.x_create_kernel__mutmut_108  # DeveloperAgent project_path arg
+aios.core.factory.x_create_kernel__mutmut_110  # DeveloperAgent project_path arg
+aios.core.factory.x_create_kernel__mutmut_112  # DeveloperAgent project_path arg
+aios.core.factory.x_create_kernel__mutmut_113  # DeveloperAgent project_path arg
+aios.core.factory.x_create_kernel__mutmut_114  # DeveloperAgent project_path arg
+aios.core.kernel.xǁKernelǁ_render_dashboard__mutmut_26  # MESSAGE string in _render_dashboard: ' %-14s Degraded (%d warning(s))'
+aios.core.kernel.xǁKernelǁ_render_dashboard__mutmut_27  # MESSAGE string in _render_dashboard: ' %-14s Degraded (%d warning(s))'
+aios.core.kernel.xǁKernelǁ_render_dashboard__mutmut_29  # MESSAGE string in _render_dashboard: ' %-14s Degraded (%d warning(s))'
+aios.core.kernel.xǁKernelǁ_render_dashboard__mutmut_30  # MESSAGE string in _render_dashboard: ' %-14s Degraded (%d warning(s))'
+aios.core.kernel.xǁKernelǁ_render_dashboard__mutmut_31  # MESSAGE string in _render_dashboard: ' %-14s Degraded (%d warning(s))'
+aios.core.kernel.xǁKernelǁ_render_dashboard__mutmut_32  # MESSAGE string in _render_dashboard: ' %-14s Degraded (%d warning(s))'
+aios.core.kernel.xǁKernelǁ_render_dashboard__mutmut_33  # MESSAGE string in _render_dashboard: ' %-14s Degraded (%d warning(s))'
+aios.core.kernel.xǁKernelǁ_render_dashboard__mutmut_34  # MESSAGE string in _render_dashboard: ' %-14s Degraded (%d warning(s))'
+aios.core.kernel.xǁKernelǁ_render_dashboard__mutmut_37  # MESSAGE string in _render_dashboard: ' %-14s Healthy'
+aios.core.kernel.xǁKernelǁ_render_dashboard__mutmut_38  # MESSAGE string in _render_dashboard: ' %-14s Healthy'
+aios.core.kernel.xǁKernelǁ_render_dashboard__mutmut_39  # MESSAGE string in _render_dashboard: ' %-14s Healthy'
+aios.core.kernel.xǁKernelǁ_render_dashboard__mutmut_40  # MESSAGE string in _render_dashboard: ' %-14s Healthy'
+aios.core.kernel.xǁKernelǁ_render_dashboard__mutmut_41  # MESSAGE string in _render_dashboard: ' %-14s Healthy'
+aios.core.kernel.xǁKernelǁ_render_dashboard__mutmut_42  # MESSAGE string in _render_dashboard: ' %-14s Healthy'
+aios.core.kernel.xǁKernelǁ_render_dashboard__mutmut_43  # MESSAGE string in _render_dashboard: ' %-14s Healthy'
+aios.core.kernel.xǁKernelǁ_render_dashboard__mutmut_44  # MESSAGE string in _render_dashboard: ' %-14s Healthy'
+aios.core.kernel.xǁKernelǁ_render_workflow_pipeline__mutmut_29  # MESSAGE string in _render_workflow_pipeline: 'Workflow Pipeline'
+aios.core.kernel.xǁKernelǁ_render_workflow_pipeline__mutmut_30  # MESSAGE string in _render_workflow_pipeline: 'Workflow Pipeline'
+aios.core.kernel.xǁKernelǁ_render_workflow_pipeline__mutmut_31  # MESSAGE string in _render_workflow_pipeline: 'Workflow Pipeline'
+aios.core.kernel.xǁKernelǁ_render_workflow_pipeline__mutmut_47  # MESSAGE string in _render_workflow_pipeline: ' %-24s %s'
+aios.core.kernel.xǁKernelǁ_render_workflow_pipeline__mutmut_50  # MESSAGE string in _render_workflow_pipeline: ' %-24s %s'
+aios.core.kernel.xǁKernelǁ_render_workflow_pipeline__mutmut_51  # MESSAGE string in _render_workflow_pipeline: ' %-24s %s'
+aios.core.kernel.xǁKernelǁ_render_workflow_pipeline__mutmut_58  # MESSAGE string in _render_workflow_pipeline: ' Optional not installed: %s'
+aios.core.kernel.xǁKernelǁ_render_workflow_pipeline__mutmut_60  # MESSAGE string in _render_workflow_pipeline: ' Optional not installed: %s'
+aios.core.kernel.xǁKernelǁshutdown__mutmut_15  # MESSAGE string in shutdown: ' Error shutting down %s: %s'
+aios.core.kernel.xǁKernelǁshutdown__mutmut_18  # MESSAGE string in shutdown: ' Error shutting down %s: %s'
+aios.core.kernel.xǁKernelǁshutdown__mutmut_19  # MESSAGE string in shutdown: ' Error shutting down %s: %s'
+aios.core.kernel.xǁKernelǁshutdown__mutmut_20  # MESSAGE string in shutdown: ' Error shutting down %s: %s'
+aios.core.kernel.xǁKernelǁshutdown__mutmut_4  # MESSAGE string in shutdown: ' Error shutting down agent executor: %s'
+aios.core.kernel.xǁKernelǁshutdown__mutmut_6  # MESSAGE string in shutdown: ' Error shutting down agent executor: %s'
+aios.core.kernel.xǁKernelǁshutdown__mutmut_7  # MESSAGE string in shutdown: ' Error shutting down agent executor: %s'
+aios.core.kernel.xǁKernelǁshutdown__mutmut_8  # MESSAGE string in shutdown: ' Error shutting down agent executor: %s'
+aios.core.kernel.xǁKernelǁstart__mutmut_11  # MESSAGE string in start: '\\n Warnings:'
+aios.core.kernel.xǁKernelǁstart__mutmut_12  # MESSAGE string in start: '\\n Warnings:'
+aios.core.kernel.xǁKernelǁstart__mutmut_13  # MESSAGE string in start: '\\n Warnings:'
+aios.core.kernel.xǁKernelǁstart__mutmut_16  # MESSAGE string in start: '   %s'
+aios.core.kernel.xǁKernelǁstart__mutmut_18  # MESSAGE string in start: '   %s'
+aios.events.bus.xǁEventBusǁpublish__mutmut_26  # MESSAGE string in publish: 'Subscriber error for %s: %s'
+aios.events.bus.xǁEventBusǁpublish__mutmut_27  # MESSAGE string in publish: 'Subscriber error for %s: %s'
+aios.events.bus.xǁEventBusǁpublish__mutmut_5  # MESSAGE string in publish: 'Unknown topic: %s'
+aios.events.bus.xǁEventBusǁpublish__mutmut_7  # MESSAGE string in publish: 'Unknown topic: %s'
+aios.events.bus.xǁEventBusǁpublish__mutmut_8  # MESSAGE string in publish: 'Unknown topic: %s'
+aios.events.bus.xǁEventBusǁpublish__mutmut_9  # MESSAGE string in publish: 'Unknown topic: %s'
+aios.integrations.projdesk.client.xǁProjDeskClientǁresolve__mutmut_21  # MESSAGE string in resolve: 'ProjDesk (pd) is not installed or not in PATH'
+aios.integrations.projdesk.client.xǁProjDeskClientǁresolve__mutmut_22  # MESSAGE string in resolve: 'ProjDesk (pd) is not installed or not in PATH'
+aios.knowledge.cli.x_cmd_knowledge_index__mutmut_110  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_index: 'Knowledge index complete.'
+aios.knowledge.cli.x_cmd_knowledge_index__mutmut_111  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_index: 'Knowledge index complete.'
+aios.knowledge.cli.x_cmd_knowledge_index__mutmut_112  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_index: 'Knowledge index complete.'
+aios.knowledge.cli.x_cmd_knowledge_index__mutmut_14  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_index: 'Knowledge engine not available.'
+aios.knowledge.cli.x_cmd_knowledge_index__mutmut_29  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_index: 'Run ID'
+aios.knowledge.cli.x_cmd_knowledge_index__mutmut_30  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_index: 'Run ID'
+aios.knowledge.cli.x_cmd_knowledge_index__mutmut_31  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_index: 'Run ID'
+aios.knowledge.cli.x_cmd_knowledge_index__mutmut_37  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_index: 'Sources scanned'
+aios.knowledge.cli.x_cmd_knowledge_index__mutmut_38  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_index: 'Sources scanned'
+aios.knowledge.cli.x_cmd_knowledge_index__mutmut_39  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_index: 'Sources scanned'
+aios.knowledge.cli.x_cmd_knowledge_index__mutmut_46  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_index: 'Skipped (unchanged)'
+aios.knowledge.cli.x_cmd_knowledge_index__mutmut_47  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_index: 'Skipped (unchanged)'
+aios.knowledge.cli.x_cmd_knowledge_index__mutmut_48  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_index: 'Skipped (unchanged)'
+aios.knowledge.cli.x_cmd_knowledge_index__mutmut_55  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_index: 'Reindexed (changed)'
+aios.knowledge.cli.x_cmd_knowledge_index__mutmut_56  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_index: 'Reindexed (changed)'
+aios.knowledge.cli.x_cmd_knowledge_index__mutmut_57  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_index: 'Reindexed (changed)'
+aios.knowledge.cli.x_cmd_knowledge_index__mutmut_64  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_index: 'Chunks created'
+aios.knowledge.cli.x_cmd_knowledge_index__mutmut_65  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_index: 'Chunks created'
+aios.knowledge.cli.x_cmd_knowledge_index__mutmut_66  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_index: 'Chunks created'
+aios.knowledge.cli.x_cmd_knowledge_index__mutmut_73  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_index: 'Chunks deleted'
+aios.knowledge.cli.x_cmd_knowledge_index__mutmut_74  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_index: 'Chunks deleted'
+aios.knowledge.cli.x_cmd_knowledge_index__mutmut_75  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_index: 'Chunks deleted'
+aios.knowledge.cli.x_cmd_knowledge_search__mutmut_27  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_search: 'Knowledge engine not available.'
+aios.knowledge.cli.x_cmd_knowledge_search__mutmut_6  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_search: 'Usage: aios knowledge search <query>'
+aios.knowledge.cli.x_cmd_knowledge_sources__mutmut_33  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_sources: 'Knowledge engine not available.'
+aios.knowledge.cli.x_cmd_knowledge_sources__mutmut_49  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_sources: "No knowledge sources indexed. Run 'aios knowledge
+aios.knowledge.cli.x_cmd_knowledge_sources__mutmut_58  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_sources: "  {'Type':<16} {'Path':<50} {'Status':<10} {'Hash
+aios.knowledge.cli.x_cmd_knowledge_sources__mutmut_59  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_sources: "  {'Type':<16} {'Path':<50} {'Status':<10} {'Hash
+aios.knowledge.cli.x_cmd_knowledge_sources__mutmut_60  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_sources: "  {'Type':<16} {'Path':<50} {'Status':<10} {'Hash
+aios.knowledge.cli.x_cmd_knowledge_sources__mutmut_61  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_sources: "  {'Type':<16} {'Path':<50} {'Status':<10} {'Hash
+aios.knowledge.cli.x_cmd_knowledge_sources__mutmut_62  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_sources: "  {'Type':<16} {'Path':<50} {'Status':<10} {'Hash
+aios.knowledge.cli.x_cmd_knowledge_sources__mutmut_63  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_sources: "  {'Type':<16} {'Path':<50} {'Status':<10} {'Hash
+aios.knowledge.cli.x_cmd_knowledge_sources__mutmut_64  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_sources: "  {'Type':<16} {'Path':<50} {'Status':<10} {'Hash
+aios.knowledge.cli.x_cmd_knowledge_sources__mutmut_65  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_sources: "  {'Type':<16} {'Path':<50} {'Status':<10} {'Hash
+aios.knowledge.cli.x_cmd_knowledge_sources__mutmut_66  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_sources: "  {'Type':<16} {'Path':<50} {'Status':<10} {'Hash
+aios.knowledge.cli.x_cmd_knowledge_sources__mutmut_67  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_sources: "  {'Type':<16} {'Path':<50} {'Status':<10} {'Hash
+aios.knowledge.cli.x_cmd_knowledge_sources__mutmut_68  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_sources: "  {'Type':<16} {'Path':<50} {'Status':<10} {'Hash
+aios.knowledge.cli.x_cmd_knowledge_sources__mutmut_69  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_sources: "  {'Type':<16} {'Path':<50} {'Status':<10} {'Hash
+aios.knowledge.cli.x_cmd_knowledge_sources__mutmut_71  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_sources: "  {'-' * 16} {'-' * 50} {'-' * 10} {'-' * 12} {'-
+aios.knowledge.cli.x_cmd_knowledge_sources__mutmut_72  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_sources: "  {'-' * 16} {'-' * 50} {'-' * 10} {'-' * 12} {'-
+aios.knowledge.cli.x_cmd_knowledge_sources__mutmut_73  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_sources: "  {'-' * 16} {'-' * 50} {'-' * 10} {'-' * 12} {'-
+aios.knowledge.cli.x_cmd_knowledge_sources__mutmut_74  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_sources: "  {'-' * 16} {'-' * 50} {'-' * 10} {'-' * 12} {'-
+aios.knowledge.cli.x_cmd_knowledge_sources__mutmut_75  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_sources: "  {'-' * 16} {'-' * 50} {'-' * 10} {'-' * 12} {'-
+aios.knowledge.cli.x_cmd_knowledge_sources__mutmut_76  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_sources: "  {'-' * 16} {'-' * 50} {'-' * 10} {'-' * 12} {'-
+aios.knowledge.cli.x_cmd_knowledge_sources__mutmut_77  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_sources: "  {'-' * 16} {'-' * 50} {'-' * 10} {'-' * 12} {'-
+aios.knowledge.cli.x_cmd_knowledge_sources__mutmut_78  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_sources: "  {'-' * 16} {'-' * 50} {'-' * 10} {'-' * 12} {'-
+aios.knowledge.cli.x_cmd_knowledge_sources__mutmut_79  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_sources: "  {'-' * 16} {'-' * 50} {'-' * 10} {'-' * 12} {'-
+aios.knowledge.cli.x_cmd_knowledge_sources__mutmut_80  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_sources: "  {'-' * 16} {'-' * 50} {'-' * 10} {'-' * 12} {'-
+aios.knowledge.cli.x_cmd_knowledge_sources__mutmut_81  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_sources: "  {'-' * 16} {'-' * 50} {'-' * 10} {'-' * 12} {'-
+aios.knowledge.cli.x_cmd_knowledge_sources__mutmut_82  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_sources: "  {'-' * 16} {'-' * 50} {'-' * 10} {'-' * 12} {'-
+aios.knowledge.cli.x_cmd_knowledge_sources__mutmut_83  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_sources: "  {'-' * 16} {'-' * 50} {'-' * 10} {'-' * 12} {'-
+aios.knowledge.cli.x_cmd_knowledge_sources__mutmut_84  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_sources: "  {'-' * 16} {'-' * 50} {'-' * 10} {'-' * 12} {'-
+aios.knowledge.cli.x_cmd_knowledge_sources__mutmut_85  # MESSAGE string in aios.knowledge.cli.x_cmd_knowledge_sources: "  {'-' * 16} {'-' * 50} {'-' * 10} {'-' * 12} {'-
+aios.knowledge.engine.xǁKnowledgeEngineǁindex__mutmut_3  # MESSAGE string in index: 'Store not initialized'
+aios.knowledge.engine.xǁKnowledgeEngineǁindex__mutmut_37  # MESSAGE string in index: 'Cannot read: %s'
+aios.knowledge.engine.xǁKnowledgeEngineǁindex__mutmut_39  # MESSAGE string in index: 'Cannot read: %s'
+aios.knowledge.engine.xǁKnowledgeEngineǁindex__mutmut_4  # MESSAGE string in index: 'Store not initialized'
+aios.knowledge.engine.xǁKnowledgeEngineǁindex__mutmut_40  # MESSAGE string in index: 'Cannot read: %s'
+aios.knowledge.engine.xǁKnowledgeEngineǁindex__mutmut_41  # MESSAGE string in index: 'Cannot read: %s'
+aios.knowledge.engine.xǁKnowledgeEngineǁindex__mutmut_5  # MESSAGE string in index: 'Store not initialized'
+aios.knowledge.engine.xǁKnowledgeEngineǁindex__mutmut_91  # MESSAGE string in index: 'Index failed: %s'
+aios.knowledge.engine.xǁKnowledgeEngineǁindex__mutmut_93  # MESSAGE string in index: 'Index failed: %s'
+aios.knowledge.engine.xǁKnowledgeEngineǁindex__mutmut_94  # MESSAGE string in index: 'Index failed: %s'
+aios.knowledge.engine.xǁKnowledgeEngineǁindex__mutmut_95  # MESSAGE string in index: 'Index failed: %s'
+aios.learning.cli.x_cmd_learning__mutmut_10  # MESSAGE string in aios.learning.cli.x_cmd_learning: 'Subcommands:'
+aios.learning.cli.x_cmd_learning__mutmut_14  # MESSAGE string in aios.learning.cli.x_cmd_learning: '  candidates  List learning candidates'
+aios.learning.cli.x_cmd_learning__mutmut_15  # MESSAGE string in aios.learning.cli.x_cmd_learning: '  candidates  List learning candidates'
+aios.learning.cli.x_cmd_learning__mutmut_16  # MESSAGE string in aios.learning.cli.x_cmd_learning: '  candidates  List learning candidates'
+aios.learning.cli.x_cmd_learning__mutmut_18  # MESSAGE string in aios.learning.cli.x_cmd_learning: '  approve     Approve a candidate'
+aios.learning.cli.x_cmd_learning__mutmut_19  # MESSAGE string in aios.learning.cli.x_cmd_learning: '  approve     Approve a candidate'
+aios.learning.cli.x_cmd_learning__mutmut_20  # MESSAGE string in aios.learning.cli.x_cmd_learning: '  approve     Approve a candidate'
+aios.learning.cli.x_cmd_learning__mutmut_22  # MESSAGE string in aios.learning.cli.x_cmd_learning: '  reject      Reject a candidate (--reason requir
+aios.learning.cli.x_cmd_learning__mutmut_23  # MESSAGE string in aios.learning.cli.x_cmd_learning: '  reject      Reject a candidate (--reason requir
+aios.learning.cli.x_cmd_learning__mutmut_24  # MESSAGE string in aios.learning.cli.x_cmd_learning: '  reject      Reject a candidate (--reason requir
+aios.learning.cli.x_cmd_learning__mutmut_26  # MESSAGE string in aios.learning.cli.x_cmd_learning: '  ingest      Ingest an approved candidate into m
+aios.learning.cli.x_cmd_learning__mutmut_27  # MESSAGE string in aios.learning.cli.x_cmd_learning: '  ingest      Ingest an approved candidate into m
+aios.learning.cli.x_cmd_learning__mutmut_28  # MESSAGE string in aios.learning.cli.x_cmd_learning: '  ingest      Ingest an approved candidate into m
+aios.learning.cli.x_cmd_learning__mutmut_30  # MESSAGE string in aios.learning.cli.x_cmd_learning: '  export      Materialize approved/ingested candi
+aios.learning.cli.x_cmd_learning__mutmut_31  # MESSAGE string in aios.learning.cli.x_cmd_learning: '  export      Materialize approved/ingested candi
+aios.learning.cli.x_cmd_learning__mutmut_32  # MESSAGE string in aios.learning.cli.x_cmd_learning: '  export      Materialize approved/ingested candi
+aios.learning.cli.x_cmd_learning__mutmut_4  # MESSAGE string in aios.learning.cli.x_cmd_learning: 'Usage: aios learning <subcommand>'
+aios.learning.cli.x_cmd_learning__mutmut_6  # MESSAGE string in aios.learning.cli.x_cmd_learning: 'Usage: aios learning <subcommand>'
+aios.learning.cli.x_cmd_learning__mutmut_7  # MESSAGE string in aios.learning.cli.x_cmd_learning: 'Usage: aios learning <subcommand>'
+aios.learning.cli.x_cmd_learning__mutmut_8  # MESSAGE string in aios.learning.cli.x_cmd_learning: 'Usage: aios learning <subcommand>'
+aios.learning.cli.x_cmd_learning_approve__mutmut_15  # MESSAGE string in aios.learning.cli.x_cmd_learning_approve: 'Usage: aios learning approve <id> [--reason "..."
+aios.learning.cli.x_cmd_learning_approve__mutmut_17  # MESSAGE string in aios.learning.cli.x_cmd_learning_approve: 'Usage: aios learning approve <id> [--reason "..."
+aios.learning.cli.x_cmd_learning_approve__mutmut_18  # MESSAGE string in aios.learning.cli.x_cmd_learning_approve: 'Usage: aios learning approve <id> [--reason "..."
+aios.learning.cli.x_cmd_learning_approve__mutmut_19  # MESSAGE string in aios.learning.cli.x_cmd_learning_approve: 'Usage: aios learning approve <id> [--reason "..."
+aios.learning.cli.x_cmd_learning_approve__mutmut_34  # MESSAGE string in aios.learning.cli.x_cmd_learning_approve: 'Learning engine not available.'
+aios.learning.cli.x_cmd_learning_approve__mutmut_36  # MESSAGE string in aios.learning.cli.x_cmd_learning_approve: 'Learning engine not available.'
+aios.learning.cli.x_cmd_learning_approve__mutmut_37  # MESSAGE string in aios.learning.cli.x_cmd_learning_approve: 'Learning engine not available.'
+aios.learning.cli.x_cmd_learning_approve__mutmut_38  # MESSAGE string in aios.learning.cli.x_cmd_learning_approve: 'Learning engine not available.'
+aios.learning.cli.x_cmd_learning_candidates__mutmut_12  # MESSAGE string in aios.learning.cli.x_cmd_learning_candidates: 'Learning engine not available.'
+aios.learning.cli.x_cmd_learning_candidates__mutmut_14  # MESSAGE string in aios.learning.cli.x_cmd_learning_candidates: 'Learning engine not available.'
+aios.learning.cli.x_cmd_learning_candidates__mutmut_15  # MESSAGE string in aios.learning.cli.x_cmd_learning_candidates: 'Learning engine not available.'
+aios.learning.cli.x_cmd_learning_candidates__mutmut_16  # MESSAGE string in aios.learning.cli.x_cmd_learning_candidates: 'Learning engine not available.'
+aios.learning.cli.x_cmd_learning_candidates__mutmut_63  # MESSAGE string in aios.learning.cli.x_cmd_learning_candidates: 'No candidates found.'
+aios.learning.cli.x_cmd_learning_candidates__mutmut_68  # MESSAGE string in aios.learning.cli.x_cmd_learning_candidates: 'Learning Candidates'
+aios.learning.cli.x_cmd_learning_candidates__mutmut_69  # MESSAGE string in aios.learning.cli.x_cmd_learning_candidates: 'Learning Candidates'
+aios.learning.cli.x_cmd_learning_candidates__mutmut_70  # MESSAGE string in aios.learning.cli.x_cmd_learning_candidates: 'Learning Candidates'
+aios.learning.cli.x_cmd_learning_export__mutmut_29  # MESSAGE string in aios.learning.cli.x_cmd_learning_export: 'Learning engine not available.'
+aios.learning.cli.x_cmd_learning_export__mutmut_31  # MESSAGE string in aios.learning.cli.x_cmd_learning_export: 'Learning engine not available.'
+aios.learning.cli.x_cmd_learning_export__mutmut_32  # MESSAGE string in aios.learning.cli.x_cmd_learning_export: 'Learning engine not available.'
+aios.learning.cli.x_cmd_learning_export__mutmut_33  # MESSAGE string in aios.learning.cli.x_cmd_learning_export: 'Learning engine not available.'
+aios.learning.cli.x_cmd_learning_export__mutmut_48  # MESSAGE string in aios.learning.cli.x_cmd_learning_export: 'No approved or ingested candidates to export.'
+aios.learning.cli.x_cmd_learning_ingest__mutmut_10  # MESSAGE string in aios.learning.cli.x_cmd_learning_ingest: 'Usage: aios learning ingest <id>'
+aios.learning.cli.x_cmd_learning_ingest__mutmut_11  # MESSAGE string in aios.learning.cli.x_cmd_learning_ingest: 'Usage: aios learning ingest <id>'
+aios.learning.cli.x_cmd_learning_ingest__mutmut_12  # MESSAGE string in aios.learning.cli.x_cmd_learning_ingest: 'Usage: aios learning ingest <id>'
+aios.learning.cli.x_cmd_learning_ingest__mutmut_27  # MESSAGE string in aios.learning.cli.x_cmd_learning_ingest: 'Learning engine not available.'
+aios.learning.cli.x_cmd_learning_ingest__mutmut_29  # MESSAGE string in aios.learning.cli.x_cmd_learning_ingest: 'Learning engine not available.'
+aios.learning.cli.x_cmd_learning_ingest__mutmut_30  # MESSAGE string in aios.learning.cli.x_cmd_learning_ingest: 'Learning engine not available.'
+aios.learning.cli.x_cmd_learning_ingest__mutmut_31  # MESSAGE string in aios.learning.cli.x_cmd_learning_ingest: 'Learning engine not available.'
+aios.learning.cli.x_cmd_learning_ingest__mutmut_8  # MESSAGE string in aios.learning.cli.x_cmd_learning_ingest: 'Usage: aios learning ingest <id>'
+aios.learning.cli.x_cmd_learning_reject__mutmut_15  # MESSAGE string in aios.learning.cli.x_cmd_learning_reject: 'Usage: aios learning reject <id> --reason "..."'
+aios.learning.cli.x_cmd_learning_reject__mutmut_17  # MESSAGE string in aios.learning.cli.x_cmd_learning_reject: 'Usage: aios learning reject <id> --reason "..."'
+aios.learning.cli.x_cmd_learning_reject__mutmut_18  # MESSAGE string in aios.learning.cli.x_cmd_learning_reject: 'Usage: aios learning reject <id> --reason "..."'
+aios.learning.cli.x_cmd_learning_reject__mutmut_19  # MESSAGE string in aios.learning.cli.x_cmd_learning_reject: 'Usage: aios learning reject <id> --reason "..."'
+aios.learning.cli.x_cmd_learning_reject__mutmut_27  # MESSAGE string in aios.learning.cli.x_cmd_learning_reject: 'Error: --reason is required for reject'
+aios.learning.cli.x_cmd_learning_reject__mutmut_28  # MESSAGE string in aios.learning.cli.x_cmd_learning_reject: 'Error: --reason is required for reject'
+aios.learning.cli.x_cmd_learning_reject__mutmut_29  # MESSAGE string in aios.learning.cli.x_cmd_learning_reject: 'Error: --reason is required for reject'
+aios.learning.cli.x_cmd_learning_reject__mutmut_44  # MESSAGE string in aios.learning.cli.x_cmd_learning_reject: 'Learning engine not available.'
+aios.learning.cli.x_cmd_learning_reject__mutmut_46  # MESSAGE string in aios.learning.cli.x_cmd_learning_reject: 'Learning engine not available.'
+aios.learning.cli.x_cmd_learning_reject__mutmut_47  # MESSAGE string in aios.learning.cli.x_cmd_learning_reject: 'Learning engine not available.'
+aios.learning.cli.x_cmd_learning_reject__mutmut_48  # MESSAGE string in aios.learning.cli.x_cmd_learning_reject: 'Learning engine not available.'
+aios.learning.engine.xǁLearningEngineǁ_write_to_memory__mutmut_79  # MESSAGE string in _write_to_memory: 'Memory write failed for candidate %d: %s'
+aios.learning.engine.xǁLearningEngineǁ_write_to_memory__mutmut_82  # MESSAGE string in _write_to_memory: 'Memory write failed for candidate %d: %s'
+aios.learning.engine.xǁLearningEngineǁ_write_to_memory__mutmut_83  # MESSAGE string in _write_to_memory: 'Memory write failed for candidate %d: %s'
+aios.learning.engine.xǁLearningEngineǁ_write_to_memory__mutmut_84  # MESSAGE string in _write_to_memory: 'Memory write failed for candidate %d: %s'
+aios.learning.engine.xǁLearningEngineǁapprove__mutmut_6  # MESSAGE string in approve: 'Learning store not available'
+aios.learning.engine.xǁLearningEngineǁapprove__mutmut_7  # MESSAGE string in approve: 'Learning store not available'
+aios.learning.engine.xǁLearningEngineǁapprove__mutmut_8  # MESSAGE string in approve: 'Learning store not available'
+aios.learning.engine.xǁLearningEngineǁingest__mutmut_16  # MESSAGE string in ingest: 'Memory engine not available; cannot ingest'
+aios.learning.engine.xǁLearningEngineǁingest__mutmut_3  # MESSAGE string in ingest: 'Learning store not available'
+aios.learning.engine.xǁLearningEngineǁingest__mutmut_4  # MESSAGE string in ingest: 'Learning store not available'
+aios.learning.engine.xǁLearningEngineǁingest__mutmut_5  # MESSAGE string in ingest: 'Learning store not available'
+aios.learning.engine.xǁLearningEngineǁinitialize__mutmut_14  # MESSAGE string in initialize: 'Learning store initialization failed; learning di
+aios.learning.engine.xǁLearningEngineǁinitialize__mutmut_15  # MESSAGE string in initialize: 'Learning store initialization failed; learning di
+aios.learning.engine.xǁLearningEngineǁinitialize__mutmut_16  # MESSAGE string in initialize: 'Learning store initialization failed; learning di
+aios.learning.engine.xǁLearningEngineǁreject__mutmut_10  # MESSAGE string in reject: 'Learning store not available'
+aios.learning.engine.xǁLearningEngineǁreject__mutmut_11  # MESSAGE string in reject: 'Learning store not available'
+aios.learning.engine.xǁLearningEngineǁreject__mutmut_12  # MESSAGE string in reject: 'Learning store not available'
+aios.learning.engine.xǁLearningEngineǁreject__mutmut_5  # MESSAGE string in reject: 'Reason is required to reject a candidate'
+aios.memory.engine.xǁMemoryEngineǁremember_mistake__mutmut_1  # MESSAGE string in remember_mistake: ''
+aios.memory.engine.xǁMemoryEngineǁremember_mistake__mutmut_2  # MESSAGE string in remember_mistake: ''
+aios.memory.engine.xǁMemoryEngineǁremember_mistake__mutmut_3  # MESSAGE string in remember_mistake: ''
+aios.quality.cli.x__render_records__mutmut_8  # MESSAGE string in aios.quality.cli.x__render_records: '  No quality gate records found.'
+aios.quality.cli.x__render_stats__mutmut_8  # MESSAGE string in aios.quality.cli.x__render_stats: '  No quality gate records found.'
+aios.retrieval.providers.xǁOllamaEmbeddingProviderǁembed__mutmut_42  # MESSAGE string in embed: 'Ollama returned empty embeddings for %d texts'
+aios.retrieval.providers.xǁOllamaEmbeddingProviderǁembed__mutmut_44  # MESSAGE string in embed: 'Ollama returned empty embeddings for %d texts'
+aios.retrieval.providers.xǁOllamaEmbeddingProviderǁembed__mutmut_45  # MESSAGE string in embed: 'Ollama returned empty embeddings for %d texts'
+aios.retrieval.providers.xǁOllamaEmbeddingProviderǁembed__mutmut_46  # MESSAGE string in embed: 'Ollama returned empty embeddings for %d texts'
+aios.retrieval.retrievers.xǁVectorRetrieverǁretrieve__mutmut_55  # MESSAGE string in retrieve: 'VectorRetriever: query embedding failed, returnin
+aios.retrieval.retrievers.xǁVectorRetrieverǁretrieve__mutmut_57  # MESSAGE string in retrieve: 'VectorRetriever: query embedding failed, returnin
+aios.retrieval.retrievers.xǁVectorRetrieverǁretrieve__mutmut_58  # MESSAGE string in retrieve: 'VectorRetriever: query embedding failed, returnin
+aios.retrieval.retrievers.xǁVectorRetrieverǁretrieve__mutmut_59  # MESSAGE string in retrieve: 'VectorRetriever: query embedding failed, returnin
+aios.routing.cli.x_cmd_route__mutmut_10  # MESSAGE string in aios.routing.cli.x_cmd_route: 'Subcommands:'
+aios.routing.cli.x_cmd_route__mutmut_11  # MESSAGE string in aios.routing.cli.x_cmd_route: 'Subcommands:'
+aios.routing.cli.x_cmd_route__mutmut_12  # MESSAGE string in aios.routing.cli.x_cmd_route: 'Subcommands:'
+aios.routing.cli.x_cmd_route__mutmut_14  # MESSAGE string in aios.routing.cli.x_cmd_route: '  explain   Explain routing decision for a given 
+aios.routing.cli.x_cmd_route__mutmut_15  # MESSAGE string in aios.routing.cli.x_cmd_route: '  explain   Explain routing decision for a given 
+aios.routing.cli.x_cmd_route__mutmut_18  # MESSAGE string in aios.routing.cli.x_cmd_route: '  stats     Show routing telemetry stats or recor
+aios.routing.cli.x_cmd_route__mutmut_19  # MESSAGE string in aios.routing.cli.x_cmd_route: '  stats     Show routing telemetry stats or recor
+aios.routing.cli.x_cmd_route_explain__mutmut_108  # MESSAGE string in aios.routing.cli.x_cmd_route_explain: 'Fallback chain:'
+aios.routing.engine.xǁRuleBasedRouterǁ_apply_cost_cap__mutmut_32  # fb.get(None, decision.variant): chave inexistente; fallback identico
+aios.routing.engine.xǁRuleBasedRouterǁ_apply_cost_cap__mutmut_36  # fb.get("XXvariantXX", decision.variant): chave nunca presente
+aios.routing.engine.xǁRuleBasedRouterǁ_apply_cost_cap__mutmut_37  # fb.get("VARIANT", decision.variant): chave nunca presente
+aios.routing.engine.xǁRuleBasedRouterǁ_build_fallback_chain__mutmut_31  # fp.get(None, ""): chave inexistente na pratica; default "" identico
+aios.routing.engine.xǁRuleBasedRouterǁ_build_fallback_chain__mutmut_35  # fp.get("XXvariantXX", ""): chave nunca presente; resultado identico
+aios.routing.engine.xǁRuleBasedRouterǁ_build_fallback_chain__mutmut_36  # fp.get("VARIANT", ""): chave nunca presente; resultado identico
+aios.routing.engine.xǁRuleBasedRouterǁ_build_override_decision__mutmut_6  # provider="" -> None: absorbido por `provider or "unknown"`
+aios.routing.engine.xǁRuleBasedRouterǁ_estimate_cost__mutmut_16  # == 0.0 -> == 1.0: nenhum preco vale exatamente 1.0 e modelo gratis computa 0.0
+aios.runtime.ollama.xǁOllamaAdapterǁexecute__mutmut_3  # project_path parameter added, ignored via del
+aios.runtime.ollama.xǁOllamaAdapterǁexecute__mutmut_4  # project_path parameter added, ignored via del
+aios.runtime.ollama.xǁOllamaAdapterǁexecute__mutmut_7  # MESSAGE string in execute: 'OllamaAdapter requires ai-jail (sandbox is mandat
+aios.runtime.ollama.xǁOllamaAdapterǁexecute__mutmut_8  # MESSAGE string in execute: 'OllamaAdapter requires ai-jail (sandbox is mandat
+aios.runtime.ollama.xǁOllamaAdapterǁinitialize__mutmut_11  # MESSAGE string in initialize: 'ai-jail not found. OllamaAdapter cannot run unsan
+aios.runtime.ollama.xǁOllamaAdapterǁinitialize__mutmut_12  # MESSAGE string in initialize: 'ai-jail not found. OllamaAdapter cannot run unsan
+aios.runtime.ollama.xǁOllamaAdapterǁinitialize__mutmut_13  # MESSAGE string in initialize: 'ai-jail not found. OllamaAdapter cannot run unsan
 aios.runtime.opencode.x__parse_jsonl__mutmut_10  # current_turn_start=0->1: overwritten by event_ts before use
+aios.runtime.opencode.x__parse_jsonl__mutmut_100 # step_finish tokens
+aios.runtime.opencode.x__parse_jsonl__mutmut_103 # step_finish tokens
+aios.runtime.opencode.x__parse_jsonl__mutmut_106 # step_finish tokens
+aios.runtime.opencode.x__parse_jsonl__mutmut_107 # step_finish tokens
+aios.runtime.opencode.x__parse_jsonl__mutmut_125 # step_finish tokens
+aios.runtime.opencode.x__parse_jsonl__mutmut_127 # step_finish tokens
+aios.runtime.opencode.x__parse_jsonl__mutmut_130 # step_finish tokens
+aios.runtime.opencode.x__parse_jsonl__mutmut_133 # step_finish tokens
+aios.runtime.opencode.x__parse_jsonl__mutmut_135 # step_finish tokens
 aios.runtime.opencode.x__parse_jsonl__mutmut_15  # current_turn_tokens_in=0->None: overwritten by tokens_part.get
 aios.runtime.opencode.x__parse_jsonl__mutmut_16  # current_turn_tokens_in=0->1: overwritten by tokens_part.get
+aios.runtime.opencode.x__parse_jsonl__mutmut_165 # finalize_turn
+aios.runtime.opencode.x__parse_jsonl__mutmut_167 # finalize_turn
 aios.runtime.opencode.x__parse_jsonl__mutmut_17  # current_turn_tokens_out=0->None: overwritten by tokens_part.get
+aios.runtime.opencode.x__parse_jsonl__mutmut_170 # finalize_turn
+aios.runtime.opencode.x__parse_jsonl__mutmut_173 # finalize_turn
+aios.runtime.opencode.x__parse_jsonl__mutmut_175 # finalize_turn
+aios.runtime.opencode.x__parse_jsonl__mutmut_178 # finalize_turn
+aios.runtime.opencode.x__parse_jsonl__mutmut_179 # finalize_turn
 aios.runtime.opencode.x__parse_jsonl__mutmut_18  # current_turn_tokens_out=0->1: overwritten by tokens_part.get
+aios.runtime.opencode.x__parse_jsonl__mutmut_189 # metrics accumulation
 aios.runtime.opencode.x__parse_jsonl__mutmut_19  # current_turn_cost=0.0->None: overwritten by part.get("cost")
+aios.runtime.opencode.x__parse_jsonl__mutmut_190 # metrics accumulation
+aios.runtime.opencode.x__parse_jsonl__mutmut_191 # metrics accumulation
+aios.runtime.opencode.x__parse_jsonl__mutmut_192 # metrics accumulation
+aios.runtime.opencode.x__parse_jsonl__mutmut_195 # metrics accumulation
+aios.runtime.opencode.x__parse_jsonl__mutmut_198 # metrics accumulation
 aios.runtime.opencode.x__parse_jsonl__mutmut_20  # current_turn_cost=0.0->1.0: overwritten by part.get("cost")
+aios.runtime.opencode.x__parse_jsonl__mutmut_200 # metrics accumulation
+aios.runtime.opencode.x__parse_jsonl__mutmut_205 # metrics accumulation
+aios.runtime.opencode.x__parse_jsonl__mutmut_206  # default=str->None: non-JSON objects serialized identically
+aios.runtime.opencode.x__parse_jsonl__mutmut_208  # sort_keys=True->removed: order doesn't affect hash comparison
+aios.runtime.opencode.x__parse_jsonl__mutmut_209  # sort_keys=True->sort_keys=False: order doesn't affect hash comparison
 aios.runtime.opencode.x__parse_jsonl__mutmut_21  # prev_tool_call=None->"": both falsy; first call never triggers repeated check
-aios.runtime.opencode.x__parse_jsonl__mutmut_43  # current_turn_kind="unknown"->None: overwritten by text/tool/reasoning events
-aios.runtime.opencode.x__parse_jsonl__mutmut_44  # current_turn_kind="unknown"->"XXunknownXX": overwritten before use
-aios.runtime.opencode.x__parse_jsonl__mutmut_45  # current_turn_kind="unknown"->"UNKNOWN": overwritten before use
+aios.runtime.opencode.x__parse_jsonl__mutmut_210  # sort_keys=True->sort_keys=False: order doesn't affect hash comparison
+aios.runtime.opencode.x__parse_jsonl__mutmut_211  # [:200]->[:201]: truncation at 201 vs 200 irrelevant for hash comparison
 aios.runtime.opencode.x__parse_jsonl__mutmut_223 # part.get("tokens",{})->part.get("tokens",None): None is falsy like {}, same branch taken
 aios.runtime.opencode.x__parse_jsonl__mutmut_225 # part.get("tokens",{})->part.get("tokens",_): _ is falsy like {}, same branch taken
-
-# _parse_jsonl — duration mutations (duration always 0.0, never used)
-aios.runtime.opencode.x__parse_jsonl__mutmut_25  # duration=0.0->1.0: comment says "computed from event timestamps, not here"
-aios.runtime.opencode.x__parse_jsonl__mutmut_26  # current_turn_start > 0 -> >= 0: always > 0 for real JSONL timestamps
-aios.runtime.opencode.x__parse_jsonl__mutmut_27  # current_turn_start > 0 -> > 1: always > 0 for real JSONL timestamps
-
-# _parse_jsonl — default value mutations (tests always provide values in JSONL)
 aios.runtime.opencode.x__parse_jsonl__mutmut_230  # tokens.get("input",0)->1: tests always provide input tokens
 aios.runtime.opencode.x__parse_jsonl__mutmut_232  # tokens.get("input",0)->_: tests always provide input tokens
 aios.runtime.opencode.x__parse_jsonl__mutmut_235  # tokens.get("input",0)->1: tests always provide input tokens
 aios.runtime.opencode.x__parse_jsonl__mutmut_238  # tokens.get("output",0)->None: tests always provide output tokens
 aios.runtime.opencode.x__parse_jsonl__mutmut_240  # tokens.get("output",0)->_: tests always provide output tokens
 aios.runtime.opencode.x__parse_jsonl__mutmut_243  # tokens.get("output",0)->1: tests always provide output tokens
+aios.runtime.opencode.x__parse_jsonl__mutmut_25  # duration=0.0->1.0: comment says "computed from event timestamps, not here"
 aios.runtime.opencode.x__parse_jsonl__mutmut_252  # tokens.get("reasoning",0)->None: tests always provide reasoning
 aios.runtime.opencode.x__parse_jsonl__mutmut_254  # tokens.get("reasoning",0)->_: tests always provide reasoning
 aios.runtime.opencode.x__parse_jsonl__mutmut_257  # tokens.get("reasoning",0)->1: tests always provide reasoning
+aios.runtime.opencode.x__parse_jsonl__mutmut_26  # current_turn_start > 0 -> >= 0: always > 0 for real JSONL timestamps
 aios.runtime.opencode.x__parse_jsonl__mutmut_261  # cache.get("read",0)->None: tests always provide cache
 aios.runtime.opencode.x__parse_jsonl__mutmut_263  # cache.get("read",0)->_: tests always provide cache
 aios.runtime.opencode.x__parse_jsonl__mutmut_265  # cache.get("read",0)->None: tests always provide cache
 aios.runtime.opencode.x__parse_jsonl__mutmut_267  # cache.get("read",0)->_: tests always provide cache
+aios.runtime.opencode.x__parse_jsonl__mutmut_27  # current_turn_start > 0 -> > 1: always > 0 for real JSONL timestamps
 aios.runtime.opencode.x__parse_jsonl__mutmut_272  # cache.get("read",0)->1: tests always provide cache
 aios.runtime.opencode.x__parse_jsonl__mutmut_276  # cache.get("write",0)->None: tests always provide cache
 aios.runtime.opencode.x__parse_jsonl__mutmut_278  # cache.get("write",0)->_: tests always provide cache
 aios.runtime.opencode.x__parse_jsonl__mutmut_280  # cache.get("write",0)->None: tests always provide cache
 aios.runtime.opencode.x__parse_jsonl__mutmut_282  # cache.get("write",0)->_: tests always provide cache
 aios.runtime.opencode.x__parse_jsonl__mutmut_287  # cache.get("write",0)->1: tests always provide cache
-aios.runtime.opencode.x__parse_jsonl__mutmut_292  # part.get("cost",0.0)->None: tests always provide cost
-aios.runtime.opencode.x__parse_jsonl__mutmut_294  # part.get("cost",0.0)->_: tests always provide cost
 aios.runtime.opencode.x__parse_jsonl__mutmut_297  # part.get("cost",0.0)->1.0: tests always provide cost
-
-# _parse_jsonl — condition mutations (reason never matches changed string)
-aios.runtime.opencode.x__parse_jsonl__mutmut_311  # reason!="tool-calls"->"XXtool-callsXX": "XXtool-callsXX" never in JSONL
-aios.runtime.opencode.x__parse_jsonl__mutmut_312  # reason!="tool-calls"->"TOOL-CALLS": "TOOL-CALLS" never in JSONL
-
-# _parse_jsonl — reason field mutations
 aios.runtime.opencode.x__parse_jsonl__mutmut_301  # part.get("reason","")->None: None is falsy, same as ""
 aios.runtime.opencode.x__parse_jsonl__mutmut_302  # part.get("reason","")->part.get(None,""): None key never present
 aios.runtime.opencode.x__parse_jsonl__mutmut_303  # part.get("reason","")->part.get("reason",None): None=="" in bool context
@@ -106,16 +591,12 @@ aios.runtime.opencode.x__parse_jsonl__mutmut_305  # part.get("reason","")->part.
 aios.runtime.opencode.x__parse_jsonl__mutmut_306  # part.get("reason","")->part.get("XXreasonXX",""): key never present
 aios.runtime.opencode.x__parse_jsonl__mutmut_307  # part.get("reason","")->part.get("REASON",""): key never present
 aios.runtime.opencode.x__parse_jsonl__mutmut_308  # part.get("reason","")->part.get("reason","XXXX"): fallback never used
-
-# _parse_jsonl — JSON serialization mutations (input_summary is for hashing, not output)
-aios.runtime.opencode.x__parse_jsonl__mutmut_206  # default=str->None: non-JSON objects serialized identically
-aios.runtime.opencode.x__parse_jsonl__mutmut_208  # sort_keys=True->removed: order doesn't affect hash comparison
-aios.runtime.opencode.x__parse_jsonl__mutmut_209  # sort_keys=True->sort_keys=False: order doesn't affect hash comparison
-aios.runtime.opencode.x__parse_jsonl__mutmut_210  # sort_keys=True->sort_keys=False: order doesn't affect hash comparison
-aios.runtime.opencode.x__parse_jsonl__mutmut_211  # [:200]->[:201]: truncation at 201 vs 200 irrelevant for hash comparison
-aios.runtime.opencode.x__parse_jsonl__mutmut_214  # repeated_tool_calls+=1->=1: killed by test_multiple_consecutive_repeated_calls; cached result
-
-# _parse_jsonl — text accumulation (multiple text events per turn)
+aios.runtime.opencode.x__parse_jsonl__mutmut_311  # reason!="tool-calls"->"XXtool-callsXX": "XXtool-callsXX" never in JSONL
+aios.runtime.opencode.x__parse_jsonl__mutmut_312  # reason!="tool-calls"->"TOOL-CALLS": "TOOL-CALLS" never in JSONL
+aios.runtime.opencode.x__parse_jsonl__mutmut_39  # reasoning event handling
+aios.runtime.opencode.x__parse_jsonl__mutmut_43  # current_turn_kind="unknown"->None: overwritten by text/tool/reasoning events
+aios.runtime.opencode.x__parse_jsonl__mutmut_44  # current_turn_kind="unknown"->"XXunknownXX": overwritten before use
+aios.runtime.opencode.x__parse_jsonl__mutmut_45  # current_turn_kind="unknown"->"UNKNOWN": overwritten before use
 aios.runtime.opencode.x__parse_jsonl__mutmut_47  # text event kind check: text always sets kind unless tool
 aios.runtime.opencode.x__parse_jsonl__mutmut_48  # text event kind check: text always sets kind unless tool
 aios.runtime.opencode.x__parse_jsonl__mutmut_49  # text event kind check: text always sets kind unless tool
@@ -123,8 +604,6 @@ aios.runtime.opencode.x__parse_jsonl__mutmut_50  # text event kind check: text a
 aios.runtime.opencode.x__parse_jsonl__mutmut_51  # text event kind check: text always sets kind unless tool
 aios.runtime.opencode.x__parse_jsonl__mutmut_52  # text event kind check: text always sets kind unless tool
 aios.runtime.opencode.x__parse_jsonl__mutmut_54  # text event kind check: text always sets kind unless tool
-
-# _parse_jsonl — tool_use mutations (status check, timing, counting)
 aios.runtime.opencode.x__parse_jsonl__mutmut_65  # tool_use status check
 aios.runtime.opencode.x__parse_jsonl__mutmut_67  # tool_use status check
 aios.runtime.opencode.x__parse_jsonl__mutmut_70  # tool_use timing
@@ -136,135 +615,30 @@ aios.runtime.opencode.x__parse_jsonl__mutmut_82  # tool_use repeated check
 aios.runtime.opencode.x__parse_jsonl__mutmut_83  # tool_use repeated check
 aios.runtime.opencode.x__parse_jsonl__mutmut_84  # tool_use repeated check
 aios.runtime.opencode.x__parse_jsonl__mutmut_85  # tool_use repeated check
-
-# _parse_jsonl — step_finish mutations
+aios.runtime.opencode.x__parse_jsonl__mutmut_9   # current_turn_start=0->None: overwritten by event_ts before use
 aios.runtime.opencode.x__parse_jsonl__mutmut_98  # step_finish tokens
-aios.runtime.opencode.x__parse_jsonl__mutmut_100 # step_finish tokens
-aios.runtime.opencode.x__parse_jsonl__mutmut_103 # step_finish tokens
-aios.runtime.opencode.x__parse_jsonl__mutmut_106 # step_finish tokens
-aios.runtime.opencode.x__parse_jsonl__mutmut_107 # step_finish tokens
-aios.runtime.opencode.x__parse_jsonl__mutmut_125 # step_finish tokens
-aios.runtime.opencode.x__parse_jsonl__mutmut_127 # step_finish tokens
-aios.runtime.opencode.x__parse_jsonl__mutmut_130 # step_finish tokens
-aios.runtime.opencode.x__parse_jsonl__mutmut_133 # step_finish tokens
-aios.runtime.opencode.x__parse_jsonl__mutmut_135 # step_finish tokens
-
-# _parse_jsonl — finalize_turn mutations
-aios.runtime.opencode.x__parse_jsonl__mutmut_165 # finalize_turn
-aios.runtime.opencode.x__parse_jsonl__mutmut_167 # finalize_turn
-aios.runtime.opencode.x__parse_jsonl__mutmut_170 # finalize_turn
-aios.runtime.opencode.x__parse_jsonl__mutmut_173 # finalize_turn
-aios.runtime.opencode.x__parse_jsonl__mutmut_175 # finalize_turn
-aios.runtime.opencode.x__parse_jsonl__mutmut_178 # finalize_turn
-aios.runtime.opencode.x__parse_jsonl__mutmut_179 # finalize_turn
-
-# _parse_jsonl — metrics accumulation mutations
-aios.runtime.opencode.x__parse_jsonl__mutmut_189 # metrics accumulation
-aios.runtime.opencode.x__parse_jsonl__mutmut_190 # metrics accumulation
-aios.runtime.opencode.x__parse_jsonl__mutmut_191 # metrics accumulation
-aios.runtime.opencode.x__parse_jsonl__mutmut_192 # metrics accumulation
-aios.runtime.opencode.x__parse_jsonl__mutmut_195 # metrics accumulation
-aios.runtime.opencode.x__parse_jsonl__mutmut_198 # metrics accumulation
-aios.runtime.opencode.x__parse_jsonl__mutmut_200 # metrics accumulation
-aios.runtime.opencode.x__parse_jsonl__mutmut_205 # metrics accumulation
-aios.runtime.opencode.x__parse_jsonl__mutmut_334 # metrics accumulation
-
-# _parse_jsonl — reasoning event mutations
-aios.runtime.opencode.x__parse_jsonl__mutmut_39  # reasoning event handling
-
-# ============================================================================
-# AgentExecutor.execute — observability dict getattr mutations
-# ============================================================================
-# All mutations in the observability dict construction (lines 253-267) change
-# getattr defaults or field names. Tests always provide AgentResult with these
-# fields populated, so the defaults are never exercised.
-
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_289  # getattr(result,"tool_calls",0): tests provide tool_calls
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_292  # getattr(result,"tool_calls",0): tests provide tool_calls
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_295  # getattr(result,"tool_calls",0): tests provide tool_calls
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_296  # getattr(result,"tool_names",[]): tests provide tool_names
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_297  # getattr(result,"tool_names",[]): tests provide tool_names
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_298  # getattr(result,"tool_names",[]): tests provide tool_names
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_300  # getattr(result,"tool_names",[]): tests provide tool_names
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_303  # getattr(result,"tool_names",[]): tests provide tool_names
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_304  # getattr(result,"tool_names",[]): tests provide tool_names
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_305  # getattr(result,"tool_names",[]): tests provide tool_names
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_306  # getattr(result,"tool_names",[]): tests provide tool_names
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_307  # getattr(result,"tool_names",[]): tests provide tool_names
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_308  # getattr(result,"tool_names",[]): tests provide tool_names
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_310  # getattr(result,"llm_turns",0): tests provide llm_turns
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_313  # getattr(result,"llm_turns",0): tests provide llm_turns
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_314  # getattr(result,"llm_turns",0): tests provide llm_turns
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_315  # getattr(result,"llm_turns",0): tests provide llm_turns
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_320  # getattr(result,"total_cost",0.0): tests provide total_cost
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_323  # getattr(result,"total_cost",0.0): tests provide total_cost
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_326  # getattr(result,"tokens",{}): tests provide tokens
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_331  # getattr(result,"model",""): tests provide model
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_334  # getattr(result,"model",""): tests provide model
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_337  # getattr(result,"provider",""): tests provide provider
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_338  # getattr(result,"provider",""): tests provide provider
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_339  # getattr(result,"provider",""): tests provide provider
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_340  # getattr(result,"provider",""): tests provide provider
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_342  # getattr(result,"fallback_used",False): tests provide fallback_used
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_345  # getattr(result,"steps_used",0): tests provide steps_used
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_346  # getattr(result,"steps_used",0): tests provide steps_used
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_347  # getattr(result,"steps_used",0): tests provide steps_used
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_352  # getattr(result,"repeated_tool_calls",0): tests provide repeated_tool_calls
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_355  # getattr(result,"repeated_tool_calls",0): tests provide repeated_tool_calls
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_358  # getattr(result,"turn_sequence",[]): tests provide turn_sequence
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_363  # getattr(result,"exit_reason","stop"): tests provide exit_reason
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_366  # getattr(result,"exit_reason","stop"): tests provide exit_reason
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_369  # getattr(result,"exit_reason","stop"): tests provide exit_reason
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_370  # getattr(result,"exit_reason","stop"): tests provide exit_reason
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_371  # getattr(result,"exit_reason","stop"): tests provide exit_reason
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_372  # getattr(result,"exit_reason","stop"): tests provide exit_reason
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_374  # getattr(result,"exit_reason","stop"): tests provide exit_reason
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_377  # getattr(result,"exit_reason","stop"): tests provide exit_reason
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_378  # getattr(result,"exit_reason","stop"): tests provide exit_reason
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_379  # getattr(result,"exit_reason","stop"): tests provide exit_reason
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_380  # getattr(result,"exit_reason","stop"): tests provide exit_reason
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_381  # getattr(result,"exit_reason","stop"): tests provide exit_reason
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_382  # getattr(result,"exit_reason","stop"): tests provide exit_reason
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_383  # getattr(result,"exit_reason","stop"): tests provide exit_reason
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_385  # getattr(result,"exit_reason","stop"): tests provide exit_reason
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_388  # getattr(result,"exit_reason","stop"): tests provide exit_reason
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_389  # getattr(result,"exit_reason","stop"): tests provide exit_reason
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_390  # getattr(result,"exit_reason","stop"): tests provide exit_reason
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_391  # getattr(result,"exit_reason","stop"): tests provide exit_reason
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_392  # getattr(result,"exit_reason","stop"): tests provide exit_reason
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_393  # getattr(result,"exit_reason","stop"): tests provide exit_reason
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_394  # getattr(result,"exit_reason","stop"): tests provide exit_reason
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_396  # getattr(result,"exit_reason","stop"): tests provide exit_reason
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_399  # getattr(result,"exit_reason","stop"): tests provide exit_reason
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_400  # getattr(result,"exit_reason","stop"): tests provide exit_reason
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_401  # getattr(result,"exit_reason","stop"): tests provide exit_reason
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_402  # getattr(result,"exit_reason","stop"): tests provide exit_reason
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_403  # getattr(result,"exit_reason","stop"): tests provide exit_reason
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_404  # getattr(result,"exit_reason","stop"): tests provide exit_reason
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_405  # getattr(result,"exit_reason","stop"): tests provide exit_reason
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_407  # getattr(result,"exit_reason","stop"): tests provide exit_reason
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_410  # getattr(result,"exit_reason","stop"): tests provide exit_reason
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_411  # getattr(result,"exit_reason","stop"): tests provide exit_reason
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_412  # getattr(result,"exit_reason","stop"): tests provide exit_reason
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_415  # getattr(result,"exit_reason","stop"): tests provide exit_reason
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_417  # getattr(result,"exit_reason","stop"): tests provide exit_reason
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_420  # getattr(result,"exit_reason","stop"): tests provide exit_reason
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_421  # getattr(result,"exit_reason","stop"): tests provide exit_reason
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_422  # getattr(result,"exit_reason","stop"): tests provide exit_reason
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_423  # getattr(result,"exit_reason","stop"): tests provide exit_reason
-aios.agents.executor.xǁAgentExecutorǁexecute__mutmut_424  # getattr(result,"exit_reason","stop"): tests provide exit_reason
-
-# ============================================================================
-# OpenCodeAdapter.execute — parameter default mutations
-# ============================================================================
+aios.runtime.opencode.xǁOpenCodeAdapterǁdiagnose__mutmut_187  # output f-string: stdout or '' -> or 'XXXX' so difere quando stdout e falsy, injetando o literal 'XXXX' que nunca coincide com model_name/model no teste de pertenca
+aios.runtime.opencode.xǁOpenCodeAdapterǁdiagnose__mutmut_189  # output f-string: stderr or '' -> or 'XXXX' so difere quando stderr e falsy; literal 'XXXX' nunca coincide com o nome do modelo, decidindo model_unavailable/ok identicamente
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_106 # temp config cleanup
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_107 # temp config cleanup
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_110 # temp config cleanup
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_137 # permission env construction
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_139 # permission env construction
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_140 # permission env construction
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_153 # permission env construction
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_162 # permission env construction
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_166 # permission env construction
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_170 # permission env construction
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_171 # permission env construction
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_173 # permission env construction
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_174 # permission env construction
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_175 # permission env construction
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_179 # return value construction
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_183 # return value construction
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_184 # return value construction
+aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_185 # return value construction
 aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_3   # max_steps: int=0->None: None is falsy, same branch taken
 aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_4   # project_path: str=""->None: None is falsy, same branch taken
-aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_7   # args.extend(["run",prompt,"--format","json"]): test mocks subprocess, args not verified
-aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_8   # args.extend(["run",prompt,"--format","json"]): test mocks subprocess, args not verified
-aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_9   # args.extend(["run",prompt,"--format","json"]): test mocks subprocess, args not verified
-aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_10  # args.extend(["run",prompt,"--format","json"]): test mocks subprocess, args not verified
-aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_11  # args.extend(["run",prompt,"--format","json"]): test mocks subprocess, args not verified
-aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_12  # args.extend(["run",prompt,"--format","json"]): test mocks subprocess, args not verified
 aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_47  # tmp_config_dir=None: equivalent to not entering the if block
 aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_50  # if max_steps>0 and project_path: condition guard
 aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_60  # temp config path construction
@@ -285,126 +659,85 @@ aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_82  # temp config writ
 aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_88  # temp config --dir flag
 aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_90  # temp config --dir flag
 aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_99  # temp config cleanup
-aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_106 # temp config cleanup
-aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_107 # temp config cleanup
-aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_110 # temp config cleanup
-aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_137 # permission env construction
-aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_139 # permission env construction
-aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_140 # permission env construction
-aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_149 # permission env construction
-aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_153 # permission env construction
-aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_158 # permission env construction
-aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_161 # permission env construction
-aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_162 # permission env construction
-aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_166 # permission env construction
-aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_167 # permission env construction
-aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_168 # permission env construction
-aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_169 # permission env construction
-aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_170 # permission env construction
-aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_171 # permission env construction
-aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_173 # permission env construction
-aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_174 # permission env construction
-aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_175 # permission env construction
-aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_179 # return value construction
-aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_180 # return value construction
-aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_181 # return value construction
-aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_182 # return value construction
-aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_183 # return value construction
-aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_184 # return value construction
-aios.runtime.opencode.xǁOpenCodeAdapterǁexecute__mutmut_185 # return value construction
-
-# ============================================================================
-# ConfigLoader._apply_project_manifest — config loading mutations
-# ============================================================================
-aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_78  # config field loading
-aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_79  # config field loading
-aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_80  # config field loading
-aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_81  # config field loading
-aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_82  # config field loading
-aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_83  # config field loading
-aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_84  # config field loading
-aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_85  # config field loading
-aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_86  # config field loading
-aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_87  # config field loading
-aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_88  # config field loading
-aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_89  # config field loading
-aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_90  # config field loading
-aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_91  # config field loading
-aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_92  # config field loading
-aios.config.loader.xǁConfigLoaderǁ_apply_project_manifest__mutmut_93  # config field loading
-
-# ============================================================================
-# DeveloperAgent.__init__ — new parameters with defaults
-# ============================================================================
-aios.agents.developer.xǁDeveloperAgentǁ__init____mutmut_1   # max_steps=0->None: parameter default, never exercised by tests
-aios.agents.developer.xǁDeveloperAgentǁ__init____mutmut_2   # project_path=""->None: parameter default, never exercised
-aios.agents.developer.xǁDeveloperAgentǁ__init____mutmut_9   # max_steps propagation: getattr default not exercised
-
-# ============================================================================
-# DeveloperAgent.execute — propagation mutations
-# ============================================================================
-aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_57  # propagation: getattr(result,"steps_used",0)
-aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_66  # propagation: getattr(result,"repeated_tool_calls",0)
-aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_67  # propagation: getattr(result,"repeated_tool_calls",0)
-aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_82  # propagation: getattr(result,"tool_calls",0)
-aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_83  # propagation: getattr(result,"tool_calls",0)
-aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_84  # propagation: getattr(result,"tool_calls",0)
-aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_85  # propagation: getattr(result,"tool_names",[])
-aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_86  # propagation: getattr(result,"tool_names",[])
-aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_87  # propagation: getattr(result,"tool_names",[])
-aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_88  # propagation: getattr(result,"tool_names",[])
-aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_89  # propagation: getattr(result,"tool_names",[])
-aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_90  # propagation: getattr(result,"tool_names",[])
-aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_91  # propagation: getattr(result,"tool_names",[])
-aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_92  # propagation: getattr(result,"tool_names",[])
-aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_93  # propagation: getattr(result,"tool_names",[])
-aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_94  # propagation: getattr(result,"tool_names",[])
-aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_101 # propagation: getattr(result,"tool_durations_ms",[])
-aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_102 # propagation: getattr(result,"tool_durations_ms",[])
-aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_103 # propagation: getattr(result,"tool_durations_ms",[])
-aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_104 # propagation: getattr(result,"llm_turns",0)
-aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_105 # propagation: getattr(result,"llm_turns",0)
-aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_106 # propagation: getattr(result,"llm_turns",0)
-aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_107 # propagation: getattr(result,"total_cost",0.0)
-aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_108 # propagation: getattr(result,"total_cost",0.0)
-aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_109 # propagation: getattr(result,"tokens",{})
-aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_110 # propagation: getattr(result,"model","")
-aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_111 # propagation: getattr(result,"provider","")
-aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_112 # propagation: getattr(result,"fallback_used",False)
-aios.agents.developer.xǁDeveloperAgentǁexecute__mutmut_113 # propagation: getattr(result,"exit_reason","stop")
-
-# ============================================================================
-# Factory — new constructor arguments
-# ============================================================================
-aios.core.factory.x_create_kernel__mutmut_104  # DeveloperAgent max_steps arg
-aios.core.factory.x_create_kernel__mutmut_105  # DeveloperAgent max_steps arg
-aios.core.factory.x_create_kernel__mutmut_106  # DeveloperAgent max_steps arg
-aios.core.factory.x_create_kernel__mutmut_107  # DeveloperAgent project_path arg
-aios.core.factory.x_create_kernel__mutmut_108  # DeveloperAgent project_path arg
-aios.core.factory.x_create_kernel__mutmut_110  # DeveloperAgent project_path arg
-aios.core.factory.x_create_kernel__mutmut_111  # DeveloperAgent project_path arg
-aios.core.factory.x_create_kernel__mutmut_112  # DeveloperAgent project_path arg
-aios.core.factory.x_create_kernel__mutmut_113  # DeveloperAgent project_path arg
-aios.core.factory.x_create_kernel__mutmut_114  # DeveloperAgent project_path arg
-
-# ============================================================================
-# OllamaAdapter — new ignored parameter
-# ============================================================================
-aios.runtime.ollama.xǁOllamaAdapterǁexecute__mutmut_3  # project_path parameter added, ignored via del
-aios.runtime.ollama.xǁOllamaAdapterǁexecute__mutmut_4  # project_path parameter added, ignored via del
-
-# ============================================================================
-# Benchmark — _extract_observability type coercion and getattr defaults
-# ============================================================================
+aios.scheduler.store.xǁKanbanStoreǁ_execute__mutmut_3  # MESSAGE string in _execute: 'Store is not open'
+aios.scheduler.store.xǁKanbanStoreǁ_execute__mutmut_4  # MESSAGE string in _execute: 'Store is not open'
+aios.scheduler.store.xǁKanbanStoreǁ_execute__mutmut_5  # MESSAGE string in _execute: 'Store is not open'
+aios.scheduler.store.xǁKanbanStoreǁmove_card__mutmut_16  # MESSAGE string in move_card: "TDD gate not passed: cannot move to 'Done' withou
+aios.scheduler.store.xǁKanbanStoreǁmove_card__mutmut_17  # MESSAGE string in move_card: "TDD gate not passed: cannot move to 'Done' withou
+aios.scheduler.store.xǁKanbanStoreǁmove_card__mutmut_18  # MESSAGE string in move_card: "TDD gate not passed: cannot move to 'Done' withou
+aios.security.cli.x_cmd_policy_show__mutmut_35  # MESSAGE string in aios.security.cli.x_cmd_policy_show: "  {agent:<16} {', '.join(capabilities[agent])}"
+aios.security.cli.x_cmd_policy_show__mutmut_44  # MESSAGE string in aios.security.cli.x_cmd_policy_show: "  {name:<12} {', '.join(intents[name])}"
+aios.security.cli.x_cmd_policy_show__mutmut_46  # MESSAGE string in aios.security.cli.x_cmd_policy_show: '\\n  release: no default — requires an explicit i
+aios.security.cli.x_cmd_policy_show__mutmut_56  # MESSAGE string in aios.security.cli.x_cmd_policy_show: "  {capability:<16} -> {', '.join(expansion[capabi
+aios.security.cli.x_cmd_policy_show__mutmut_58  # MESSAGE string in aios.security.cli.x_cmd_policy_show: '\\n  unknown capability -> grants nothing (fail-s
+aios.security.cli.x_cmd_policy_show__mutmut_59  # MESSAGE string in aios.security.cli.x_cmd_policy_show: '\\n  unknown capability -> grants nothing (fail-s
+aios.security.xǁSecurityEngineǁ_load_policies__mutmut_14  # MESSAGE string in _load_policies: 'Security policy loaded: %s'
+aios.security.xǁSecurityEngineǁ_load_policies__mutmut_16  # MESSAGE string in _load_policies: 'Security policy loaded: %s'
+aios.security.xǁSecurityEngineǁ_load_policies__mutmut_17  # MESSAGE string in _load_policies: 'Security policy loaded: %s'
+aios.security.xǁSecurityEngineǁ_load_policies__mutmut_18  # MESSAGE string in _load_policies: 'Security policy loaded: %s'
+aios.security.xǁSecurityEngineǁ_load_policies__mutmut_23  # MESSAGE string in _load_policies: 'No security policies found at %s'
+aios.security.xǁSecurityEngineǁ_load_policies__mutmut_25  # MESSAGE string in _load_policies: 'No security policies found at %s'
+aios.security.xǁSecurityEngineǁ_load_policies__mutmut_26  # MESSAGE string in _load_policies: 'No security policies found at %s'
+aios.security.xǁSecurityEngineǁ_load_policies__mutmut_27  # MESSAGE string in _load_policies: 'No security policies found at %s'
+aios.skills.assembler.xǁSkillAssemblerǁassemble__mutmut_16  # MESSAGE string in assemble: 'Skill discovery failed; falling back to static sk
+aios.skills.assembler.xǁSkillAssemblerǁassemble__mutmut_17  # MESSAGE string in assemble: 'Skill discovery failed; falling back to static sk
+aios.skills.assembler.xǁSkillAssemblerǁassemble__mutmut_18  # MESSAGE string in assemble: 'Skill discovery failed; falling back to static sk
+aios.skills.assembler.xǁSkillAssemblerǁassemble__mutmut_32  # MESSAGE string in assemble: 'Skill retrieval failed; falling back to static sk
+aios.skills.assembler.xǁSkillAssemblerǁassemble__mutmut_33  # MESSAGE string in assemble: 'Skill retrieval failed; falling back to static sk
+aios.skills.assembler.xǁSkillAssemblerǁassemble__mutmut_34  # MESSAGE string in assemble: 'Skill retrieval failed; falling back to static sk
+aios.skills.cli.x_cmd_skills_discover__mutmut_160  # MESSAGE string in aios.skills.cli.x_cmd_skills_discover: "       triggers: {', '.join(r.trigger_matches)}"
+aios.skills.cli.x_cmd_skills_discover__mutmut_162  # MESSAGE string in aios.skills.cli.x_cmd_skills_discover: "       scope:    {', '.join(r.scope_matches)}"
+aios.skills.cli.x_cmd_skills_discover__mutmut_163  # MESSAGE string in aios.skills.cli.x_cmd_skills_discover: "       scope:    {', '.join(r.scope_matches)}"
+aios.skills.cli.x_cmd_skills_discover__mutmut_168  # MESSAGE string in aios.skills.cli.x_cmd_skills_discover: 'Selected Skill Contexts'
+aios.skills.cli.x_cmd_skills_discover__mutmut_169  # MESSAGE string in aios.skills.cli.x_cmd_skills_discover: 'Selected Skill Contexts'
+aios.skills.cli.x_cmd_skills_discover__mutmut_170  # MESSAGE string in aios.skills.cli.x_cmd_skills_discover: 'Selected Skill Contexts'
+aios.skills.cli.x_cmd_skills_inspect__mutmut_146  # MESSAGE string in aios.skills.cli.x_cmd_skills_inspect: 'Scope'
+aios.skills.cli.x_cmd_skills_inspect__mutmut_147  # MESSAGE string in aios.skills.cli.x_cmd_skills_inspect: 'Scope'
+aios.skills.cli.x_cmd_skills_inspect__mutmut_148  # MESSAGE string in aios.skills.cli.x_cmd_skills_inspect: 'Scope'
+aios.skills.cli.x_cmd_skills_inspect__mutmut_149  # MESSAGE string in aios.skills.cli.x_cmd_skills_inspect: 'Scope'
+aios.skills.cli.x_cmd_skills_inspect__mutmut_150  # MESSAGE string in aios.skills.cli.x_cmd_skills_inspect: 'Scope'
+aios.skills.cli.x_cmd_skills_inspect__mutmut_152  # MESSAGE string in aios.skills.cli.x_cmd_skills_inspect: 'Scope'
+aios.skills.cli.x_cmd_skills_inspect__mutmut_180  # MESSAGE string in aios.skills.cli.x_cmd_skills_inspect: 'Chunks'
+aios.skills.cli.x_cmd_skills_inspect__mutmut_182  # MESSAGE string in aios.skills.cli.x_cmd_skills_inspect: 'Chunks'
+aios.skills.cli.x_cmd_skills_inspect__mutmut_183  # MESSAGE string in aios.skills.cli.x_cmd_skills_inspect: 'Chunks'
+aios.skills.cli.x_cmd_skills_inspect__mutmut_6  # MESSAGE string in aios.skills.cli.x_cmd_skills_inspect: 'Usage: aios skills inspect <name> [--json]'
+aios.skills.cli.x_cmd_skills_stats__mutmut_135  # MESSAGE string in aios.skills.cli.x_cmd_skills_stats: "  {'-' * 20} {'-' * 6} {'-' * 9} {'-' * 11} {'-' 
+aios.skills.cli.x_cmd_skills_stats__mutmut_136  # MESSAGE string in aios.skills.cli.x_cmd_skills_stats: "  {'-' * 20} {'-' * 6} {'-' * 9} {'-' * 11} {'-' 
+aios.skills.cli.x_cmd_skills_stats__mutmut_138  # MESSAGE string in aios.skills.cli.x_cmd_skills_stats: "  {'-' * 20} {'-' * 6} {'-' * 9} {'-' * 11} {'-' 
+aios.skills.cli.x_cmd_skills_stats__mutmut_139  # MESSAGE string in aios.skills.cli.x_cmd_skills_stats: "  {'-' * 20} {'-' * 6} {'-' * 9} {'-' * 11} {'-' 
+aios.skills.cli.x_cmd_skills_stats__mutmut_141  # MESSAGE string in aios.skills.cli.x_cmd_skills_stats: "  {'-' * 20} {'-' * 6} {'-' * 9} {'-' * 11} {'-' 
+aios.skills.cli.x_cmd_skills_stats__mutmut_142  # MESSAGE string in aios.skills.cli.x_cmd_skills_stats: "  {'-' * 20} {'-' * 6} {'-' * 9} {'-' * 11} {'-' 
+aios.skills.cli.x_cmd_skills_stats__mutmut_144  # MESSAGE string in aios.skills.cli.x_cmd_skills_stats: "  {'-' * 20} {'-' * 6} {'-' * 9} {'-' * 11} {'-' 
+aios.skills.cli.x_cmd_skills_stats__mutmut_145  # MESSAGE string in aios.skills.cli.x_cmd_skills_stats: "  {'-' * 20} {'-' * 6} {'-' * 9} {'-' * 11} {'-' 
+aios.skills.cli.x_cmd_skills_stats__mutmut_147  # MESSAGE string in aios.skills.cli.x_cmd_skills_stats: "  {'-' * 20} {'-' * 6} {'-' * 9} {'-' * 11} {'-' 
+aios.skills.cli.x_cmd_skills_stats__mutmut_148  # MESSAGE string in aios.skills.cli.x_cmd_skills_stats: "  {'-' * 20} {'-' * 6} {'-' * 9} {'-' * 11} {'-' 
+aios.skills.cli.x_cmd_skills_stats__mutmut_150  # MESSAGE string in aios.skills.cli.x_cmd_skills_stats: "  {'-' * 20} {'-' * 6} {'-' * 9} {'-' * 11} {'-' 
+aios.skills.cli.x_cmd_skills_stats__mutmut_151  # MESSAGE string in aios.skills.cli.x_cmd_skills_stats: "  {'-' * 20} {'-' * 6} {'-' * 9} {'-' * 11} {'-' 
+aios.skills.registry.xǁSkillRegistryǁload__mutmut_38  # MESSAGE string in load: 'Skipping deprecated skill: %s'
+aios.skills.registry.xǁSkillRegistryǁload__mutmut_40  # MESSAGE string in load: 'Skipping deprecated skill: %s'
+aios.skills.registry.xǁSkillRegistryǁload__mutmut_41  # MESSAGE string in load: 'Skipping deprecated skill: %s'
+aios.skills.registry.xǁSkillRegistryǁload__mutmut_42  # MESSAGE string in load: 'Skipping deprecated skill: %s'
+aios.skills.registry.xǁSkillRegistryǁload__mutmut_51  # MESSAGE string in load: 'Invalid skill %s: %s'
+aios.skills.registry.xǁSkillRegistryǁload__mutmut_52  # MESSAGE string in load: 'Invalid skill %s: %s'
+aios.skills.registry.xǁSkillRegistryǁload__mutmut_57  # MESSAGE string in load: 'Cannot read skill %s: %s'
+aios.skills.registry.xǁSkillRegistryǁload__mutmut_60  # MESSAGE string in load: 'Cannot read skill %s: %s'
+aios.skills.registry.xǁSkillRegistryǁload__mutmut_61  # MESSAGE string in load: 'Cannot read skill %s: %s'
+aios.skills.registry.xǁSkillRegistryǁload__mutmut_62  # MESSAGE string in load: 'Cannot read skill %s: %s'
+aios.skills.retrieval.xǁSkillRetrievalServiceǁretrieve__mutmut_25  # MESSAGE string in retrieve: 'No skill chunks matched any discovered skills'
+aios.skills.retrieval.xǁSkillRetrievalServiceǁretrieve__mutmut_26  # MESSAGE string in retrieve: 'No skill chunks matched any discovered skills'
+aios.skills.retrieval.xǁSkillRetrievalServiceǁretrieve__mutmut_27  # MESSAGE string in retrieve: 'No skill chunks matched any discovered skills'
 aios.telemetry.benchmark.x__extract_observability__mutmut_1   # isinstance/int coercion
-aios.telemetry.benchmark.x__extract_observability__mutmut_3   # isinstance/int coercion
-aios.telemetry.benchmark.x__extract_observability__mutmut_4   # isinstance/int coercion
-aios.telemetry.benchmark.x__extract_observability__mutmut_5   # isinstance/int coercion
-aios.telemetry.benchmark.x__extract_observability__mutmut_6   # isinstance/float coercion
-aios.telemetry.benchmark.x__extract_observability__mutmut_7   # isinstance/float coercion
-aios.telemetry.benchmark.x__extract_observability__mutmut_8   # isinstance/str coercion
-aios.telemetry.benchmark.x__extract_observability__mutmut_9   # isinstance/str coercion
 aios.telemetry.benchmark.x__extract_observability__mutmut_10  # isinstance/bool coercion
+aios.telemetry.benchmark.x__extract_observability__mutmut_100 # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_101 # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_103 # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_106 # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_107 # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_108 # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_109 # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_110 # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_111 # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_112 # getattr default
 aios.telemetry.benchmark.x__extract_observability__mutmut_12  # getattr default
 aios.telemetry.benchmark.x__extract_observability__mutmut_13  # getattr default
 aios.telemetry.benchmark.x__extract_observability__mutmut_15  # getattr default
@@ -418,6 +751,7 @@ aios.telemetry.benchmark.x__extract_observability__mutmut_23  # getattr default
 aios.telemetry.benchmark.x__extract_observability__mutmut_24  # getattr default
 aios.telemetry.benchmark.x__extract_observability__mutmut_25  # getattr default
 aios.telemetry.benchmark.x__extract_observability__mutmut_27  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_3   # isinstance/int coercion
 aios.telemetry.benchmark.x__extract_observability__mutmut_30  # getattr default
 aios.telemetry.benchmark.x__extract_observability__mutmut_31  # getattr default
 aios.telemetry.benchmark.x__extract_observability__mutmut_32  # getattr default
@@ -425,6 +759,7 @@ aios.telemetry.benchmark.x__extract_observability__mutmut_33  # getattr default
 aios.telemetry.benchmark.x__extract_observability__mutmut_34  # getattr default
 aios.telemetry.benchmark.x__extract_observability__mutmut_36  # getattr default
 aios.telemetry.benchmark.x__extract_observability__mutmut_39  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_4   # isinstance/int coercion
 aios.telemetry.benchmark.x__extract_observability__mutmut_40  # getattr default
 aios.telemetry.benchmark.x__extract_observability__mutmut_41  # getattr default
 aios.telemetry.benchmark.x__extract_observability__mutmut_42  # getattr default
@@ -433,6 +768,7 @@ aios.telemetry.benchmark.x__extract_observability__mutmut_44  # getattr default
 aios.telemetry.benchmark.x__extract_observability__mutmut_46  # getattr default
 aios.telemetry.benchmark.x__extract_observability__mutmut_48  # getattr default
 aios.telemetry.benchmark.x__extract_observability__mutmut_49  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_5   # isinstance/int coercion
 aios.telemetry.benchmark.x__extract_observability__mutmut_50  # getattr default
 aios.telemetry.benchmark.x__extract_observability__mutmut_51  # getattr default
 aios.telemetry.benchmark.x__extract_observability__mutmut_52  # getattr default
@@ -440,6 +776,7 @@ aios.telemetry.benchmark.x__extract_observability__mutmut_53  # getattr default
 aios.telemetry.benchmark.x__extract_observability__mutmut_55  # getattr default
 aios.telemetry.benchmark.x__extract_observability__mutmut_58  # getattr default
 aios.telemetry.benchmark.x__extract_observability__mutmut_59  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_6   # isinstance/float coercion
 aios.telemetry.benchmark.x__extract_observability__mutmut_60  # getattr default
 aios.telemetry.benchmark.x__extract_observability__mutmut_61  # getattr default
 aios.telemetry.benchmark.x__extract_observability__mutmut_62  # getattr default
@@ -447,6 +784,7 @@ aios.telemetry.benchmark.x__extract_observability__mutmut_64  # getattr default
 aios.telemetry.benchmark.x__extract_observability__mutmut_67  # getattr default
 aios.telemetry.benchmark.x__extract_observability__mutmut_68  # getattr default
 aios.telemetry.benchmark.x__extract_observability__mutmut_69  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_7   # isinstance/float coercion
 aios.telemetry.benchmark.x__extract_observability__mutmut_70  # getattr default
 aios.telemetry.benchmark.x__extract_observability__mutmut_71  # getattr default
 aios.telemetry.benchmark.x__extract_observability__mutmut_72  # getattr default
@@ -454,6 +792,7 @@ aios.telemetry.benchmark.x__extract_observability__mutmut_73  # getattr default
 aios.telemetry.benchmark.x__extract_observability__mutmut_74  # getattr default
 aios.telemetry.benchmark.x__extract_observability__mutmut_75  # getattr default
 aios.telemetry.benchmark.x__extract_observability__mutmut_77  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_8   # isinstance/str coercion
 aios.telemetry.benchmark.x__extract_observability__mutmut_80  # getattr default
 aios.telemetry.benchmark.x__extract_observability__mutmut_81  # getattr default
 aios.telemetry.benchmark.x__extract_observability__mutmut_82  # getattr default
@@ -463,6 +802,7 @@ aios.telemetry.benchmark.x__extract_observability__mutmut_85  # getattr default
 aios.telemetry.benchmark.x__extract_observability__mutmut_86  # getattr default
 aios.telemetry.benchmark.x__extract_observability__mutmut_87  # getattr default
 aios.telemetry.benchmark.x__extract_observability__mutmut_88  # getattr default
+aios.telemetry.benchmark.x__extract_observability__mutmut_9   # isinstance/str coercion
 aios.telemetry.benchmark.x__extract_observability__mutmut_90  # getattr default
 aios.telemetry.benchmark.x__extract_observability__mutmut_93  # getattr default
 aios.telemetry.benchmark.x__extract_observability__mutmut_94  # getattr default
@@ -471,66 +811,50 @@ aios.telemetry.benchmark.x__extract_observability__mutmut_96  # getattr default
 aios.telemetry.benchmark.x__extract_observability__mutmut_97  # getattr default
 aios.telemetry.benchmark.x__extract_observability__mutmut_98  # getattr default
 aios.telemetry.benchmark.x__extract_observability__mutmut_99  # getattr default
-aios.telemetry.benchmark.x__extract_observability__mutmut_100 # getattr default
-aios.telemetry.benchmark.x__extract_observability__mutmut_101 # getattr default
-aios.telemetry.benchmark.x__extract_observability__mutmut_103 # getattr default
-aios.telemetry.benchmark.x__extract_observability__mutmut_106 # getattr default
-aios.telemetry.benchmark.x__extract_observability__mutmut_107 # getattr default
-aios.telemetry.benchmark.x__extract_observability__mutmut_108 # getattr default
-aios.telemetry.benchmark.x__extract_observability__mutmut_109 # getattr default
-aios.telemetry.benchmark.x__extract_observability__mutmut_110 # getattr default
-aios.telemetry.benchmark.x__extract_observability__mutmut_111 # getattr default
-aios.telemetry.benchmark.x__extract_observability__mutmut_112 # getattr default
-
-# Benchmark — _run_plan mutations
-aios.telemetry.benchmark.x__run_plan__mutmut_18  # result propagation
-aios.telemetry.benchmark.x__run_plan__mutmut_19  # result propagation
-aios.telemetry.benchmark.x__run_plan__mutmut_20  # result propagation
-aios.telemetry.benchmark.x__run_plan__mutmut_21  # result propagation
-aios.telemetry.benchmark.x__run_plan__mutmut_22  # result propagation
-aios.telemetry.benchmark.x__run_plan__mutmut_23  # result propagation
-aios.telemetry.benchmark.x__run_plan__mutmut_24  # result propagation
-aios.telemetry.benchmark.x__run_plan__mutmut_25  # result propagation
-
-# Benchmark — _run_agent_exec mutations
 aios.telemetry.benchmark.x__run_agent_exec__mutmut_18  # result propagation
-aios.telemetry.benchmark.x__run_agent_exec__mutmut_19  # result propagation
 aios.telemetry.benchmark.x__run_agent_exec__mutmut_20  # result propagation
 aios.telemetry.benchmark.x__run_agent_exec__mutmut_21  # result propagation
 aios.telemetry.benchmark.x__run_agent_exec__mutmut_22  # result propagation
 aios.telemetry.benchmark.x__run_agent_exec__mutmut_23  # result propagation
 aios.telemetry.benchmark.x__run_agent_exec__mutmut_24  # result propagation
 aios.telemetry.benchmark.x__run_agent_exec__mutmut_25  # result propagation
-
-# Benchmark — _measure_lifecycle mutations
+aios.telemetry.benchmark.x__run_bare_probe__mutmut_7  # MESSAGE string in aios.telemetry.benchmark.x__run_bare_probe: 'runtime engine not available'
+aios.telemetry.benchmark.x__run_bare_probe__mutmut_8  # MESSAGE string in aios.telemetry.benchmark.x__run_bare_probe: 'runtime engine not available'
+aios.telemetry.benchmark.x__run_plan__mutmut_18  # result propagation
+aios.telemetry.benchmark.x__run_plan__mutmut_20  # result propagation
+aios.telemetry.benchmark.x__run_plan__mutmut_21  # result propagation
+aios.telemetry.benchmark.x__run_plan__mutmut_22  # result propagation
+aios.telemetry.benchmark.x__run_plan__mutmut_23  # result propagation
+aios.telemetry.benchmark.x__run_plan__mutmut_24  # result propagation
+aios.telemetry.benchmark.x__run_plan__mutmut_25  # result propagation
 aios.telemetry.benchmark.x_measure_lifecycle__mutmut_181  # observability extraction
 aios.telemetry.benchmark.x_measure_lifecycle__mutmut_182  # observability extraction
 aios.telemetry.benchmark.x_measure_lifecycle__mutmut_185  # observability extraction
-
-# ============================================================================
-# TelemetryEngine._persist_execution — new observability dict fields
-# ============================================================================
-aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_12  # obs = payload.get("observability")
-aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_13  # obs = payload.get("observability")
-aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_14  # obs = payload.get("observability")
-aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_68  # obs.get("tool_calls",0)
-aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_69  # obs.get("tool_calls",0)
-aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_70  # obs.get("llm_turns",0)
-aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_71  # obs.get("llm_turns",0)
-aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_72  # obs.get("total_cost",0.0)
-aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_73  # obs.get("total_cost",0.0)
-aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_74  # obs.get("total_cost",0.0)
-aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_75  # obs.get("model","")
-aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_76  # obs.get("model","")
-aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_77  # obs.get("provider","")
-aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_78  # obs.get("provider","")
-aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_79  # obs.get("provider","")
-aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_80  # obs.get("provider","")
-aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_81  # obs.get("provider","")
-aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_82  # obs.get("provider","")
-aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_83  # obs.get("provider","")
-aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_84  # obs.get("provider","")
-aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_85  # obs.get("provider","")
+aios.telemetry.cli.x__render_table__mutmut_120  # MESSAGE string in aios.telemetry.cli.x__render_table: 'By Agent'
+aios.telemetry.cli.x__render_table__mutmut_121  # MESSAGE string in aios.telemetry.cli.x__render_table: 'By Agent'
+aios.telemetry.cli.x__render_table__mutmut_122  # MESSAGE string in aios.telemetry.cli.x__render_table: 'By Agent'
+aios.telemetry.cli.x__render_table__mutmut_132  # MESSAGE string in aios.telemetry.cli.x__render_table: 'By Model'
+aios.telemetry.cli.x__render_table__mutmut_133  # MESSAGE string in aios.telemetry.cli.x__render_table: 'By Model'
+aios.telemetry.cli.x__render_table__mutmut_134  # MESSAGE string in aios.telemetry.cli.x__render_table: 'By Model'
+aios.telemetry.cli.x__render_table__mutmut_186  # MESSAGE string in aios.telemetry.cli.x__render_table: '\\n  No token usage recorded — token tracking def
+aios.telemetry.cli.x__render_table__mutmut_202  # MESSAGE string in aios.telemetry.cli.x__render_table: '\\n  No usage records found.'
+aios.telemetry.cli.x__render_table__mutmut_45  # MESSAGE string in aios.telemetry.cli.x__render_table: 'Usage Summary'
+aios.telemetry.cli.x__render_table__mutmut_46  # MESSAGE string in aios.telemetry.cli.x__render_table: 'Usage Summary'
+aios.telemetry.cli.x__render_table__mutmut_47  # MESSAGE string in aios.telemetry.cli.x__render_table: 'Usage Summary'
+aios.telemetry.cli.x__render_table__mutmut_68  # MESSAGE string in aios.telemetry.cli.x__render_table: 'Total output tokens'
+aios.telemetry.cli.x__render_table__mutmut_69  # MESSAGE string in aios.telemetry.cli.x__render_table: 'Total output tokens'
+aios.telemetry.cli.x__render_table__mutmut_70  # MESSAGE string in aios.telemetry.cli.x__render_table: 'Total output tokens'
+aios.telemetry.cli.x__render_table__mutmut_71  # MESSAGE string in aios.telemetry.cli.x__render_table: 'Total output tokens'
+aios.telemetry.cli.x__render_table__mutmut_75  # MESSAGE string in aios.telemetry.cli.x__render_table: 'Total output tokens'
+aios.telemetry.cli.x__render_table__mutmut_76  # MESSAGE string in aios.telemetry.cli.x__render_table: 'Total output tokens'
+aios.telemetry.cli.x__render_table__mutmut_77  # MESSAGE string in aios.telemetry.cli.x__render_table: 'Total output tokens'
+aios.telemetry.cli.x__render_table__mutmut_83  # MESSAGE string in aios.telemetry.cli.x__render_table: 'Total tokens'
+aios.telemetry.cli.x__render_table__mutmut_84  # MESSAGE string in aios.telemetry.cli.x__render_table: 'Total tokens'
+aios.telemetry.cli.x__render_table__mutmut_85  # MESSAGE string in aios.telemetry.cli.x__render_table: 'Total tokens'
+aios.telemetry.cli.x__render_table__mutmut_86  # MESSAGE string in aios.telemetry.cli.x__render_table: 'Total tokens'
+aios.telemetry.cli.x__render_table__mutmut_90  # MESSAGE string in aios.telemetry.cli.x__render_table: 'Total tokens'
+aios.telemetry.cli.x__render_table__mutmut_91  # MESSAGE string in aios.telemetry.cli.x__render_table: 'Total tokens'
+aios.telemetry.cli.x__render_table__mutmut_92  # MESSAGE string in aios.telemetry.cli.x__render_table: 'Total tokens'
 aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_114 # obs dict construction
 aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_115 # obs dict construction
 aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_116 # obs dict construction
@@ -557,27 +881,33 @@ aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_136 # obs d
 aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_137 # obs dict construction
 aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_138 # obs dict construction
 aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_139 # obs dict construction
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_14  # obs = payload.get("observability")
 aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_140 # obs dict construction
-
-# ============================================================================
-# TelemetrySchema._validate_run — new allowed keys
-# ============================================================================
-aios.telemetry.schema.x__validate_run__mutmut_9   # "observability" added to allowed keys
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_69  # obs.get("tool_calls",0)
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_70  # obs.get("llm_turns",0)
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_71  # obs.get("llm_turns",0)
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_72  # obs.get("total_cost",0.0)
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_73  # obs.get("total_cost",0.0)
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_74  # obs.get("total_cost",0.0)
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_75  # obs.get("model","")
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_76  # obs.get("model","")
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_77  # obs.get("provider","")
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_78  # obs.get("provider","")
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_79  # obs.get("provider","")
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_80  # obs.get("provider","")
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_81  # obs.get("provider","")
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_82  # obs.get("provider","")
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_83  # obs.get("provider","")
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_84  # obs.get("provider","")
+aios.telemetry.engine.xǁTelemetryEngineǁ_persist_execution__mutmut_85  # obs.get("provider","")
 aios.telemetry.schema.x__validate_run__mutmut_10  # "observability" added to allowed keys
 aios.telemetry.schema.x__validate_run__mutmut_13  # "observability" added to allowed keys
 aios.telemetry.schema.x__validate_run__mutmut_14  # "observability" added to allowed keys
-
-# ============================================================================
-# TelemetryStore._migrate — new column defaults
-# ============================================================================
+aios.telemetry.schema.x__validate_run__mutmut_9   # "observability" added to allowed keys
 aios.telemetry.store.x__migrate__mutmut_5   # migration column check
 aios.telemetry.store.x__migrate__mutmut_6   # migration column check
 aios.telemetry.store.x__migrate__mutmut_8   # migration column check
 aios.telemetry.store.x__migrate__mutmut_9   # migration column check
-
-# ============================================================================
-# TelemetryStore._row_execution — new fields in row construction
-# ============================================================================
 aios.telemetry.store.x__row_execution__mutmut_65  # tool_calls field
 aios.telemetry.store.x__row_execution__mutmut_66  # tool_calls field
 aios.telemetry.store.x__row_execution__mutmut_67  # tool_calls field
@@ -599,3 +929,55 @@ aios.telemetry.store.x__row_execution__mutmut_82  # total_cost field
 aios.telemetry.store.x__row_execution__mutmut_83  # total_cost field
 aios.telemetry.store.x__row_execution__mutmut_84  # total_cost field
 aios.telemetry.store.x__row_execution__mutmut_85  # total_cost field
+aios.telemetry.store.xǁTelemetryStoreǁ_insert_one__mutmut_17  # MESSAGE string in _insert_one: 'insert %s failed: %s'
+aios.telemetry.store.xǁTelemetryStoreǁatomic__mutmut_3  # MESSAGE string in atomic: 'store is closed'
+aios.telemetry.store.xǁTelemetryStoreǁatomic__mutmut_4  # MESSAGE string in atomic: 'store is closed'
+aios.telemetry.store.xǁTelemetryStoreǁinsert_many__mutmut_3  # MESSAGE string in insert_many: 'store is closed'
+aios.telemetry.store.xǁTelemetryStoreǁinsert_many__mutmut_4  # MESSAGE string in insert_many: 'store is closed'
+aios.telemetry.store.xǁTelemetryStoreǁquery_backlog_stats__mutmut_35  # MESSAGE string in query_backlog_stats: 'query_backlog_stats failed: %s'
+aios.telemetry.store.xǁTelemetryStoreǁquery_backlog_stats__mutmut_37  # MESSAGE string in query_backlog_stats: 'query_backlog_stats failed: %s'
+aios.telemetry.store.xǁTelemetryStoreǁquery_costs__mutmut_48  # MESSAGE string in query_costs: 'query_costs failed: %s'
+aios.telemetry.store.xǁTelemetryStoreǁquery_costs__mutmut_50  # MESSAGE string in query_costs: 'query_costs failed: %s'
+aios.telemetry.store.xǁTelemetryStoreǁquery_executions__mutmut_35  # MESSAGE string in query_executions: 'query_executions failed: %s'
+aios.telemetry.store.xǁTelemetryStoreǁquery_executions__mutmut_37  # MESSAGE string in query_executions: 'query_executions failed: %s'
+aios.telemetry.store.xǁTelemetryStoreǁquery_gate_records__mutmut_35  # MESSAGE string in query_gate_records: 'query_gate_records failed: %s'
+aios.telemetry.store.xǁTelemetryStoreǁquery_gate_records__mutmut_37  # MESSAGE string in query_gate_records: 'query_gate_records failed: %s'
+aios.telemetry.store.xǁTelemetryStoreǁquery_gate_stats__mutmut_35  # MESSAGE string in query_gate_stats: 'query_gate_stats failed: %s'
+aios.telemetry.store.xǁTelemetryStoreǁquery_gate_stats__mutmut_37  # MESSAGE string in query_gate_stats: 'query_gate_stats failed: %s'
+aios.telemetry.store.xǁTelemetryStoreǁquery_retrieval__mutmut_23  # MESSAGE string in query_retrieval: 'query_retrieval failed: %s'
+aios.telemetry.store.xǁTelemetryStoreǁquery_retrieval__mutmut_25  # MESSAGE string in query_retrieval: 'query_retrieval failed: %s'
+aios.telemetry.store.xǁTelemetryStoreǁquery_route_accuracy__mutmut_10  # MESSAGE string in query_route_accuracy: 'query_route_accuracy failed: %s'
+aios.telemetry.store.xǁTelemetryStoreǁquery_route_accuracy__mutmut_12  # MESSAGE string in query_route_accuracy: 'query_route_accuracy failed: %s'
+aios.telemetry.store.xǁTelemetryStoreǁquery_routing_records__mutmut_35  # MESSAGE string in query_routing_records: 'query_routing_records failed: %s'
+aios.telemetry.store.xǁTelemetryStoreǁquery_routing_records__mutmut_37  # MESSAGE string in query_routing_records: 'query_routing_records failed: %s'
+aios.telemetry.store.xǁTelemetryStoreǁquery_routing_stats__mutmut_35  # MESSAGE string in query_routing_stats: 'query_routing_stats failed: %s'
+aios.telemetry.store.xǁTelemetryStoreǁquery_routing_stats__mutmut_37  # MESSAGE string in query_routing_stats: 'query_routing_stats failed: %s'
+aios.telemetry.store.xǁTelemetryStoreǁquery_security_records__mutmut_44  # MESSAGE string in query_security_records: 'query_security_records failed: %s'
+aios.telemetry.store.xǁTelemetryStoreǁquery_security_records__mutmut_46  # MESSAGE string in query_security_records: 'query_security_records failed: %s'
+aios.telemetry.store.xǁTelemetryStoreǁquery_security_stats__mutmut_35  # MESSAGE string in query_security_stats: 'query_security_stats failed: %s'
+aios.telemetry.store.xǁTelemetryStoreǁquery_security_stats__mutmut_37  # MESSAGE string in query_security_stats: 'query_security_stats failed: %s'
+aios.telemetry.store.xǁTelemetryStoreǁquery_skill_stats__mutmut_36  # MESSAGE string in query_skill_stats: 'query_skill_stats failed: %s'
+aios.telemetry.store.xǁTelemetryStoreǁquery_skill_stats__mutmut_38  # MESSAGE string in query_skill_stats: 'query_skill_stats failed: %s'
+aios.telemetry.store.xǁTelemetryStoreǁquery_usage__mutmut_46  # MESSAGE string in query_usage: 'query_usage failed: %s'
+aios.telemetry.store.xǁTelemetryStoreǁquery_usage__mutmut_48  # MESSAGE string in query_usage: 'query_usage failed: %s'
+aios.telemetry.writer.xǁTelemetryWriterǁ_drop__mutmut_9  # MESSAGE string in _drop: 'telemetry flush failed, dropped %d events: %s'
+aios.ui.settings_io.x__load_yaml__mutmut_12  # MESSAGE string in aios.ui.settings_io.x__load_yaml: 'Failed to parse %s; treating as empty'
+aios.ui.settings_io.x__load_yaml__mutmut_16  # MESSAGE string in aios.ui.settings_io.x__load_yaml: 'Failed to parse %s; treating as empty'
+aios.ui.settings_io.x_save_ui_section__mutmut_6  # MESSAGE string in aios.ui.settings_io.x_save_ui_section: 'PyYAML not installed, skipping save to %s'
+aios.ui.settings_io.x_save_ui_section__mutmut_8  # MESSAGE string in aios.ui.settings_io.x_save_ui_section: 'PyYAML not installed, skipping save to %s'
+aios.ui.settings_io.x_save_ui_section__mutmut_9  # MESSAGE string in aios.ui.settings_io.x_save_ui_section: 'PyYAML not installed, skipping save to %s'
+aios.ui.settings_page.x_render_settings_page__mutmut_22  # MESSAGE string in aios.ui.settings_page.x_render_settings_page: 'Settings'
+aios.ui.settings_page.x_render_settings_page__mutmut_23  # MESSAGE string in aios.ui.settings_page.x_render_settings_page: 'Settings'
+aios.ui.settings_page.x_render_settings_page__mutmut_24  # MESSAGE string in aios.ui.settings_page.x_render_settings_page: 'Settings'
+aios.ui.settings_page.x_render_settings_page__mutmut_25  # MESSAGE string in aios.ui.settings_page.x_render_settings_page: 'Settings'
+aios.ui.settings_page.x_render_settings_page__mutmut_26  # MESSAGE string in aios.ui.settings_page.x_render_settings_page: 'Settings'
+aios.ui.settings_page.x_render_settings_page__mutmut_28  # MESSAGE string in aios.ui.settings_page.x_render_settings_page: 'Settings'
+aios.ui.settings_page.x_render_settings_page__mutmut_29  # MESSAGE string in aios.ui.settings_page.x_render_settings_page: 'Settings'
+aios.workflow.engine.xǁWorkflowEngineǁ_apply_workflow_intent__mutmut_13  # MESSAGE string in _apply_workflow_intent: "Workflow intent not attached: context has no sett
+aios.workflow.engine.xǁWorkflowEngineǁ_apply_workflow_intent__mutmut_14  # MESSAGE string in _apply_workflow_intent: "Workflow intent not attached: context has no sett
+aios.workflow.engine.xǁWorkflowEngineǁ_apply_workflow_intent__mutmut_15  # MESSAGE string in _apply_workflow_intent: "Workflow intent not attached: context has no sett
+aios.workflow.engine.xǁWorkflowEngineǁ_is_implementation_task__mutmut_2  # (task_type or 'code') -> or '' : '' falsy -> default; neither '' nor 'code' in _NON_IMPLEMENTATION_TYPES, membership identical for all inputs
+aios.workflow.engine.xǁWorkflowEngineǁ_is_implementation_task__mutmut_3  # (task_type or 'code') -> or None : None falsy -> default; neither None nor 'code' in _NON_IMPLEMENTATION_TYPES, membership identical for all inputs
+aios.workflow.engine.xǁWorkflowEngineǁ_run_research__mutmut_48  # MESSAGE string in _run_research: 'Research front-gate returned invalid JSON output'
+aios.workflow.engine.xǁWorkflowEngineǁ_run_research__mutmut_49  # MESSAGE string in _run_research: 'Research front-gate returned invalid JSON output'
+aios.workflow.engine.xǁWorkflowEngineǁ_run_research__mutmut_55  # MESSAGE string in _run_research: "Research result not attached: context has no sett

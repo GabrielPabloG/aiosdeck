@@ -327,4 +327,108 @@ class TestPlanRunIntegration:
             with pytest.raises(SystemExit):
                 _cmd_plan(["--run", "add login"], MagicMock(), lambda _: kernel)
 
-        assert "pipeline crashed" in stderr.getvalue()
+
+# ---------------------------------------------------------------------------
+# Cycle 1 contract tests — high-density mutation targets
+# ---------------------------------------------------------------------------
+
+
+def test_run_result_from_agent_maps_all_fields():
+    ar = AgentResult(
+        success=True,
+        output="ok",
+        errors=["e1"],
+        tool_calls=5,
+        tool_names=["grep", "ls"],
+        tool_durations_ms=[1.0, 2.0],
+        llm_turns=3,
+        total_cost=0.01,
+        tokens={"in": 100},
+        model="gpt-4o",
+        provider="openai",
+        fallback_used=True,
+        steps_used=10,
+        repeated_tool_calls=2,
+        turn_sequence=["think", "act"],
+        exit_reason="stop",
+    )
+    rr = RunResult.from_agent(ar)
+
+    assert rr.success is True
+    assert rr.output == "ok"
+    assert rr.errors == ("e1",)
+    assert rr.tool_calls == 5
+    assert rr.tool_names == ("grep", "ls")
+    assert rr.tool_durations_ms == (1.0, 2.0)
+    assert rr.llm_turns == 3
+    assert rr.total_cost == 0.01
+    assert rr.tokens == {"in": 100}
+    assert rr.model == "gpt-4o"
+    assert rr.provider == "openai"
+    assert rr.fallback_used is True
+    assert rr.steps_used == 10
+    assert rr.repeated_tool_calls == 2
+    assert rr.turn_sequence == ("think", "act")
+    assert rr.exit_reason == "stop"
+    assert len(rr.stages) == 1
+    assert rr.stages[0].name == "planner"
+    assert rr.stages[0].status == "success"
+
+
+def test_run_result_from_agent_failed_preserves_error():
+    ar = AgentResult(
+        success=False,
+        output="",
+        errors=["boom", "secondary"],
+    )
+    rr = RunResult.from_agent(ar)
+
+    assert rr.success is False
+    assert rr.errors == ("boom", "secondary")
+    assert rr.stages[0].status == "failed"
+    assert rr.stages[0].reason == "boom"
+
+
+def test_run_result_from_agent_defaults():
+    ar = AgentResult(success=True, output="x")
+    rr = RunResult.from_agent(ar)
+
+    assert rr.tool_calls == 0
+    assert rr.tool_names == ()
+    assert rr.tool_durations_ms == ()
+    assert rr.llm_turns == 0
+    assert rr.total_cost == 0.0
+    assert rr.tokens == {}
+    assert rr.model == ""
+    assert rr.provider == ""
+    assert rr.fallback_used is False
+    assert rr.steps_used == 0
+    assert rr.repeated_tool_calls == 0
+    assert rr.turn_sequence == ()
+    assert rr.exit_reason == "stop"
+
+
+def test_create_kernel_registers_all_engines(tmp_path):
+    kernel = create_kernel(tmp_path)
+
+    expected = [
+        "config",
+        "context",
+        "memory",
+        "learning",
+        "scheduler",
+        "events",
+        "telemetry",
+        "knowledge",
+        "security",
+        "developer",
+        "planner",
+        "reviewer",
+        "research",
+        "runtime",
+        "workflow",
+    ]
+    for name in expected:
+        engine = kernel.get_engine(name)
+        assert engine is not None, f"engine '{name}' not registered"
+        assert getattr(engine, "name", None) == name

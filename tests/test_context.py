@@ -81,3 +81,77 @@ def test_shell_detector_makefile(tmp_path):
     assert result is not None
     project, _ = result
     assert project.language == "shell"
+
+
+# ---------------------------------------------------------------------------
+# Cycle 1 contract test — ContextPacket.to_dict
+# ---------------------------------------------------------------------------
+
+
+def test_context_packet_to_dict_has_all_keys():
+    from aios.context.packet import (
+        ContextPacket,
+        DockerInfo,
+        GitInfo,
+        ProjectInfo,
+        RuntimeInfo,
+        StructureInfo,
+        ToolsInfo,
+    )
+
+    ctx = ContextPacket(
+        project=ProjectInfo(name="test", root="/tmp", language="python"),
+        tools=ToolsInfo(linter="ruff", formatter="ruff", test_runner="pytest"),
+        git=GitInfo(
+            branch="main",
+            status="clean",
+            remote="origin",
+            last_commit="abc",
+            last_commit_message="init",
+        ),
+        docker=DockerInfo(installed=True, running=False, compose_files=["docker-compose.yml"]),
+        runtime=RuntimeInfo(opencode=True, ai_jail=False),
+        structure=StructureInfo(
+            has_readme=True, has_license=True, has_tests_dir=True, has_docs_dir=False
+        ),
+        skills=["project-dna"],
+        research={"key": "val"},
+    )
+    data = ctx.to_dict()
+
+    assert set(data.keys()) == {
+        "project",
+        "tools",
+        "git",
+        "docker",
+        "runtime",
+        "structure",
+        "skills",
+        "memory",
+        "research",
+        "timestamp",
+    }
+    assert data["project"]["name"] == "test"
+    assert data["project"]["root"] == "/tmp"
+    assert data["project"]["language"] == "python"
+    assert data["tools"]["linter"] == "ruff"
+    assert data["tools"]["formatter"] == "ruff"
+    assert data["tools"]["test_runner"] == "pytest"
+    assert data["tools"]["dependency_manager"] == ""
+    assert data["git"]["branch"] == "main"
+    assert data["git"]["status"] == "clean"
+    assert data["git"]["remote"] == "origin"
+    assert data["git"]["last_commit"] == "abc"
+    assert data["git"]["last_commit_message"] == "init"
+    assert data["docker"]["installed"] is True
+    assert data["docker"]["running"] is False
+    assert data["docker"]["compose_files"] == ["docker-compose.yml"]
+    assert data["runtime"]["opencode"] is True
+    assert data["runtime"]["ai_jail"] is False
+    assert data["structure"]["has_readme"] is True
+    assert data["structure"]["has_license"] is True
+    assert data["structure"]["has_tests_dir"] is True
+    assert data["structure"]["has_docs_dir"] is False
+    assert data["skills"] == ["project-dna"]
+    assert data["research"] == {"key": "val"}
+    assert "timestamp" in data

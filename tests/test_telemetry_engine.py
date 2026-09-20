@@ -410,3 +410,251 @@ def test_double_subscribe_guard(tmp_path):
     engine._subscribe()
     assert bus.subscribe.call_count == call_count_before
     engine._unsubscribe()
+
+
+# ---------------------------------------------------------------------------
+# Cycle 1: high-density contract tests targeting surviving mutants
+# ---------------------------------------------------------------------------
+
+
+def test_persist_execution_record_has_all_keys(tmp_path):
+    db = tmp_path / "test.db"
+    engine = TelemetryEngine(project_path=tmp_path, db_path=str(db))
+    engine.initialize()
+
+    event = MagicMock()
+    event.correlation_id = "corr-x"
+    event.payload = {
+        "execution_id": "e1",
+        "event_id": "evt1",
+        "correlation_id": "corr-1",
+        "task_id": "task-1",
+        "workflow_id": "wf-1",
+        "agent": "planner",
+        "model": "gpt-4o",
+        "provider": "openai",
+        "runtime": "opencode",
+        "attempt": 2,
+        "status": "succeeded",
+        "duration_ms": 123.4,
+        "timestamp": "2026-01-01T00:00:00Z",
+        "observability": {
+            "tool_calls": 5,
+            "llm_turns": 3,
+            "total_cost": 0.01,
+        },
+    }
+    engine._on_execution_event(event)
+
+    engine._flush_on_read()
+    rows = engine._store.query_executions(agent="planner")
+    assert len(rows) == 1
+    r = rows[0]
+    assert r["execution_id"] == "e1"
+    assert r["event_id"] == "evt1"
+    assert r["correlation_id"] == "corr-1"
+    assert r["task_id"] == "task-1"
+    assert r["workflow_id"] == "wf-1"
+    assert r["agent"] == "planner"
+    assert r["model"] == "gpt-4o"
+    assert r["provider"] == "openai"
+    assert r["runtime"] == "opencode"
+    assert r["attempt"] == 2
+    assert r["status"] == "succeeded"
+    assert r["duration_ms"] == 123.4
+    assert r["timestamp"] == "2026-01-01T00:00:00Z"
+
+    # query_executions does not return these columns; verify directly in DB.
+    db_row = engine._store._conn.execute(
+        "SELECT tool_calls, llm_turns, total_cost FROM telemetry_executions WHERE execution_id = ?",
+        ("e1",),
+    ).fetchone()
+    assert db_row[0] == 5
+    assert db_row[1] == 3
+    assert db_row[2] == 0.01
+
+    engine.shutdown()
+
+
+def test_persist_execution_defaults_when_fields_missing(tmp_path):
+    db = tmp_path / "test.db"
+    engine = TelemetryEngine(project_path=tmp_path, db_path=str(db))
+    engine.initialize()
+
+    event = MagicMock()
+    event.correlation_id = ""
+    event.payload = {
+        "execution_id": "e2",
+        "agent": "dev",
+        "status": "failed",
+    }
+    engine._on_execution_event(event)
+
+    engine._flush_on_read()
+    rows = engine._store.query_executions(agent="dev")
+    assert len(rows) == 1
+    r = rows[0]
+    assert r["execution_id"] == "e2"
+    assert r["event_id"]  # auto-generated
+    assert r["correlation_id"] == ""
+    assert r["task_id"] == ""
+    assert r["workflow_id"] is None
+    assert r["model"] is None
+    assert r["provider"] is None
+    assert r["runtime"] is None
+    assert r["attempt"] == 1
+    assert r["timestamp"]  # generated
+
+    db_row = engine._store._conn.execute(
+        "SELECT tool_calls, llm_turns, total_cost FROM telemetry_executions WHERE execution_id = ?",
+        ("e2",),
+    ).fetchone()
+    assert db_row[0] == 0
+    assert db_row[1] == 0
+    assert db_row[2] == 0.0
+
+    engine.shutdown()
+
+
+def test_gate_event_all_fields_with_findings_dict(tmp_path):
+    db = tmp_path / "test.db"
+    engine = TelemetryEngine(project_path=tmp_path, db_path=str(db))
+    engine.initialize()
+
+    event = MagicMock()
+    event.topic = "quality.gate_failed"
+    event.correlation_id = "corr-gate"
+    event.payload = {
+        "gate": "security",
+        "status": "failed",
+        "duration_ms": 200,
+        "findings": {"low": 1, "medium": 2, "high": 3, "critical": 4},
+        "blocked": True,
+        "overridden": False,
+        "timestamp": "2026-06-01T12:00:00Z",
+    }
+    engine._on_gate_event(event)
+
+    engine._flush_on_read()
+    rows = engine._store.query_gate_records(gate="security")
+    assert len(rows) == 1
+    r = rows[0]
+    assert r["gate"] == "security"
+    assert r["status"] == "failed"
+    assert r["correlation_id"] == "corr-gate"
+    assert r["duration_ms"] == 200
+    assert r["findings_low"] == 1
+    assert r["findings_medium"] == 2
+    assert r["findings_high"] == 3
+    assert r["findings_critical"] == 4
+    assert r["blocked"] == 1
+    assert r["overridden"] == 0
+    assert r["timestamp"] == "2026-06-01T12:00:00Z"
+
+    engine.shutdown()
+
+
+def test_gate_event_fallback_from_topic_status(tmp_path):
+    db = tmp_path / "test.db"
+    engine = TelemetryEngine(project_path=tmp_path, db_path=str(db))
+    engine.initialize()
+
+    event = MagicMock()
+    event.topic = "quality.gate_blocked"
+    event.correlation_id = ""
+    event.payload = {"gate": "code", "findings": {}}
+    engine._on_gate_event(event)
+
+    engine._flush_on_read()
+    rows = engine._store.query_gate_records(gate="code")
+    assert len(rows) == 1
+    assert rows[0]["status"] == "blocked"
+    assert rows[0]["findings_low"] == 0
+    assert rows[0]["blocked"] == 0
+
+    engine.shutdown()
+
+
+def test_gate_event_findings_dict_overrides_flat_keys(tmp_path):
+    db = tmp_path / "test.db"
+    engine = TelemetryEngine(project_path=tmp_path, db_path=str(db))
+    engine.initialize()
+
+    event = MagicMock()
+    event.topic = "quality.gate_passed"
+    event.correlation_id = ""
+    event.payload = {
+        "gate": "quality",
+        "findings": {"low": 10},
+        "findings_low": 1,
+    }
+    engine._on_gate_event(event)
+
+    engine._flush_on_read()
+    rows = engine._store.query_gate_records(gate="quality")
+    assert rows[0]["findings_low"] == 10
+
+    engine.shutdown()
+
+
+def test_persist_usage_all_fields(tmp_path):
+    db = tmp_path / "test.db"
+    engine = TelemetryEngine(project_path=tmp_path, db_path=str(db))
+    engine.initialize()
+
+    usage = {
+        "model": "gpt-4o",
+        "provider": "openai",
+        "input_tokens": 100,
+        "output_tokens": 50,
+        "total_tokens": 150,
+        "cached_tokens": 10,
+        "reasoning_tokens": 5,
+        "context_tokens": 80,
+        "provider_raw": {"raw_key": "val"},
+        "timestamp": "2026-01-01T00:00:00Z",
+    }
+    event_payload = {
+        "execution_id": "eu-1",
+        "agent": "planner",
+    }
+    engine._persist_usage(usage, event_payload)
+
+    engine._flush_on_read()
+    rows = engine._store.query_usage(agent="planner")
+    assert len(rows) == 1
+    r = rows[0]
+    assert r["execution_id"] == "eu-1"
+    assert r["agent"] == "planner"
+    assert r["model"] == "gpt-4o"
+    assert r["provider"] == "openai"
+    assert r["input_tokens"] == 100
+    assert r["output_tokens"] == 50
+    assert r["total_tokens"] == 150
+    assert r["cached_tokens"] == 10
+    assert r["reasoning_tokens"] == 5
+    assert r["context_tokens"] == 80
+    assert r["timestamp"] == "2026-01-01T00:00:00Z"
+
+    engine.shutdown()
+
+
+def test_persist_usage_computes_total_tokens_when_missing(tmp_path):
+    db = tmp_path / "test.db"
+    engine = TelemetryEngine(project_path=tmp_path, db_path=str(db))
+    engine.initialize()
+
+    usage = {
+        "model": "gpt-4o",
+        "provider": "openai",
+        "input_tokens": 100,
+        "output_tokens": 50,
+    }
+    engine._persist_usage(usage, {"execution_id": "eu-2", "agent": "dev"})
+
+    engine._flush_on_read()
+    rows = engine._store.query_usage(agent="dev")
+    assert len(rows) == 1
+    assert rows[0]["total_tokens"] == 150
+
+    engine.shutdown()
