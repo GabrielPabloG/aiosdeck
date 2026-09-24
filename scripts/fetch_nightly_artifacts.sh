@@ -61,10 +61,12 @@ gh run view "$RUN_ID" --json headSha,headBranch,conclusion,createdAt,url \
 echo ">> local HEAD: $(git rev-parse HEAD)"
 
 echo ">> downloading nightly-mutation-triage"
+rm -rf "$OUT/triage"
 gh run download "$RUN_ID" -n nightly-mutation-triage -D "$OUT/triage"
 
 if [[ "$WITH_REPORT" == "1" ]]; then
   echo ">> downloading nightly-mutation-report (large)"
+  rm -rf "$OUT/report"
   gh run download "$RUN_ID" -n nightly-mutation-report -D "$OUT/report"
 fi
 

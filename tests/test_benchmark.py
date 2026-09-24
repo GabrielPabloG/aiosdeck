@@ -20,6 +20,7 @@ from aios.telemetry.benchmark import (
     BARE_PROMPT,
     METRICS,
     PHASES,
+    _extract_observability,
     _run_bare_probe,
     baseline_path,
     measure_lifecycle,
@@ -742,3 +743,189 @@ class TestBareRoutingParity:
         assert "_models" not in out
         for result in out["results"]:
             assert "_models" not in result
+
+
+# ---------------------------------------------------------------------------
+# Cycle 2 contract tests — _extract_observability (zero prior tests)
+# ---------------------------------------------------------------------------
+
+
+def _make_run_result(**overrides):
+    """Build a RunResult with every observability field populated."""
+    from aios.core.run_result import RunResult
+
+    defaults = dict(
+        success=True,
+        tool_calls=5,
+        tool_names=("grep", "ls", "grep"),
+        tool_durations_ms=(1.0, 2.0, 0.5),
+        llm_turns=3,
+        total_cost=0.042,
+        tokens={"input": 1000, "output": 500},
+        model="gpt-4o",
+        provider="openai",
+        fallback_used=True,
+        steps_used=10,
+        repeated_tool_calls=2,
+        turn_sequence=("think", "act", "think"),
+        exit_reason="stop",
+    )
+    defaults.update(overrides)
+    return RunResult(**defaults)
+
+
+def test_extract_observability_all_fields():
+    rr = _make_run_result()
+    obs = _extract_observability(rr)
+
+    assert obs["tool_calls"] == 5
+    assert obs["tool_names"] == ["grep", "ls", "grep"]
+    assert obs["tool_durations_ms"] == [1.0, 2.0, 0.5]
+    assert obs["llm_turns"] == 3
+    assert obs["total_cost"] == 0.042
+    assert obs["tokens"] == {"input": 1000, "output": 500}
+    assert obs["model"] == "gpt-4o"
+    assert obs["provider"] == "openai"
+    assert obs["fallback_used"] is True
+    assert obs["steps_used"] == 10
+    assert obs["repeated_tool_calls"] == 2
+    assert obs["turn_sequence"] == ["think", "act", "think"]
+    assert obs["exit_reason"] == "stop"
+
+
+def test_extract_observability_defaults():
+    from aios.core.run_result import RunResult
+
+    rr = RunResult(success=True)
+    obs = _extract_observability(rr)
+
+    assert obs["tool_calls"] == 0
+    assert obs["tool_names"] == []
+    assert obs["tool_durations_ms"] == []
+    assert obs["llm_turns"] == 0
+    assert obs["total_cost"] == 0.0
+    assert obs["tokens"] == {}
+    assert obs["model"] == ""
+    assert obs["provider"] == ""
+    assert obs["fallback_used"] is False
+    assert obs["steps_used"] == 0
+    assert obs["repeated_tool_calls"] == 0
+    assert obs["turn_sequence"] == []
+    assert obs["exit_reason"] == "stop"
+
+
+def test_extract_observability_type_coercion_int_to_float():
+    from aios.core.run_result import RunResult
+
+    rr = RunResult(success=True, total_cost=42)
+    obs = _extract_observability(rr)
+    assert obs["total_cost"] == 42.0
+    assert isinstance(obs["total_cost"], float)
+
+
+def test_extract_observability_rejects_non_int_fields():
+    from aios.core.run_result import RunResult
+
+    rr = RunResult(success=True, tool_calls="five", llm_turns=None, steps_used=3.5)
+    obs = _extract_observability(rr)
+    assert "tool_calls" not in obs
+    assert "llm_turns" not in obs
+    assert "steps_used" not in obs
+
+
+def test_extract_observability_rejects_non_str_fields():
+    from aios.core.run_result import RunResult
+
+    rr = RunResult(success=True, model=123, provider=[1], exit_reason=None)
+    obs = _extract_observability(rr)
+    assert "model" not in obs
+    assert "provider" not in obs
+    assert "exit_reason" not in obs
+
+
+def test_extract_observability_rejects_non_bool_fallback():
+    from aios.core.run_result import RunResult
+
+    rr = RunResult(success=True, fallback_used=1)
+    obs = _extract_observability(rr)
+    assert "fallback_used" not in obs
+
+
+def test_extract_observability_tool_names_filters_non_str():
+    from aios.core.run_result import RunResult
+
+    rr = RunResult(success=True, tool_names=("grep", 123, None, "ls"))
+    obs = _extract_observability(rr)
+    assert obs["tool_names"] == ["grep", "ls"]
+
+
+def test_extract_observability_tool_durations_filters_non_numeric():
+    from aios.core.run_result import RunResult
+
+    rr = RunResult(success=True, tool_durations_ms=(1.0, "slow", None, 2.5))
+    obs = _extract_observability(rr)
+    assert obs["tool_durations_ms"] == [1.0, 2.5]
+
+
+def test_extract_observability_turn_sequence_filters():
+    from aios.core.run_result import RunResult
+
+    rr = RunResult(success=True, turn_sequence=("think", 42, "act"))
+    obs = _extract_observability(rr)
+    assert obs["turn_sequence"] == ["think", "42", "act"]
+
+
+def test_extract_observability_tokens_filters_non_numeric_values():
+    from aios.core.run_result import RunResult
+
+    rr = RunResult(success=True, tokens={"input": 100, "label": "big", "output": 50})
+    obs = _extract_observability(rr)
+    assert obs["tokens"] == {"input": 100, "output": 50}
+    assert "label" not in obs["tokens"]
+
+
+def test_extract_observability_tuple_tool_names():
+    from aios.core.run_result import RunResult
+
+    rr = RunResult(success=True, tool_names=("a", "b"))
+    obs = _extract_observability(rr)
+    assert obs["tool_names"] == ["a", "b"]
+
+
+def test_extract_observability_list_tool_durations():
+    from aios.core.run_result import RunResult
+
+    rr = RunResult(success=True, tool_durations_ms=[1.5, 2.5])
+    obs = _extract_observability(rr)
+    assert obs["tool_durations_ms"] == [1.5, 2.5]
+
+
+def test_extract_observability_missing_attributes():
+    class BareResult:
+        success = True
+
+    obs = _extract_observability(BareResult())
+    assert obs["tool_calls"] == 0
+    assert obs["tool_names"] == []
+    assert obs["tool_durations_ms"] == []
+    assert obs["turn_sequence"] == []
+    assert obs["tokens"] == {}
+    assert obs["model"] == ""
+    assert obs["provider"] == ""
+    assert obs["fallback_used"] is False
+
+
+def test_extract_observability_non_dict_tokens():
+    from aios.core.run_result import RunResult
+
+    rr = RunResult(success=True, tokens="invalid")
+    obs = _extract_observability(rr)
+    assert "tokens" not in obs
+
+
+def test_extract_observability_non_list_tool_names():
+    from aios.core.run_result import RunResult
+
+    rr = RunResult(success=True, tool_names="single_tool")
+    obs = _extract_observability(rr)
+    assert "tool_names" not in obs

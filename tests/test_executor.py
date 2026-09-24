@@ -457,3 +457,83 @@ class TestObservabilityContract:
         ]
         assert len(timed_out) == 1
         assert timed_out[0].get("observability") is None
+
+
+# ---------------------------------------------------------------------------
+# Cycle 2 contract tests — observability dict completeness
+# ---------------------------------------------------------------------------
+
+
+def _get_completed_payload(bus):
+    for call in bus.publish.call_args_list:
+        if call.args[0] == AGENT_EXECUTION_COMPLETED:
+            return call.args[1]
+    raise AssertionError("no AGENT_EXECUTION_COMPLETED event published")
+
+
+def test_observability_dict_contains_all_keys():
+    bus = MagicMock()
+    executor = AgentExecutor(event_bus=bus)
+
+    def _agent_fn(task, context):
+        return AgentResult(
+            success=True,
+            output="ok",
+            tool_calls=7,
+            tool_names=["grep", "ls"],
+            tool_durations_ms=[0.5, 1.2],
+            llm_turns=4,
+            total_cost=0.03,
+            tokens={"input": 500, "output": 200},
+            model="claude-sonnet",
+            provider="anthropic",
+            fallback_used=True,
+            steps_used=12,
+            repeated_tool_calls=1,
+            turn_sequence=("think", "act", "think", "act"),
+            exit_reason="stop",
+        )
+
+    agent = _FakeAgent(fn=_agent_fn)
+    executor.execute(make_request(agent, _task()))
+    obs = _get_completed_payload(bus)["observability"]
+
+    assert obs["tool_calls"] == 7
+    assert obs["tool_names"] == ["grep", "ls"]
+    assert obs["tool_durations_ms"] == [0.5, 1.2]
+    assert obs["llm_turns"] == 4
+    assert obs["total_cost"] == 0.03
+    assert obs["tokens"] == {"input": 500, "output": 200}
+    assert obs["model"] == "claude-sonnet"
+    assert obs["provider"] == "anthropic"
+    assert obs["fallback_used"] is True
+    assert obs["steps_used"] == 12
+    assert obs["repeated_tool_calls"] == 1
+    assert obs["turn_sequence"] == ("think", "act", "think", "act")
+    assert obs["exit_reason"] == "stop"
+
+
+def test_observability_dict_defaults_when_fields_absent():
+    bus = MagicMock()
+    executor = AgentExecutor(event_bus=bus)
+
+    def _agent_fn(task, context):
+        return AgentResult(success=True, output="ok")
+
+    agent = _FakeAgent(fn=_agent_fn)
+    executor.execute(make_request(agent, _task()))
+    obs = _get_completed_payload(bus)["observability"]
+
+    assert obs["tool_calls"] == 0
+    assert obs["tool_names"] == []
+    assert obs["tool_durations_ms"] == []
+    assert obs["llm_turns"] == 0
+    assert obs["total_cost"] == 0.0
+    assert obs["tokens"] == {}
+    assert obs["model"] == ""
+    assert obs["provider"] == ""
+    assert obs["fallback_used"] is False
+    assert obs["steps_used"] == 0
+    assert obs["repeated_tool_calls"] == 0
+    assert obs["turn_sequence"] == []
+    assert obs["exit_reason"] == "stop"

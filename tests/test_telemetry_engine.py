@@ -658,3 +658,154 @@ def test_persist_usage_computes_total_tokens_when_missing(tmp_path):
     assert rows[0]["total_tokens"] == 150
 
     engine.shutdown()
+
+
+# ---------------------------------------------------------------------------
+# Cycle 2 contract tests — _persist_execution edge cases
+# ---------------------------------------------------------------------------
+
+
+def test_persist_execution_observability_none_uses_payload_fallback(tmp_path):
+    db = tmp_path / "test.db"
+    engine = TelemetryEngine(project_path=tmp_path, db_path=str(db))
+    engine.initialize()
+
+    event = MagicMock()
+    event.payload = {
+        "execution_id": "e-obs-none",
+        "agent": "dev",
+        "status": "succeeded",
+        "model": "gpt-4o",
+        "provider": "openai",
+    }
+    engine._on_execution_event(event)
+
+    engine._flush_on_read()
+    db_row = engine._store._conn.execute(
+        "SELECT model, provider, tool_calls, llm_turns, total_cost "
+        "FROM telemetry_executions WHERE execution_id = ?",
+        ("e-obs-none",),
+    ).fetchone()
+    assert db_row[0] == "gpt-4o"
+    assert db_row[1] == "openai"
+    assert db_row[2] == 0
+    assert db_row[3] == 0
+    assert db_row[4] == 0.0
+
+    engine.shutdown()
+
+
+def test_persist_execution_observability_empty_dict_uses_payload_fallback(tmp_path):
+    db = tmp_path / "test.db"
+    engine = TelemetryEngine(project_path=tmp_path, db_path=str(db))
+    engine.initialize()
+
+    event = MagicMock()
+    event.payload = {
+        "execution_id": "e-obs-empty",
+        "agent": "dev",
+        "status": "succeeded",
+        "model": "gpt-4o",
+        "provider": "openai",
+        "observability": {},
+    }
+    engine._on_execution_event(event)
+
+    engine._flush_on_read()
+    db_row = engine._store._conn.execute(
+        "SELECT model, provider FROM telemetry_executions WHERE execution_id = ?",
+        ("e-obs-empty",),
+    ).fetchone()
+    assert db_row[0] == "gpt-4o"
+    assert db_row[1] == "openai"
+
+    engine.shutdown()
+
+
+def test_persist_execution_model_from_observability_when_payload_empty(tmp_path):
+    db = tmp_path / "test.db"
+    engine = TelemetryEngine(project_path=tmp_path, db_path=str(db))
+    engine.initialize()
+
+    event = MagicMock()
+    event.payload = {
+        "execution_id": "e-obs-model",
+        "agent": "dev",
+        "status": "succeeded",
+        "observability": {"model": "claude-sonnet", "provider": "anthropic"},
+    }
+    engine._on_execution_event(event)
+
+    engine._flush_on_read()
+    db_row = engine._store._conn.execute(
+        "SELECT model, provider FROM telemetry_executions WHERE execution_id = ?",
+        ("e-obs-model",),
+    ).fetchone()
+    assert db_row[0] == "claude-sonnet"
+    assert db_row[1] == "anthropic"
+
+    engine.shutdown()
+
+
+def test_persist_execution_non_dict_payload_ignored(tmp_path):
+    db = tmp_path / "test.db"
+    engine = TelemetryEngine(project_path=tmp_path, db_path=str(db))
+    engine.initialize()
+
+    event = MagicMock()
+    event.payload = "not a dict"
+    engine._on_execution_event(event)
+
+    engine._flush_on_read()
+    rows = engine._store.query_executions(agent="")
+    assert len(rows) == 0
+
+    engine.shutdown()
+
+
+def test_persist_execution_event_id_auto_generated(tmp_path):
+    db = tmp_path / "test.db"
+    engine = TelemetryEngine(project_path=tmp_path, db_path=str(db))
+    engine.initialize()
+
+    event = MagicMock()
+    event.payload = {
+        "execution_id": "e-auto",
+        "agent": "dev",
+        "status": "succeeded",
+    }
+    engine._on_execution_event(event)
+
+    engine._flush_on_read()
+    rows = engine._store.query_executions(agent="dev")
+    assert len(rows) == 1
+    assert rows[0]["event_id"]  # auto-generated, not empty
+
+    engine.shutdown()
+
+
+def test_persist_execution_overridden_model_from_payload(tmp_path):
+    db = tmp_path / "test.db"
+    engine = TelemetryEngine(project_path=tmp_path, db_path=str(db))
+    engine.initialize()
+
+    event = MagicMock()
+    event.payload = {
+        "execution_id": "e-override",
+        "agent": "dev",
+        "status": "succeeded",
+        "model": "gpt-4o",
+        "provider": "openai",
+        "observability": {"model": "claude", "provider": "anthropic"},
+    }
+    engine._on_execution_event(event)
+
+    engine._flush_on_read()
+    db_row = engine._store._conn.execute(
+        "SELECT model, provider FROM telemetry_executions WHERE execution_id = ?",
+        ("e-override",),
+    ).fetchone()
+    assert db_row[0] == "gpt-4o"
+    assert db_row[1] == "openai"
+
+    engine.shutdown()

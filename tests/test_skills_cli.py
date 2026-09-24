@@ -379,3 +379,118 @@ class TestSkillsInspectExactStrings:
         assert "schema_version" in output
         assert "indexed" in output
         assert "chunks_count" in output
+
+
+# ---------------------------------------------------------------------------
+# Cycle 2 contract tests — discover JSON output completeness
+# ---------------------------------------------------------------------------
+
+
+class TestSkillsDiscoverJsonKeys:
+    def test_discover_json_has_top_level_keys(self, tmp_path, capsys):
+        _write_skill(tmp_path, "test-skill", "react")
+        kernel = _make_kernel()
+        kernel.get_context.return_value = None
+        factory = _kernel_factory(kernel)
+
+        try:
+            cmd_skills_discover(["build a dashboard", "--json"], tmp_path, factory)
+        except SystemExit:
+            pass
+
+        output = json.loads(capsys.readouterr().out)
+        assert set(output.keys()) == {"intent", "agent", "candidates", "used", "skills", "contexts"}
+        assert output["intent"] == "build a dashboard"
+        assert output["agent"] == "planner"
+        assert isinstance(output["candidates"], int)
+        assert isinstance(output["used"], int)
+        assert isinstance(output["skills"], list)
+        assert isinstance(output["contexts"], list)
+
+    def test_discover_json_skill_entry_has_all_keys(self, tmp_path, capsys):
+        _write_skill(tmp_path, "my-skill", "python")
+        kernel = _make_kernel()
+        kernel.get_context.return_value = None
+        factory = _kernel_factory(kernel)
+
+        try:
+            cmd_skills_discover(["python testing", "--json"], tmp_path, factory)
+        except SystemExit:
+            pass
+
+        output = json.loads(capsys.readouterr().out)
+        assert len(output["skills"]) > 0
+        skill = output["skills"][0]
+        assert set(skill.keys()) == {
+            "name",
+            "score",
+            "trigger_matches",
+            "scope_matches",
+            "priority_score",
+            "description",
+        }
+        assert skill["name"] == "my-skill"
+        assert isinstance(skill["score"], (int, float))
+        assert isinstance(skill["trigger_matches"], list)
+        assert isinstance(skill["scope_matches"], list)
+        assert isinstance(skill["priority_score"], (int, float))
+        assert isinstance(skill["description"], str)
+
+    def test_discover_json_candidates_matches_skills_length(self, tmp_path, capsys):
+        _write_skill(tmp_path, "s1", "alpha")
+        _write_skill(tmp_path, "s2", "beta")
+        kernel = _make_kernel()
+        kernel.get_context.return_value = None
+        factory = _kernel_factory(kernel)
+
+        try:
+            cmd_skills_discover(["alpha beta", "--json", "--top", "10"], tmp_path, factory)
+        except SystemExit:
+            pass
+
+        output = json.loads(capsys.readouterr().out)
+        assert output["candidates"] == len(output["skills"])
+
+    def test_discover_json_used_zero_when_no_knowledge(self, tmp_path, capsys):
+        _write_skill(tmp_path, "test-skill", "react")
+        kernel = _make_kernel(knowledge=None)
+        kernel.get_context.return_value = None
+        factory = _kernel_factory(kernel)
+
+        try:
+            cmd_skills_discover(["react", "--json"], tmp_path, factory)
+        except SystemExit:
+            pass
+
+        output = json.loads(capsys.readouterr().out)
+        assert output["used"] == 0
+        assert output["contexts"] == []
+
+    def test_discover_json_agent_flag(self, tmp_path, capsys):
+        _write_skill(tmp_path, "test-skill", "python")
+        kernel = _make_kernel()
+        kernel.get_context.return_value = None
+        factory = _kernel_factory(kernel)
+
+        try:
+            cmd_skills_discover(["python", "--json", "--agent", "developer"], tmp_path, factory)
+        except SystemExit:
+            pass
+
+        output = json.loads(capsys.readouterr().out)
+        assert output["agent"] == "developer"
+
+    def test_discover_json_top_k_limits_results(self, tmp_path, capsys):
+        for i in range(5):
+            _write_skill(tmp_path, f"skill-{i}", "test")
+        kernel = _make_kernel()
+        kernel.get_context.return_value = None
+        factory = _kernel_factory(kernel)
+
+        try:
+            cmd_skills_discover(["test", "--json", "--top", "2"], tmp_path, factory)
+        except SystemExit:
+            pass
+
+        output = json.loads(capsys.readouterr().out)
+        assert len(output["skills"]) <= 2
